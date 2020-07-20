@@ -1,29 +1,52 @@
 using OrthogonalPolynomialsQuasi, FillArrays, LazyArrays, ArrayLayouts
 
+function lanczos(N, X, M, W)
+    ip = (f,g) -> dot(M*f, W*g)
+
+    C = zeros(∞,N)
+    γ = zeros(∞)
+    β = zeros(∞)
+
+    C[1,1] = 1
+    p0 = view(C,:,1)
+    γ[1] = sqrt(ip(p0,p0))
+    lmul!(inv(γ[1]), p0)
+
+    for n = 2:N
+        v = view(C,:,n)
+        p1 = view(C,:,n-1)
+        muladd!(1.0,X, p1, 0.0, v)
+        β[n-1] = ip(v,p1)
+        BLAS.axpy!(-β[n-1],p1,v)
+        if n > 2
+            p0 = view(C,:,n-2)
+            BLAS.axpy!(-γ[n-1],p0,v)
+        end
+        γ[n] = sqrt(ip(v,v))
+        lmul!(inv(γ[n]), v)
+    end
+    γ,β,C
+end
+
 P = Legendre(); x = axes(P,1)
 X = P \ (x .* P)
 w = P * (P \ exp.(x))
 W = P \ (w .* P)
 M = P'P
-M*W
-
-W*p0
-Debugger.@enter M*p0
-
-C = zeros(∞,10)
-C[1,1] = 1
-p0 = view(C,:,1)
-γ = sqrt(dot(p0, W*p0))
-lmul!(inv(γ), p0)
+Debugger.@enter lanczos(5, X, M, W)
 
 
-v = view(C,:,2)
-muladd!(1.0,X, p0, 0.0, v)
-β = dot(M * p0, W * v)
+BLAS.axpy!(
+
+for 
+
+muladd!(1.0,X, p1, 0.0, v)
+β = ip(p0, v)
 BLAS.axpy!(-β, p0, v)
-γ = sqrt(dot(v, W * v))
+β = ip(p1, v)
+BLAS.axpy!(-β, p1, v)
+γ = sqrt(ip(v, v))
 lmul!(inv(γ), v)
-
 
 
 M * p0
