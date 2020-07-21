@@ -1,28 +1,32 @@
 using OrthogonalPolynomialsQuasi, FillArrays, LazyArrays, ArrayLayouts
+import LazyArrays: resizedata!, paddeddata
 
+
+W * [1; 2; zeros(∞)]
 function lanczos(N, X, M, W)
     ip = (f,g) -> dot(M*f, W*g)
 
-    C = zeros(∞,N)
-    γ = zeros(∞)
-    β = zeros(∞)
+    C = zeros(∞,N);
+    γ = zeros(∞);
+    β = zeros(∞);
 
-    C[1,1] = 1
-    p0 = view(C,:,1)
-    γ[1] = sqrt(ip(p0,p0))
-    lmul!(inv(γ[1]), p0)
+    C[1,1] = 1;
+    p0 = view(C,:,1);
+    γ[1] = sqrt(ip(p0,p0));
+    lmul!(inv(γ[1]), p0);
 
     for n = 2:N
-        v = view(C,:,n)
-        p1 = view(C,:,n-1)
-        muladd!(1.0,X, p1, 0.0, v)
+        resizedata!(C, n, n);
+        v = view(C,:,n);
+        p1 = view(C,:,n-1);
+        muladd!(1.0,X, p1, 0.0, v);
         β[n-1] = ip(v,p1)
-        BLAS.axpy!(-β[n-1],p1,v)
+        BLAS.axpy!(-β[n-1],p1,v);
         if n > 2
             p0 = view(C,:,n-2)
-            BLAS.axpy!(-γ[n-1],p0,v)
+            BLAS.axpy!(-γ[n-1],p0,v)    
         end
-        γ[n] = sqrt(ip(v,v))
+        γ[n] = sqrt(ip(v,v));
         lmul!(inv(γ[n]), v)
     end
     γ,β,C
