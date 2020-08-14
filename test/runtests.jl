@@ -33,6 +33,11 @@ function lanczos(N, X, ip)
     γ,β,R
 end
 
+Q = Normalized(Legendre())
+w = Q * (Q \ (1 .- x.^2));
+w[0.1]
+(1-0.1^2)
+
 const PaddedVector{T} = CachedVector{T,Vector{T},Zeros{T,1,Tuple{OneToInf{Int}}}}
 
 struct OrthonormalConversion{T, IP} <: AbstractMatrix{T}
