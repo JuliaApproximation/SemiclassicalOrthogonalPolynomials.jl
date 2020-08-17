@@ -17,7 +17,7 @@ import OrthogonalPolynomialsQuasi: recurrencecoefficients
         @test B[1:10] isa Vector{Float64}
         @test C[1:10] isa Vector{Float64}
 
-        R = P \ Q
+        R = P \ Q;
     end
 
     @testset "Jacobi via Lanczos" begin

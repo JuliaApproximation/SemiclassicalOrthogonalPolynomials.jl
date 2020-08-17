@@ -62,9 +62,12 @@ struct LanczosConversion{T,XX,WW} <: LazyMatrix{T}
 end
 
 size(::LanczosConversion) = (∞,∞)
+bandwidths(::LanczosConversion) = (0,∞)
+
+MemoryLayout(R::LanczosConversion) = TriangularLayout{:U,
 
 function getindex(R::LanczosConversion, k, j)
-    resizedata!(R.data, min(maximum(k), maximum(j))
+    resizedata!(R.data, min(maximum(k), maximum(j)))
     R.data.R[k,j]
 end
 
@@ -125,11 +128,11 @@ recurrencecoefficients(Q::LanczosPolynomial) = LanczosRecurrence{:A}(Q.data),Lan
 QuasiArrays.ApplyQuasiArray(Q::LanczosPolynomial) = ApplyQuasiArray(*, arguments(ApplyLayout{typeof(*)}(), Q)...)
 
 
-\(A::OrthogonalPolynomial, L::LanczosPolynomial) = (A \ L.P) * LanczosConversion(Q.data)
+\(A::OrthogonalPolynomial, Q::LanczosPolynomial) = (A \ Q.P) * LanczosConversion(Q.data)
 
 ArrayLayouts.mul(Q::LanczosPolynomial, C::AbstractArray) = ApplyQuasiArray(*, Q, C)
-transform_ldiv(Q::LanczosPolynomial, C::AbstractQuasiArray) = (Q \ Q.P) \ (Q.P \ C)
-arguments(::ApplyLayout{typeof(*)}, Q::LanczosPolynomial) = Q.P, (Q \ Q.P)
+transform_ldiv(Q::LanczosPolynomial, C::AbstractQuasiArray) = LanczosConversion(Q.data) \ (Q.P \ C)
+arguments(::ApplyLayout{typeof(*)}, Q::LanczosPolynomial) = Q.P, LanczosConversion(Q.data)
 LazyArrays._mul_arguments(Q::LanczosPolynomial) = arguments(ApplyLayout{typeof(*)}(), Q)
 LazyArrays._mul_arguments(Q::QuasiAdjoint{<:Any,<:LanczosPolynomial}) = arguments(ApplyLayout{typeof(*)}(), Q)
 
