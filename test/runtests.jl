@@ -7,13 +7,10 @@ import OrthogonalPolynomialsQuasi: recurrencecoefficients, resizedata!
         w = P * [1; zeros(∞)];
         Q = LanczosPolynomial(w);
         @test Q.data.W[1:10,1:10] isa BandedMatrix
-        v = [randn(5); Zeros(∞)]
-        @time Q.data.W.args[2]*v
-        @ent Q.data.W[1:10,1:10]
 
         Q̃ = Normalized(P);
-        A,B,C = recurrencecoefficients(Q)
-        Ã,B̃,C̃ = recurrencecoefficients(Q̃)
+        A,B,C = recurrencecoefficients(Q);
+        Ã,B̃,C̃ = recurrencecoefficients(Q̃);
         @test @inferred(A[1:10]) ≈ Ã[1:10] ≈ [A[k] for k=1:10]
         @test @inferred(B[1:10]) ≈ B̃[1:10] ≈ [B[k] for k=1:10]
         @test @inferred(C[2:10]) ≈ C̃[2:10] ≈ [C[k] for k=2:10]
@@ -34,8 +31,8 @@ import OrthogonalPolynomialsQuasi: recurrencecoefficients, resizedata!
         Q = LanczosPolynomial(w)
         A,B,C = recurrencecoefficients(Q)
 
-        @test @inferred(Q[0.1,1]) == 1
-        Q[0.1,2]
+        @test @inferred(Q[0.1,1]) ≈ sqrt(3)/sqrt(4)
+        @test Q[0.1,2] ≈ 2*0.1 * sqrt(15)/sqrt(16)
     end
 end
 Q.data.R
