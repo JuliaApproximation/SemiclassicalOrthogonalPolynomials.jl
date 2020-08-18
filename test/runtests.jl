@@ -41,12 +41,9 @@ Q[0.1,1]
 
 
 
-X = P \ (x .* P)
-W = P \ (w .* P)
-M = P'P
-
 x = axes(P,1)
-w = P * (P \ (@. sqrt(1.01 - x)))
+w = P * (P \ (@. sqrt(1.1 - x)))
 Q = LanczosPolynomial(w);
+@time resizedata!(Q.data, 100);
 R = P \ Q;
 
