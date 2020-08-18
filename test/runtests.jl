@@ -1,11 +1,16 @@
-using SemiclassicalOrthogonalPolynomials, OrthogonalPolynomialsQuasi
-import OrthogonalPolynomialsQuasi: recurrencecoefficients
+using SemiclassicalOrthogonalPolynomials, OrthogonalPolynomialsQuasi, BandedMatrices, Test
+import OrthogonalPolynomialsQuasi: recurrencecoefficients, resizedata!
 
 @testset "Lanczos" begin
     @testset "Legendre" begin
         P = Legendre();
         w = P * [1; zeros(∞)];
         Q = LanczosPolynomial(w);
+        @test Q.data.W[1:10,1:10] isa BandedMatrix
+        v = [randn(5); Zeros(∞)]
+        @time Q.data.W.args[2]*v
+        @ent Q.data.W[1:10,1:10]
+
         Q̃ = Normalized(P);
         A,B,C = recurrencecoefficients(Q)
         Ã,B̃,C̃ = recurrencecoefficients(Q̃)
