@@ -6,24 +6,17 @@
 
 function lanczos!(Ns, X::AbstractMatrix{T}, W::AbstractMatrix{T}, γ::AbstractVector{T}, β::AbstractVector{T}, R::AbstractMatrix{T}) where T
     for n = Ns
-        if n == 1
-            R[1,1] = 1;
-            p0 = view(R,:,1);
-            γ[1] = sqrt(dot(p0,W,p0))
-            lmul!(inv(γ[1]), p0)
-        else
-            v = view(R,:,n);
-            p1 = view(R,:,n-1);
-            muladd!(one(T), X, p1, zero(T), v); # TODO: `mul!(v, X, p1)`
-            β[n-1] = dot(v,W,p1)
-            BLAS.axpy!(-β[n-1],p1,v);
-            if n > 2
-                p0 = view(R,:,n-2)
-                BLAS.axpy!(-γ[n-1],p0,v)    
-            end
-            γ[n] = sqrt(dot(v,W,v));
-            lmul!(inv(γ[n]), v)
+        v = view(R,:,n);
+        p1 = view(R,:,n-1);
+        muladd!(one(T), X, p1, zero(T), v); # TODO: `mul!(v, X, p1)`
+        β[n-1] = dot(v,W,p1)
+        BLAS.axpy!(-β[n-1],p1,v);
+        if n > 2
+            p0 = view(R,:,n-2)
+            BLAS.axpy!(-γ[n-1],p0,v)    
         end
+        γ[n] = sqrt(dot(v,W,v));
+        lmul!(inv(γ[n]), v)
     end
     γ,β,R
 end
@@ -38,9 +31,18 @@ mutable struct LanczosData{T,XX,WW}
     β::PaddedVector{T}
     R::PaddedMatrix{T}
     ncols::Int
+
+    function LanczosData{T,XX,WW}(X, W, γ, β, R) where {T,XX,WW}
+        R[1,1] = 1;
+        p0 = view(R,:,1);
+        γ[1] = sqrt(dot(p0,W,p0))
+        lmul!(inv(γ[1]), p0)
+        new{T,XX,WW}(X, W, γ, β, R, 1)
+    end
 end
 
-LanczosData(X::AbstractMatrix, W::AbstractMatrix) = LanczosData(X, W, zeros(∞), zeros(∞), zeros(∞,∞), 0)
+LanczosData(X::XX, W::WW, γ::AbstractVector{T}, β, R) where {T,XX,WW} = LanczosData{T,XX,WW}(X, W, γ, β, R)
+LanczosData(X::AbstractMatrix, W::AbstractMatrix) = LanczosData(X, W, zeros(∞), zeros(∞), zeros(∞,∞))
 
 function LanczosData(w::AbstractQuasiVector, Q::AbstractQuasiMatrix)
     x = axes(Q,1)
@@ -50,11 +52,13 @@ function LanczosData(w::AbstractQuasiVector, Q::AbstractQuasiMatrix)
 end
 
 function resizedata!(L::LanczosData, N)
+    N ≤ L.ncols && return L
     resizedata!(L.R, N, N)
     resizedata!(L.γ, N)
     resizedata!(L.β, N)
     lanczos!(L.ncols+1:N, L.X, L.W, L.γ, L.β, L.R)
     L.ncols = N
+    L
 end
 
 struct LanczosConversion{T,XX,WW} <: LazyMatrix{T}
@@ -63,8 +67,7 @@ end
 
 size(::LanczosConversion) = (∞,∞)
 bandwidths(::LanczosConversion) = (0,∞)
-
-MemoryLayout(R::LanczosConversion) = TriangularLayout{:U,
+colsupport(L::LanczosConversion, j) = 1:maximum(j)
 
 function getindex(R::LanczosConversion, k, j)
     resizedata!(R.data, min(maximum(k), maximum(j)))
@@ -119,7 +122,9 @@ function LanczosPolynomial(w::AbstractQuasiVector)
     LanczosPolynomial(w, P, LanczosData(w, P))
 end
 
-axes(Q::LanczosPolynomial) = (axes(Q.weight,1),OneToInf())
+axes(Q::LanczosPolynomial) = (axes(Q.w,1),OneToInf())
+
+_p0(Q::LanczosPolynomial) = inv(Q.data.γ[1])*_p0(Q.P)
 
 recurrencecoefficients(Q::LanczosPolynomial) = LanczosRecurrence{:A}(Q.data),LanczosRecurrence{:B}(Q.data),LanczosRecurrence{:C}(Q.data)
 

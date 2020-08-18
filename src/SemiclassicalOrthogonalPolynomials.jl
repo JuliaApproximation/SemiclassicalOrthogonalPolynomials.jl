@@ -3,9 +3,10 @@ using OrthogonalPolynomialsQuasi, FillArrays, LazyArrays, ArrayLayouts, QuasiArr
 
 import Base: getindex, axes, size, \, /, *, +, -
 
+import ArrayLayouts: MemoryLayout
 import BandedMatrices: bandwidths
-import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, LazyMatrix, LazyVector, arguments, ApplyLayout
-import OrthogonalPolynomialsQuasi: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, recurrencecoefficients
+import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport
+import OrthogonalPolynomialsQuasi: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, recurrencecoefficients, _p0
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis
 
