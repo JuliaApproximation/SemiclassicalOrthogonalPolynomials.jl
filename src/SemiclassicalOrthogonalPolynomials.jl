@@ -12,6 +12,5 @@ import ContinuumArrays: basis
 
 export LanczosPolynomial, Legendre, Normalized, normalize
 
-include("lanczos.jl")
 
 end
