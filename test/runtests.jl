@@ -4,10 +4,15 @@ using SemiclassicalOrthogonalPolynomials, OrthogonalPolynomialsQuasi, ContinuumA
 # Arc
 ##
 
-@testset "Arc OPs" begin
+@testset "Half-range Chebyshev" begin
+    P₋ = jacobi(0,-1/2,0..1)
+    x = axes(P₋,1)
+    y = @.(sqrt(x)*sqrt(2-x))
+    T = LanczosPolynomial(1 ./ y, P₋)
+
     P₊ = jacobi(1/2,0,0..1)
     x = axes(P₊,1)
-    y = @.(sqrt(1 - x^2))
+    
 
     U = LanczosPolynomial(y, P₊)
 
