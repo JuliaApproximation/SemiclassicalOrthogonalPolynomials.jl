@@ -4,18 +4,34 @@ using SemiclassicalOrthogonalPolynomials, OrthogonalPolynomialsQuasi, ContinuumA
 # Arc
 ##
 
+function extrapolate2(T, kr...)
+    @inbounds begin
+        r = T[kr...]
+        r
+    end
+end
+
 @testset "Half-range Chebyshev" begin
     P₋ = jacobi(0,-1/2,0..1)
     x = axes(P₋,1)
     y = @.(sqrt(x)*sqrt(2-x))
+    U = LanczosPolynomial(y, P₊)
     T = LanczosPolynomial(1 ./ y, P₋)
 
-    P₊ = jacobi(1/2,0,0..1)
-    x = axes(P₊,1)
-    
+    @testset "Christoffel–Darboux" begin
+        y = 5.6
+        T[y,:]
+    end
 
-    U = LanczosPolynomial(y, P₊)
 
+
+
+    P₊ = jacobi(0,1/2,0..1)
+
+
+end
+
+@testset "Old" begin
     P₋ = jacobi(-1/2,0,0..1)
     T = LanczosPolynomial(1 ./ y, P₋)
 
