@@ -17,10 +17,12 @@ end
     y = @.(sqrt(x)*sqrt(2-x))
     U = LanczosPolynomial(y, P₊)
     T = LanczosPolynomial(1 ./ y, P₋)
+    X = T \ (x .* T)
 
     @testset "Christoffel–Darboux" begin
         y = 5.6
-        T[y,:]
+        
+        T[:,1:10] * Base.unsafe_getindex(T,y,2:11) - T[:,2:11] * Base.unsafe_getindex(T,y,1:10)
     end
 
 
