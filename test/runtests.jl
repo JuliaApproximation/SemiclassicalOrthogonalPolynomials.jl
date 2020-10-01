@@ -1,36 +1,64 @@
-using SemiclassicalOrthogonalPolynomials, OrthogonalPolynomialsQuasi, ContinuumArrays, BandedMatrices, QuasiArrays, Test
+using SemiclassicalOrthogonalPolynomials, OrthogonalPolynomialsQuasi, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays
+import BandedMatrices: _BandedMatrix
 
 ##
 # Arc
 ##
 
-function extrapolate2(T, kr...)
-    @inbounds begin
-        r = T[kr...]
-        r
-    end
-end
-
 @testset "Half-range Chebyshev" begin
-    P₋ = jacobi(0,-1/2,0..1)
-    x = axes(P₋,1)
-    y = @.(sqrt(x)*sqrt(2-x))
-    U = LanczosPolynomial(y, P₊)
-    T = LanczosPolynomial(1 ./ y, P₋)
-    X = T \ (x .* T)
+    @testset "negative" begin
+        P₋ = jacobi(0,-1/2,0..1)
+        x = axes(P₋,1)
+        y = @.(sqrt(x)*sqrt(2-x))
+        T̃ = LanczosPolynomial(1 ./ y, P₋)
+        T = SemiclassicalJacobi(2, 0, -1/2, -1/2)
+        @test T[0.1,1:10] ≈ T̃[0.1,1:10]/T̃[0.1,1]
+        @test T.P \ T == Eye(∞)/T̃[0.1,1]
 
-    @testset "Christoffel–Darboux" begin
-        y = 5.6
-        
-        T[:,1:10] * Base.unsafe_getindex(T,y,2:11) - T[:,2:11] * Base.unsafe_getindex(T,y,1:10)
+        W = SemiclassicalJacobi(2, 0, 1/2, -1/2)
+        L = W.P \ (SemiclassicalJacobiWeight(0,1,0) .* W);
+        @test bandwidths(L) == (1,0)
     end
 
 
+    @testset "Derivation" begin
+        P₋ = jacobi(0,-1/2,0..1)
+        P₊ = jacobi(0,1/2,0..1)
+        x = axes(P₋,1)
+        y = @.(sqrt(x)*sqrt(2-x))
+        T = LanczosPolynomial(1 ./ y, P₋)
+        W = LanczosPolynomial(@.(sqrt(x)/sqrt(2-x)), P₊)
+        X = T \ (x .* T)
 
+        @testset "Christoffel–Darboux" begin
+            x,y = 0.1,0.2
+            n = 10
+            β = X[n,n+1]
+            @test (x-y) * T[x,1:n]'*T[y,1:n] ≈ T[x,n:n+1]' * [0 -β; β 0] * T[y,n:n+1]
 
-    P₊ = jacobi(0,1/2,0..1)
+            # y = 0.0
 
+            @test x * T[x,1:n]'T[0,1:n] ≈ -X[n,n+1]*(T[x,n]*T[0,n+1] - T[x,n+1]*T[0,n])
 
+            # y = 2.0
+            @test (2-x) * T[x,1:n]'*Base.unsafe_getindex(T,2,1:n) ≈ T[x,n:n+1]' * [0 β; -β 0] * Base.unsafe_getindex(T,2,n:n+1) ≈
+                        β*(T[x,n]*Base.unsafe_getindex(T,2,n+1) - T[x,n+1]*Base.unsafe_getindex(T,2,n))
+
+            @testset "T and W" begin
+                W̃ = (x,n) -> -X[n,n+1]*(T[x,n]*T[0,n+1] - T[x,n+1]*T[0,n])/x
+                @test norm(diff(W̃.([0.1,0.2,0.3],5) ./ W[[0.1,0.2,0.3],5])) ≤ 1E-14
+
+                L = _BandedMatrix(Vcat((-X.ev .* T[0,2:end])', (X.ev .* T[0,1:end])'), ∞, 1, 0)
+                x = 0.1
+                @test x*W̃(x,1) ≈ T[x,1:2]' * L[1:2,1]
+                @test (x*W̃.(x,1:10)')[:,1:9] ≈ W̃.(x,1:10)' * (L[1:10,1:10] \ X[1:10,1:10] * L[1:10,1:9])
+
+                @test (L[1:10,1:10] \ X[1:10,1:10] * L[1:10,1:9])[2:4,3] ≈ L[2:4,2:4] \ (X*L)[2:4,3] 
+            end
+        end
+    end
+
+    
 end
 
 @testset "Old" begin
