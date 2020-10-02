@@ -1,22 +1,29 @@
 using SemiclassicalOrthogonalPolynomials, OrthogonalPolynomialsQuasi, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays
 import BandedMatrices: _BandedMatrix
+import SemiclassicalOrthogonalPolynomials: normalized_op_lowering
 
-##
-# Arc
-##
+@testset "Jacobi" begin
+    P = Normalized(Legendre())
+    L = normalized_op_lowering(P,1)
+    L̃ = P \ WeightedJacobi(1,0)
+    # off by diagonal
+    @test (L ./ L̃)[5,5] ≈ (L ./ L̃)[6,5]
+end1
+
 
 @testset "Half-range Chebyshev" begin
     @testset "negative" begin
+        T = SemiclassicalJacobi(2, 0, -1/2, -1/2)
+
         P₋ = jacobi(0,-1/2,0..1)
         x = axes(P₋,1)
         y = @.(sqrt(x)*sqrt(2-x))
         T̃ = LanczosPolynomial(1 ./ y, P₋)
-        T = SemiclassicalJacobi(2, 0, -1/2, -1/2)
         @test T[0.1,1:10] ≈ T̃[0.1,1:10]/T̃[0.1,1]
         @test T.P \ T == Eye(∞)/T̃[0.1,1]
 
-        W = SemiclassicalJacobi(2, 0, 1/2, -1/2)
-        L = W.P \ (SemiclassicalJacobiWeight(0,1,0) .* W);
+        W = SemiclassicalJacobi(2, 0, 1/2, -1/2, T.P)
+        L = T \ (SemiclassicalJacobiWeight(2,0,1,0) .* W)
         @test bandwidths(L) == (1,0)
     end
 
