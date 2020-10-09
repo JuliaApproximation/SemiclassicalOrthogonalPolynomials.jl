@@ -1,16 +1,18 @@
 module SemiclassicalOrthogonalPolynomials
-using OrthogonalPolynomialsQuasi, FillArrays, LazyArrays, ArrayLayouts, QuasiArrays, InfiniteArrays, ContinuumArrays, LinearAlgebra, BandedMatrices
+using OrthogonalPolynomialsQuasi, FillArrays, LazyArrays, ArrayLayouts, QuasiArrays, InfiniteArrays, ContinuumArrays, LinearAlgebra, BandedMatrices, 
+        SpecialFunctions, HypergeometricFunctions
 
-import Base: getindex, axes, size, \, /, *, +, -, summary, ==
+import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum
 
 import ArrayLayouts: MemoryLayout
-import BandedMatrices: bandwidths, _BandedMatrix
+import BandedMatrices: bandwidths, _BandedMatrix, AbstractBandedMatrix, BandedLayout
 import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport
-import OrthogonalPolynomialsQuasi: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, recurrencecoefficients, _p0, UnitInterval, bands
+import OrthogonalPolynomialsQuasi: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, recurrencecoefficients, _p0, UnitInterval, bands, orthogonalityweight
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight
+import FillArrays: SquareEye
 
-export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight
+export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, ConjugateJacobiMatrix
 
 struct SemiclassicalJacobiWeight{T} <: Weight{T}
     t::T
@@ -29,6 +31,11 @@ function getindex(P::SemiclassicalJacobiWeight, x::Real)
     t,a,b,c = P.t,P.a,P.b,P.c
     @boundscheck checkbounds(P, x)
     (1-x)^a * x^b * (t-x)^c
+end
+
+function sum(P::SemiclassicalJacobiWeight)
+    t,a,b,c = P.t,P.a,P.b,P.c
+    t^c * gamma(1+a)gamma(1+b)/gamma(2+a+b) * _₂F₁(1+b,-c,2+a+b,1/t)
 end
 
 # orthogonal w.r.t. (1-x)^a * x^b * (t-x)^c on [0,1]
@@ -66,22 +73,70 @@ axes(P::SemiclassicalJacobi) = axes(P.P)
 ==(::AbstractQuasiMatrix, ::SemiclassicalJacobi) = false
 ==(::SemiclassicalJacobi, ::AbstractQuasiMatrix) = false
 
+orthogonalityweight(P::SemiclassicalJacobi) = SemiclassicalJacobiWeight(P.t, P.a, P.b, P.c)
 
 function summary(io::IO, P::SemiclassicalJacobi)
     t,a,b,c = P.t,P.a,P.b,P.c
     print(io, "SemiclassicalJacobi with weight (1-x)^$a*x^$b*($t-x)^$c")
 end
 
+# Jacobi matrix formed as inv(L)*X*L
+struct ConjugateJacobiMatrix{T,XX<:AbstractMatrix{T},LL<:AbstractMatrix{T}} <: AbstractBandedMatrix{T}
+    X::XX
+    L::LL
+end
+
+MemoryLayout(::Type{<:ConjugateJacobiMatrix}) = BandedLayout()
+bandwidths(::ConjugateJacobiMatrix) = (1,1)
+size(::ConjugateJacobiMatrix) = (∞,∞)
+
+copy(A::ConjugateJacobiMatrix) = A # immutable entries
+
+function getindex(J::ConjugateJacobiMatrix{T}, k::Int, j::Int) where T
+    X,L = J.X,J.L
+    @boundscheck checkbounds(X, k, j)
+    abs(k-j) ≤ 1 || return zero(T)
+    if j == 1
+        kr = 1:j+1
+        col = L[kr,kr] \ X[kr,j:j+1]*L[j:j+1,j]
+        col[k-j+1]
+    else
+        kr = j-1:j+1
+        col = L[kr,kr] \ X[kr,j:j+1]*L[j:j+1,j]
+        col[k-j+2]
+    end
+end
+
+struct JacobiMatrix2Recurrence{k,T,XX<:AbstractMatrix{T}} <: LazyVector{T}
+    X::XX
+end
+
+JacobiMatrix2Recurrence{k}(X) where k = JacobiMatrix2Recurrence{k,eltype(X),typeof(X)}(X)
+size(::JacobiMatrix2Recurrence) = (∞,)
+getindex(A::JacobiMatrix2Recurrence{:A}, k::Int) = 1/A.X[k+1,k]
+getindex(A::JacobiMatrix2Recurrence{:B}, k::Int) = -A.X[k,k]/A.X[k+1,k]
+getindex(A::JacobiMatrix2Recurrence{:C}, k::Int) = A.X[k-1,k]/A.X[k+1,k]
+
+summary(io::IO, P::ConjugateJacobiMatrix{T}) where T = print(io, "ConjugateJacobiMatrix{$T}")
+summary(io::IO, P::JacobiMatrix2Recurrence{k,T}) where {k,T} = print(io, "JacobiMatrix2Recurrence{$k,$T}")
+
+
 function recurrencecoefficients(P::SemiclassicalJacobi)
     if P.a ≤ 0 && P.b ≤ 0 && P.c ≤ 0
         recurrencecoefficients(P.P)
     else
-        error("Implement")
+        X = jacobimatrix(P)
+        JacobiMatrix2Recurrence{:A}(X),JacobiMatrix2Recurrence{:B}(X),JacobiMatrix2Recurrence{:C}(X)
     end
 end
 function jacobimatrix(P::SemiclassicalJacobi)
     if P.a ≤ 0 && P.b ≤ 0 && P.c ≤ 0
         jacobimatrix(P.P)
+    elseif P.a ≤ 0 && P.c ≤ 0
+        Q = SemiclassicalJacobi(P.t, P.a, P.b-1, P.c, P.P)
+        L = Q \ (SemiclassicalJacobiWeight(P.t,0,1,0) .* P)
+        X = jacobimatrix(Q)
+        ConjugateJacobiMatrix(X,L)
     else
         error("Implement")
     end
@@ -117,6 +172,10 @@ end
 \(Q::LanczosPolynomial, P::SemiclassicalJacobi) = semijacobi_ldiv(Q, P)
 \(Q::SemiclassicalJacobi, P::OrthogonalPolynomial) = semijacobi_ldiv(Q, P)
 \(Q::SemiclassicalJacobi, P::LanczosPolynomial) = semijacobi_ldiv(Q, P)
+function \(Q::SemiclassicalJacobi{T}, P::SemiclassicalJacobi{V}) where {T,V}
+    Q == P && return SquareEye{promote_type(T,V)}(∞)
+    error("Implement")
+end
 
 function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
     wA,A = w_A.args
