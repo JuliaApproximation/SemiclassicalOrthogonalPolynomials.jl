@@ -2,14 +2,14 @@ module SemiclassicalOrthogonalPolynomials
 using OrthogonalPolynomialsQuasi, FillArrays, LazyArrays, ArrayLayouts, QuasiArrays, InfiniteArrays, ContinuumArrays, LinearAlgebra, BandedMatrices, 
         SpecialFunctions, HypergeometricFunctions
 
-import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum
+import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe_getindex
 
 import ArrayLayouts: MemoryLayout
 import BandedMatrices: bandwidths, _BandedMatrix, AbstractBandedMatrix, BandedLayout
 import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport
-import OrthogonalPolynomialsQuasi: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, recurrencecoefficients, _p0, UnitInterval, bands, orthogonalityweight
+import OrthogonalPolynomialsQuasi: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, recurrencecoefficients, _p0, UnitInterval, orthogonalityweight
 import InfiniteArrays: OneToInf, InfUnitRange
-import ContinuumArrays: basis, Weight
+import ContinuumArrays: basis, Weight, @simplify
 import FillArrays: SquareEye
 
 export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, ConjugateJacobiMatrix
@@ -132,9 +132,14 @@ end
 function jacobimatrix(P::SemiclassicalJacobi)
     if P.a ≤ 0 && P.b ≤ 0 && P.c ≤ 0
         jacobimatrix(P.P)
-    elseif P.a ≤ 0 && P.c ≤ 0
+    elseif P.b > 0
         Q = SemiclassicalJacobi(P.t, P.a, P.b-1, P.c, P.P)
         L = Q \ (SemiclassicalJacobiWeight(P.t,0,1,0) .* P)
+        X = jacobimatrix(Q)
+        ConjugateJacobiMatrix(X,L)
+    elseif P.c > 0
+        Q = SemiclassicalJacobi(P.t, P.a, P.b, P.c-1, P.P)
+        L = Q \ (SemiclassicalJacobiWeight(P.t,0,0,1) .* P)
         X = jacobimatrix(Q)
         ConjugateJacobiMatrix(X,L)
     else
@@ -143,13 +148,13 @@ function jacobimatrix(P::SemiclassicalJacobi)
 end
 """
     normalized_op_lowering(Q, y)
-Gives the Lowering operator from OPs w.r.t. |y-x|*w(x) to Q
+Gives the Lowering operator from OPs w.r.t. (x-y)*w(x) to Q
 as constructed from Chistoffel–Darboux
 """
 function normalized_op_lowering(Q, y)
     X = jacobimatrix(Q)
-    _,_,b = bands(X)
-    _BandedMatrix(Vcat((-b .* Q[y,2:end])', (b .* Q[y,1:end])'), ∞, 1, 0)
+    b = X[band(1)]
+    _BandedMatrix(Vcat((-b .* unsafe_getindex(Q,y,2:∞))', (b .* unsafe_getindex(Q,y,1:∞))'), ∞, 1, 0)
 end
 
 function semijacobi_ldiv(Q, P::SemiclassicalJacobi)
@@ -173,8 +178,12 @@ end
 \(Q::SemiclassicalJacobi, P::OrthogonalPolynomial) = semijacobi_ldiv(Q, P)
 \(Q::SemiclassicalJacobi, P::LanczosPolynomial) = semijacobi_ldiv(Q, P)
 function \(Q::SemiclassicalJacobi{T}, P::SemiclassicalJacobi{V}) where {T,V}
+    @assert Q.t == P.t
     Q == P && return SquareEye{promote_type(T,V)}(∞)
-    error("Implement")
+    M_Q = semiclassicaljacobi_massmatrix(Q)
+    M_P = semiclassicaljacobi_massmatrix(P)
+    L = P \ (SemiclassicalJacobiWeight(Q.t, Q.a-P.a, Q.b-P.b, Q.c-P.c) .* Q)
+    inv(M_Q) * L' * M_P
 end
 
 function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
@@ -186,19 +195,29 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
         A \ B
     elseif wA.a+1 == wB.a && wA.b == wB.b && wA.c == wB.c
         @assert A.a+1 == B.a && A.b == B.b && A.c == B.c
-        normalized_op_lowering(A,1)
+        -normalized_op_lowering(A,1)
     elseif wA.a == wB.a && wA.b+1 == wB.b && wA.c == wB.c
         @assert A.a == B.a && A.b+1 == B.b && A.c == B.c
         normalized_op_lowering(A,0)
     elseif wA.a == wB.a && wA.b == wB.b && wA.c+1 == wB.c
         @assert A.a == B.a && A.b == B.b && A.c+1 == B.c
-        normalized_op_lowering(A,A.t)
+        -normalized_op_lowering(A,A.t)
     else
         error("Implement")
     end
 end
 
 \(A::SemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi) = (SemiclassicalJacobiWeight(A.t,0,0,0) .* A) \ w_B
+
+semiclassicaljacobi_massmatrix(P::SemiclassicalJacobi) = Diagonal(Normalized(P).scaling .^ (-2))
+
+@simplify function *(Ac::QuasiAdjoint{<:Any,<:SemiclassicalJacobi}, wB::WeightedBasis{<:Any,<:SemiclassicalJacobiWeight,<:SemiclassicalJacobi})
+    A = parent(Ac)
+    w,B = arguments(wB)
+    P = SemiclassicalJacobi(w.t, w.a, w.b, w.c, B.P)
+    (P\A)' * semiclassicaljacobi_massmatrix(P) * (P \ B)
+end
+
 
 # sqrt(1-(1-x)^2) == sqrt(2x-x^2) == sqrt(x)*sqrt(2-x)
 # sqrt(1-(1-x)^2) == sqrt(2x-x^2) == sqrt(x)*sqrt(2-x)

@@ -1,7 +1,7 @@
 using SemiclassicalOrthogonalPolynomials, OrthogonalPolynomialsQuasi, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays
 import BandedMatrices: _BandedMatrix
 import SemiclassicalOrthogonalPolynomials: normalized_op_lowering
-import OrthogonalPolynomialsQuasi: recurrencecoefficients
+import OrthogonalPolynomialsQuasi: recurrencecoefficients, orthogonalityweight
 
 @testset "Jacobi" begin
     P = Normalized(Legendre())
@@ -16,9 +16,11 @@ end
 end
 
 @testset "Half-range Chebyshev" begin
-    @testset "±1/2" begin
+    @testset "T and W" begin
         T = SemiclassicalJacobi(2, 0, -1/2, -1/2)
         W = SemiclassicalJacobi(2, 0, 1/2, -1/2, T)
+        w_T = orthogonalityweight(T)
+        w_W = orthogonalityweight(W)
         X = jacobimatrix(T)
         A, B, C = recurrencecoefficients(T)
         L = T \ (SemiclassicalJacobiWeight(2,0,1,0) .* W)
@@ -31,10 +33,13 @@ end
             T̃ = LanczosPolynomial(1 ./ y, P₋)
             @test T[0.1,1:10] ≈ T̃[0.1,1:10]/T̃[0.1,1]
             @test T.P \ T == Eye(∞)/T̃[0.1,1]
+            @test Normalized(T).scaling[1:10] ≈ fill(1/sqrt(sum(w_T)), 10)
 
             P₊ = jacobi(0,1/2,0..1)
             W̃ = LanczosPolynomial(@.(sqrt(x)/sqrt(2-x)), P₊)
             A_W̃, B_W̃, C_W̃ = recurrencecoefficients(W̃)
+
+            @test Normalized(W)[0.1,1:10] ≈ W̃[0.1,1:10] .* (-1) .^ (0:9)
 
             # this expresses W in terms of W̃
             kᵀ = cumprod(A)
@@ -70,13 +75,97 @@ end
 
         @testset "Evaluation" begin
             x = axes(W,1)
+            A_W,B_W,C_W = recurrencecoefficients(W)
             X_W = W \ (x .* W)
+
+            @test W[0.1,2] == A_W[1]*0.1 + B_W[1]
+            @test W[0.1,3] ≈ (A_W[2]*0.1 + B_W[2])*(A_W[1]*0.1 + B_W[1]) - C_W[2]
+
             @test W[0.1,1:11]'*X_W[1:11,1:10] ≈ 0.1 * W[0.1,1:10]'
             @test 0.1*W[0.1,1:10]' ≈ T[0.1,1:11]' * L[1:11,1:10]
+        end
 
+        @testset "Mass matrix" begin
+            @test (T'*(w_T .* T))[1:10,1:10] ≈ sum(w_T)I
+            M = W'*(w_W .* W)
+            # emperical from mathematica with recurrence
+            @test M[1:3,1:3] ≈ Diagonal([0.5707963267948967,0.5600313808965515,0.5574362259623227])
+
+            R = W \ T;
+            @test T[0.1,1:10]' ≈ W[0.1,1:10]' * R[1:10,1:10]
         end
     end
 
+    @testset "T and V" begin
+        T = SemiclassicalJacobi(2, 0, -1/2, -1/2)
+        V = SemiclassicalJacobi(2, 0, -1/2, 1/2, T)
+        w_T = orthogonalityweight(T)
+        w_V = orthogonalityweight(V)
+        X = jacobimatrix(T)
+        A, B, C = recurrencecoefficients(T)
+        L = T \ (SemiclassicalJacobiWeight(2,0,0,1) .* V)
+        @test eltype(L) == Float64
+        @test bandwidths(L) == (1,0)
+
+        @testset "Relationship with Lanczos" begin
+            P₋ = jacobi(0,-1/2,0..1)
+            x = axes(T,1)
+            Ṽ = LanczosPolynomial(@.(sqrt(2-x)/sqrt(x)), P₋)
+            A_Ṽ, B_Ṽ, C_Ṽ = recurrencecoefficients(Ṽ)
+
+            @test Normalized(V)[0.1,1:10] ≈ Ṽ[0.1,1:10]
+
+            # this expresses W in terms of W̃
+            kᵀ = cumprod(A)
+            k_Ṽ = cumprod(A_Ṽ)
+            V̄ = (x,n) -> n == 1 ? one(x) : -kᵀ[n]*L[n+1,n]/(Ṽ[0.1,1]k_Ṽ[n-1]) *Ṽ[x,n]
+
+            @test V̄(0.1,5) ≈ V[0.1,5]
+
+            @testset "x*W == T*L tells us k_n for W" begin
+                @test (2-0.1)*V̄(0.1,2) ≈ dot(T[0.1,2:3],L[2:3,2])
+                @test (2-0.1)*V̄(0.1,3) ≈ dot(T[0.1,3:4],L[3:4,3])
+            end
+
+            @testset "Jacobi operator" begin
+                X_V_N = (L[1:12,1:12] \ X[1:12,1:11] * L[1:11,1:10])[1:11,:]
+                @test 0.1*V̄.(0.1,1:10)' ≈ V̄.(0.1,1:11)' * X_V_N
+    
+                @test L[1:2,1:2] \ X[1:2,1:2]*L[1:2,1] ≈ X_V_N[1:2,1]
+                @test L[1:3,1:3] \ X[1:3,2:3]*L[2:3,2] ≈ X_V_N[1:3,2]
+                @test L[2:4,2:4] \ X[2:4,3:4]*L[3:4,3] ≈ X_V_N[2:4,3]
+
+                x = axes(V,1)
+                X_V = V \ (x .* V)
+                @test X_V isa ConjugateJacobiMatrix
+                @test X_V[1:11,1:10] ≈ X_V_N
+            end
+        end
+
+        @testset "Evaluation" begin
+            x = axes(V,1)
+            A_V,B_V,C_V = recurrencecoefficients(V)
+            X_V = V \ (x .* V)
+
+            @test V[0.1,2] == A_V[1]*0.1 + B_V[1]
+            @test V[0.1,3] ≈ (A_V[2]*0.1 + B_V[2])*(A_V[1]*0.1 + B_V[1]) - C_V[2]
+
+            @test V[0.1,1:11]'*X_V[1:11,1:10] ≈ 0.1 * V[0.1,1:10]'
+            @test (2-0.1)*V[0.1,1:10]' ≈ T[0.1,1:11]' * L[1:11,1:10]
+        end
+
+        @testset "Mass matrix" begin
+            R = V \ T;
+            @test T[0.1,1:10]' ≈ V[0.1,1:10]' * R[1:10,1:10]
+        end
+    end
+
+    @testset "U" begin
+        T = SemiclassicalJacobi(2, 0, -1/2, -1/2)
+        W = SemiclassicalJacobi(2, 0, 1/2, -1/2, T)
+        U = SemiclassicalJacobi(2, 0, 1/2, 1/2, T)
+        U[0.1,1:10]
+    end
 
     @testset "Derivation" begin
         P₋ = jacobi(0,-1/2,0..1)
