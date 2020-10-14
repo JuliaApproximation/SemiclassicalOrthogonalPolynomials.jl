@@ -163,8 +163,41 @@ end
     @testset "U" begin
         T = SemiclassicalJacobi(2, 0, -1/2, -1/2)
         W = SemiclassicalJacobi(2, 0, 1/2, -1/2, T)
+        V = SemiclassicalJacobi(2, 0, -1/2, 1/2, T)
         U = SemiclassicalJacobi(2, 0, 1/2, 1/2, T)
-        U[0.1,1:10]
+
+        L_1 = T \ (SemiclassicalJacobiWeight(2,0,0,1) .* V)
+        L_2 = V \ (SemiclassicalJacobiWeight(2,0,1,0) .* U)
+
+        X_V = jacobimatrix(V)
+        X_U = jacobimatrix(U)
+        @test (inv(L_2[1:12,1:12]) * X_V[1:12,1:11] * L_2[1:11,1:10])[1:10,1:10] ≈ X_U[1:10,1:10]
+
+        x = 0.1
+        x * V[0.1,1:10]'V[0.0,1:10] ≈ V[0.1,1:11]'*X_V[1:11,1:10]*V[0.0,1:10]
+        V[0.0,1:10]
+        V[0.0,1:11]' * X_V[1:11,1:10]
+        V[0.1,1:10]' * X_V[1:11,1:10]' * V[0.0,1:11]
+
+        V[0.1,10:11]' * (X_V[10:11,10:11]-X_V[10:11,10:11]') * V[0.0,10:11]
+
+        V[0.0,1:10]' * X_V[1:10,1:10]
+
+        V[0.1,1:10]
+        V * P_n
+
+        
+        x * V[0.1,1:10]'
+        V[0.1,1:11]'*X_V[1:11,1:10]
+        
+        0.1 * U[0.1,1:10]
+        v = V[0.1,1:11]' * L_2[1:11,1:10]
+        v / v[1] * 0.1
+
+        (2-0.1)*U[0.1,1:10]
+        
+        W[0.1,1:11]'*L_2[1:11,1:10]
+        
     end
 
     @testset "Derivation" begin

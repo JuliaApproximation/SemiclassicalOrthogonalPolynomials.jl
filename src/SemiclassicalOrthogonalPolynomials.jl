@@ -153,8 +153,8 @@ as constructed from Chistoffel–Darboux
 """
 function normalized_op_lowering(Q, y)
     X = jacobimatrix(Q)
-    b = X[band(1)]
-    _BandedMatrix(Vcat((-b .* unsafe_getindex(Q,y,2:∞))', (b .* unsafe_getindex(Q,y,1:∞))'), ∞, 1, 0)
+    c,b = X[band(-1)],X[band(1)]
+    _BandedMatrix(Vcat((-b .* unsafe_getindex(Q,y,2:∞))', (c .* unsafe_getindex(Q,y,1:∞))'), ∞, 1, 0)
 end
 
 function semijacobi_ldiv(Q, P::SemiclassicalJacobi)
