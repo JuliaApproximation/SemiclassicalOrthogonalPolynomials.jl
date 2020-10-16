@@ -45,9 +45,8 @@ end
             kᵀ = cumprod(A)
             k_W̃ = cumprod(A_W̃)
             W̄ = (x,n) -> n == 1 ? one(x) : kᵀ[n]*L[n+1,n]/(W̃[0.1,1]k_W̃[n-1]) *W̃[x,n]
+            @test W̄(0.1,5) ≈ W[0.1,5]
 
-            W̄(0.1,5)
-            W[0.1,5]
             @testset "x*W == T*L tells us k_n for W" begin
                 @test T[0.1,1] == 1
                 @test T[0.1,2] == A[1]*0.1 + B[1] == kᵀ[1]*0.1 + B[1]
@@ -166,38 +165,41 @@ end
         V = SemiclassicalJacobi(2, 0, -1/2, 1/2, T)
         U = SemiclassicalJacobi(2, 0, 1/2, 1/2, T)
 
-        L_1 = T \ (SemiclassicalJacobiWeight(2,0,0,1) .* V)
-        L_2 = V \ (SemiclassicalJacobiWeight(2,0,1,0) .* U)
+        L_1 = T \ (SemiclassicalJacobiWeight(2,0,0,1) .* V);
+        L_2 = V \ (SemiclassicalJacobiWeight(2,0,1,0) .* U);
+
 
         X_V = jacobimatrix(V)
         X_U = jacobimatrix(U)
         @test (inv(L_2[1:12,1:12]) * X_V[1:12,1:11] * L_2[1:11,1:10])[1:10,1:10] ≈ X_U[1:10,1:10]
 
-        x = 0.1
-        x * V[0.1,1:10]'V[0.0,1:10] ≈ V[0.1,1:11]'*X_V[1:11,1:10]*V[0.0,1:10]
-        V[0.0,1:10]
-        V[0.0,1:11]' * X_V[1:11,1:10]
-        V[0.1,1:10]' * X_V[1:11,1:10]' * V[0.0,1:11]
+        @test 0.1*U[0.1,1:10]' ≈ V[0.1,1:11]' * L_2[1:11,1:10]
+        @test 0.1 * V[0.1,1:10]'V[0.0,1:10] ≈ V[0.1,1:11]'*X_V[1:11,1:10]*V[0.0,1:10]
 
-        V[0.1,10:11]' * (X_V[10:11,10:11]-X_V[10:11,10:11]') * V[0.0,10:11]
+        L_3 = W \ (SemiclassicalJacobiWeight(2,0,0,1) .* U);
+        @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L_3[1:11,1:10]
 
-        V[0.0,1:10]' * X_V[1:10,1:10]
+        L = T \ (SemiclassicalJacobiWeight(2,0,1,1) .* U);
+        @test L[1:10,1:10] ≈ L_1[1:10,1:10] * L_2[1:10,1:10]
+        @test (2-0.1)*0.1 * U[0.1,1:10]' ≈ T[0.1,1:12]' * L[1:12,1:10]
 
-        V[0.1,1:10]
-        V * P_n
+        R = U \ T;
+        @test T[0.1,1:10]' ≈ U[0.1,1:10]' * R[1:10,1:10]
+    end
 
-        
-        x * V[0.1,1:10]'
-        V[0.1,1:11]'*X_V[1:11,1:10]
-        
-        0.1 * U[0.1,1:10]
-        v = V[0.1,1:11]' * L_2[1:11,1:10]
-        v / v[1] * 0.1
+    @testset "Expansions" begin
+        T = SemiclassicalJacobi(2, 0, -1/2, -1/2)
+        U = SemiclassicalJacobi(2, 0, 1/2, 1/2, T)
+        x = axes(T,1)
 
-        (2-0.1)*U[0.1,1:10]
-        
-        W[0.1,1:11]'*L_2[1:11,1:10]
-        
+        u = T * (T \ exp.(x))
+        @test u[0.1] ≈ exp(0.1)
+
+        @test T[:,1:20] \ exp.(x) ≈ u.args[2][1:20]
+
+        u = U * (U \ exp.(x))
+        @test u[0.1] ≈ exp(0.1)
+        @test U[:,1:20] \ exp.(x) ≈ u.args[2][1:20]
     end
 
     @testset "Derivation" begin
