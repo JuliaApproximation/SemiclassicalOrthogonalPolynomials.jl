@@ -12,7 +12,7 @@ import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify
 import FillArrays: SquareEye
 
-export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, ConjugateJacobiMatrix
+export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, ConjugateTridiagonal
 
 struct SemiclassicalJacobiWeight{T} <: Weight{T}
     t::T
@@ -30,28 +30,31 @@ axes(P::SemiclassicalJacobiWeight{T}) where T = (Inclusion(UnitInterval{T}()),)
 function getindex(P::SemiclassicalJacobiWeight, x::Real)
     t,a,b,c = P.t,P.a,P.b,P.c
     @boundscheck checkbounds(P, x)
-    (1-x)^a * x^b * (t-x)^c
+    x^a * (1-x)^b * (t-x)^c
 end
 
 function sum(P::SemiclassicalJacobiWeight)
     t,a,b,c = P.t,P.a,P.b,P.c
-    t^c * gamma(1+a)gamma(1+b)/gamma(2+a+b) * _₂F₁(1+b,-c,2+a+b,1/t)
+    t^c * gamma(1+a)gamma(1+b)/gamma(2+a+b) * _₂F₁(1+a,-c,2+a+b,1/t)
 end
 
 function summary(io::IO, P::SemiclassicalJacobiWeight)
     t,a,b,c = P.t,P.a,P.b,P.c
-    print(io, "(1-x)^$a*x^$b*($t-x)^$c")
+    print(io, "x^$a * (1-x)^$b * ($t-x)^$c")
 end
 
-# orthogonal w.r.t. (1-x)^a * x^b * (t-x)^c on [0,1]
-# We need to store the basic case where ã,b̃,c̃ = mod(a,-1),mod(b,-1),mod(c,-1)
-# in order to compute lowering operators, etc.
+"""
+   SemiclassicalJacobi(t, a, b, c)
+
+is a quasi-matrix for the  orthogonal polynomials w.r.t. x^a * (1-x)^b * (t-x)^c on [0,1]
+"""
 struct SemiclassicalJacobi{T,PP<:LanczosPolynomial} <: OrthogonalPolynomial{T}
     t::T
     a::T
     b::T
     c::T
-    P::PP
+    P::PP # We need to store the basic case where ã,b̃,c̃ = mod(a,-1),mod(b,-1),mod(c,-1)
+          # in order to compute lowering operators, etc.
 end
 
 const WeightedSemiclassicalJacobi{T} = WeightedBasis{T,<:SemiclassicalJacobiWeight,<:SemiclassicalJacobi}
@@ -66,9 +69,9 @@ SemiclassicalJacobi(t, a, b, c, P::SemiclassicalJacobi) = SemiclassicalJacobi(t,
 
 function SemiclassicalJacobi(t, a, b, c)
     ã,b̃,c̃ = mod(a,-1),mod(b,-1),mod(c,-1)
-    P = jacobi(ã, b̃, UnitInterval())
+    P = jacobi(b̃, ã, UnitInterval())
     x = axes(P,1)
-    SemiclassicalJacobi(t, a, b, c, LanczosPolynomial(@.((1-x)^ã * x^b̃ * (t-x)^c̃), P))
+    SemiclassicalJacobi(t, a, b, c, LanczosPolynomial(@.(x^ã * (1-x)^b̃ * (t-x)^c̃), P))
 end
 
 
@@ -82,22 +85,28 @@ orthogonalityweight(P::SemiclassicalJacobi) = SemiclassicalJacobiWeight(P.t, P.a
 
 function summary(io::IO, P::SemiclassicalJacobi)
     t,a,b,c = P.t,P.a,P.b,P.c
-    print(io, "SemiclassicalJacobi with weight (1-x)^$a*x^$b*($t-x)^$c")
+    print(io, "SemiclassicalJacobi with weight x^$a * (1-x)^$b * ($t-x)^$c")
 end
 
-# Jacobi matrix formed as inv(L)*X*L
-struct ConjugateJacobiMatrix{T,XX<:AbstractMatrix{T},LL<:AbstractMatrix{T}} <: AbstractBandedMatrix{T}
+"""
+    ConjugateTridiagonal(X, L)
+
+represents a tridiagonal matrix formed as `inv(L)*X*L`.
+Here we assume `L` is bi-diagonal and the non-tridiagonal entries
+will be 0.
+"""
+struct ConjugateTridiagonal{T,XX<:AbstractMatrix{T},LL<:AbstractMatrix{T}} <: AbstractBandedMatrix{T}
     X::XX
     L::LL
 end
 
-MemoryLayout(::Type{<:ConjugateJacobiMatrix}) = BandedLayout()
-bandwidths(::ConjugateJacobiMatrix) = (1,1)
-size(::ConjugateJacobiMatrix) = (∞,∞)
+MemoryLayout(::Type{<:ConjugateTridiagonal}) = BandedLayout()
+bandwidths(::ConjugateTridiagonal) = (1,1)
+size(::ConjugateTridiagonal) = (∞,∞)
 
-copy(A::ConjugateJacobiMatrix) = A # immutable entries
+copy(A::ConjugateTridiagonal) = A # immutable entries
 
-function getindex(J::ConjugateJacobiMatrix{T}, k::Int, j::Int) where T
+function getindex(J::ConjugateTridiagonal{T}, k::Int, j::Int) where T
     X,L = J.X,J.L
     @boundscheck checkbounds(X, k, j)
     abs(k-j) ≤ 1 || return zero(T)
@@ -112,6 +121,35 @@ function getindex(J::ConjugateJacobiMatrix{T}, k::Int, j::Int) where T
     end
 end
 
+
+"""
+    InvMulBidiagonal(A, B)
+
+represents a bidiagonal matrix formed as `inv(A)*B`.
+Here we assume `A` is bi-diagonal, `B` is tidiagonal and the non-bidiagonal entries
+will be 0.
+"""
+struct InvMulBidiagonal{T} <: AbstractBandedMatrix{T}
+    A::AbstractMatrix{T}
+    B::AbstractMatrix{T}
+end
+
+MemoryLayout(::Type{<:InvMulBidiagonal}) = BandedLayout()
+bandwidths(::InvMulBidiagonal) = (1,0)
+size(::InvMulBidiagonal) = (∞,∞)
+
+copy(A::InvMulBidiagonal) = A # immutable entries
+
+function getindex(J::InvMulBidiagonal{T}, k::Int, j::Int) where T
+    A,B = J.A,J.B
+    @boundscheck checkbounds(J, k, j)
+    abs(k-j) ≤ 1 || return zero(T)
+    
+    kr = j:j+2
+    col = L[kr,kr] \ B[kr,j]
+    col[k-j+1]
+end
+
 struct JacobiMatrix2Recurrence{k,T,XX<:AbstractMatrix{T}} <: LazyVector{T}
     X::XX
 end
@@ -122,7 +160,7 @@ getindex(A::JacobiMatrix2Recurrence{:A}, k::Int) = 1/A.X[k+1,k]
 getindex(A::JacobiMatrix2Recurrence{:B}, k::Int) = -A.X[k,k]/A.X[k+1,k]
 getindex(A::JacobiMatrix2Recurrence{:C}, k::Int) = A.X[k-1,k]/A.X[k+1,k]
 
-summary(io::IO, P::ConjugateJacobiMatrix{T}) where T = print(io, "ConjugateJacobiMatrix{$T}")
+summary(io::IO, P::ConjugateTridiagonal{T}) where T = print(io, "ConjugateTridiagonal{$T}")
 summary(io::IO, P::JacobiMatrix2Recurrence{k,T}) where {k,T} = print(io, "JacobiMatrix2Recurrence{$k,$T}")
 
 
@@ -137,16 +175,21 @@ end
 function jacobimatrix(P::SemiclassicalJacobi)
     if P.a ≤ 0 && P.b ≤ 0 && P.c ≤ 0
         jacobimatrix(P.P)
+    elseif P.a > 0
+        Q = SemiclassicalJacobi(P.t, P.a-1, P.b, P.c, P.P)
+        L = Q \ (SemiclassicalJacobiWeight(P.t,1,0,0) .* P)
+        X = jacobimatrix(Q)
+        ConjugateTridiagonal(X,L)        
     elseif P.b > 0
         Q = SemiclassicalJacobi(P.t, P.a, P.b-1, P.c, P.P)
         L = Q \ (SemiclassicalJacobiWeight(P.t,0,1,0) .* P)
         X = jacobimatrix(Q)
-        ConjugateJacobiMatrix(X,L)
+        ConjugateTridiagonal(X,L)
     elseif P.c > 0
         Q = SemiclassicalJacobi(P.t, P.a, P.b, P.c-1, P.P)
         L = Q \ (SemiclassicalJacobiWeight(P.t,0,0,1) .* P)
         X = jacobimatrix(Q)
-        ConjugateJacobiMatrix(X,L)
+        ConjugateTridiagonal(X,L)
     else
         error("Implement")
     end
@@ -206,10 +249,10 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
         A \ B
     elseif wA.a+1 == wB.a && wA.b == wB.b && wA.c == wB.c
         @assert A.a+1 == B.a && A.b == B.b && A.c == B.c
-        -op_lowering(A,1)
+        op_lowering(A,0)
     elseif wA.a == wB.a && wA.b+1 == wB.b && wA.c == wB.c
         @assert A.a == B.a && A.b+1 == B.b && A.c == B.c
-        op_lowering(A,0)
+        -op_lowering(A,1)
     elseif wA.a == wB.a && wA.b == wB.b && wA.c+1 == wB.c
         @assert A.a == B.a && A.b == B.b && A.c+1 == B.c
         -unsafe_op_lowering(A,A.t)
@@ -231,6 +274,8 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
 end
 
 \(A::SemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi) = (SemiclassicalJacobiWeight(A.t,0,0,0) .* A) \ w_B
+
+massmatrix(::Normalized{T}) where T = SquareEye{T}(∞)
 
 function massmatrix(P::SemiclassicalJacobi)
     if P.a ≤ 0 && P.b ≤ 0 && P.c ≤ 0

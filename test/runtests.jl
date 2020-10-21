@@ -1,29 +1,32 @@
 using SemiclassicalOrthogonalPolynomials, OrthogonalPolynomialsQuasi, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays
 import BandedMatrices: _BandedMatrix
-import SemiclassicalOrthogonalPolynomials: normalized_op_lowering
+import SemiclassicalOrthogonalPolynomials: op_lowering
 import OrthogonalPolynomialsQuasi: recurrencecoefficients, orthogonalityweight
 
 @testset "Jacobi" begin
     P = Normalized(Legendre())
-    L = normalized_op_lowering(P,1)
+    L = op_lowering(P,1)
     L̃ = P \ WeightedJacobi(1,0)
     # off by diagonal
     @test (L ./ L̃)[5,5] ≈ (L ./ L̃)[6,5]
 end
 
 @testset "SemiclassicalJacobiWeight" begin
-    @test sum(SemiclassicalJacobiWeight(2,0.1,0.2,0.3)) ≈ 0.8387185832077594 #Mathematica
+    a,b,c = 0.2,0.1,0.3
+    w = SemiclassicalJacobiWeight(2,a,b,c)
+    @test w[0.1] ≈ 0.1^a * (1-0.1)^b * (2-0.1)^c
+    @test sum(w) ≈ 0.8387185832077594 #Mathematica
 end
 
 @testset "Half-range Chebyshev" begin
     @testset "T and W" begin
-        T = SemiclassicalJacobi(2, 0, -1/2, -1/2)
-        W = SemiclassicalJacobi(2, 0, 1/2, -1/2, T)
+        T = SemiclassicalJacobi(2, -1/2, 0, -1/2)
+        W = SemiclassicalJacobi(2,  1/2, 0, -1/2, T)
         w_T = orthogonalityweight(T)
         w_W = orthogonalityweight(W)
         X = jacobimatrix(T)
         A, B, C = recurrencecoefficients(T)
-        L = T \ (SemiclassicalJacobiWeight(2,0,1,0) .* W)
+        L = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W)
         @test bandwidths(L) == (1,0)
 
         @testset "Relationship with Lanczos" begin
@@ -96,8 +99,8 @@ end
     end
 
     @testset "T and V" begin
-        T = SemiclassicalJacobi(2, 0, -1/2, -1/2)
-        V = SemiclassicalJacobi(2, 0, -1/2, 1/2, T)
+        T = SemiclassicalJacobi(2, -1/2, 0, -1/2)
+        V = SemiclassicalJacobi(2, -1/2, 0, 1/2, T)
         w_T = orthogonalityweight(T)
         w_V = orthogonalityweight(V)
         X = jacobimatrix(T)
@@ -160,13 +163,13 @@ end
     end
 
     @testset "U" begin
-        T = SemiclassicalJacobi(2, 0, -1/2, -1/2)
-        W = SemiclassicalJacobi(2, 0, 1/2, -1/2, T)
-        V = SemiclassicalJacobi(2, 0, -1/2, 1/2, T)
-        U = SemiclassicalJacobi(2, 0, 1/2, 1/2, T)
+        T = SemiclassicalJacobi(2, -1/2, 0, -1/2)
+        W = SemiclassicalJacobi(2, 1/2, 0, -1/2, T)
+        V = SemiclassicalJacobi(2, -1/2, 0, 1/2, T)
+        U = SemiclassicalJacobi(2, 1/2, 0, 1/2, T)
 
         L_1 = T \ (SemiclassicalJacobiWeight(2,0,0,1) .* V);
-        L_2 = V \ (SemiclassicalJacobiWeight(2,0,1,0) .* U);
+        L_2 = V \ (SemiclassicalJacobiWeight(2,1,0,0) .* U);
 
 
         X_V = jacobimatrix(V)
@@ -176,20 +179,22 @@ end
         @test 0.1*U[0.1,1:10]' ≈ V[0.1,1:11]' * L_2[1:11,1:10]
         @test 0.1 * V[0.1,1:10]'V[0.0,1:10] ≈ V[0.1,1:11]'*X_V[1:11,1:10]*V[0.0,1:10]
 
-        L_3 = W \ (SemiclassicalJacobiWeight(2,0,0,1) .* U);
-        @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L_3[1:11,1:10]
-
-        L = T \ (SemiclassicalJacobiWeight(2,0,1,1) .* U);
+        L = T \ (SemiclassicalJacobiWeight(2,1,0,1) .* U);
         @test L[1:10,1:10] ≈ L_1[1:10,1:10] * L_2[1:10,1:10]
         @test (2-0.1)*0.1 * U[0.1,1:10]' ≈ T[0.1,1:12]' * L[1:12,1:10]
+
+        L̃_1 = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W)
+        inv(L̃_1[1:10,1:10])*L[1:10,1:10]
+        L_3 = W \ (SemiclassicalJacobiWeight(2,0,0,1) .* U);
+        @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L_3[1:11,1:10]
 
         R = U \ T;
         @test T[0.1,1:10]' ≈ U[0.1,1:10]' * R[1:10,1:10]
     end
 
     @testset "Expansions" begin
-        T = SemiclassicalJacobi(2, 0, -1/2, -1/2)
-        U = SemiclassicalJacobi(2, 0, 1/2, 1/2, T)
+        T = SemiclassicalJacobi(2, -1/2, 0, -1/2)
+        U = SemiclassicalJacobi(2, 1/2, 0, 1/2, T)
         x = axes(T,1)
 
         u = T * (T \ exp.(x))
@@ -240,32 +245,4 @@ end
     end
 
 
-end
-
-@testset "Old" begin
-    P₋ = jacobi(-1/2,0,0..1)
-    T = LanczosPolynomial(1 ./ y, P₋)
-
-    @test bandwidths(U.P \ T.P) == (0,1)
-    @test U.w == U.w
-    R = U \ T;
-
-    x̃ = 0.1; ỹ = y[x̃]
-    n = 5
-    # R is upper-tridiagonal
-    @test T[x̃,n] ≈ dot(R[n-2:n,n], U[x̃,n-2:n])
-
-    J_U = jacobimatrix(U)
-    J_T = jacobimatrix(T)
-
-    H_1 = T
-    H_2 = y .* U
-
-    @test (T \ (y .* H_2[:,1]))[1:3] ≈ R[1,1:3]
-
-    n = 5
-    @test x̃ * H_1[x̃,n] ≈ dot(J_T[n-1:n+1,n],H_1[x̃,n-1:n+1])
-    @test x̃ * H_2[x̃,n] ≈ dot(J_U[n-1:n+1,n],H_2[x̃,n-1:n+1])
-    @test ỹ * H_1[x̃,n] ≈ dot(R[n-2:n,n], H_2[x̃,n-2:n])
-    @test ỹ * H_2[x̃,n] ≈ (1 - x̃^2)*U[x̃,n] ≈ dot(R[n,n:n+2], H_1[x̃,n:n+2])
 end
