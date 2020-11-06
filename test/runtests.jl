@@ -1,4 +1,4 @@
-using SemiclassicalOrthogonalPolynomials, OrthogonalPolynomialsQuasi, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays
+using SemiclassicalOrthogonalPolynomials, OrthogonalPolynomialsQuasi, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
 import BandedMatrices: _BandedMatrix
 import SemiclassicalOrthogonalPolynomials: op_lowering
 import OrthogonalPolynomialsQuasi: recurrencecoefficients, orthogonalityweight
@@ -70,7 +70,7 @@ end
 
                 x = axes(W,1)
                 X_W = W \ (x .* W)
-                @test X_W isa ConjugateJacobiMatrix
+                @test X_W isa ConjugateTridiagonal
                 @test X_W[1:11,1:10] ≈ X_W_N
             end
         end
@@ -139,7 +139,7 @@ end
 
                 x = axes(V,1)
                 X_V = V \ (x .* V)
-                @test X_V isa ConjugateJacobiMatrix
+                @test X_V isa ConjugateTridiagonal
                 @test X_V[1:11,1:10] ≈ X_V_N
             end
         end
@@ -183,8 +183,12 @@ end
         @test L[1:10,1:10] ≈ L_1[1:10,1:10] * L_2[1:10,1:10]
         @test (2-0.1)*0.1 * U[0.1,1:10]' ≈ T[0.1,1:12]' * L[1:12,1:10]
 
-        L̃_1 = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W)
-        inv(L̃_1[1:10,1:10])*L[1:10,1:10]
+        L̃_1 = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W);
+        L̃_3 = inv(L̃_1[1:11,1:11])*L[1:11,1:10]
+        @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L̃_3[1:11,1:10]
+        L̄_3 = SemiclassicalOrthogonalPolynomials.InvMulBidiagonal(L̃_1, L)
+        @test L̄_3[1:11,1:10] ≈ L̃_3
+
         L_3 = W \ (SemiclassicalJacobiWeight(2,0,0,1) .* U);
         @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L_3[1:11,1:10]
 

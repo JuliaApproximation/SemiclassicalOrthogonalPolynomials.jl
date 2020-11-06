@@ -146,7 +146,7 @@ function getindex(J::InvMulBidiagonal{T}, k::Int, j::Int) where T
     abs(k-j) ≤ 1 || return zero(T)
     
     kr = j:j+2
-    col = L[kr,kr] \ B[kr,j]
+    col = A[kr,kr] \ B[kr,j]
     col[k-j+1]
 end
 
@@ -255,7 +255,17 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
         -op_lowering(A,1)
     elseif wA.a == wB.a && wA.b == wB.b && wA.c+1 == wB.c
         @assert A.a == B.a && A.b == B.b && A.c+1 == B.c
-        -unsafe_op_lowering(A,A.t)
+        # priority goes to lowering b
+        if A.a ≤ 0 && A.b ≤ 0
+            -unsafe_op_lowering(A,A.t)
+        elseif A.b ≤ 0 #lower then raise by inverting
+            T = SemiclassicalJacobi(B.t, B.a-1, B.b, B.c-1)
+            L = T \ (SemiclassicalJacobiWeight(B.t,1,0,1) .* B)
+            L_1 = T \ (SemiclassicalJacobiWeight(B.t,1,0,0) .* A)
+            InvMulBidiagonal(L_1, L)
+        else
+            error("Not Implement")
+        end
     elseif wA.a+1 ≤ wB.a
         C = SemiclassicalJacobi(B.t, B.a-1, B.b, B.c, B)
         w_C = SemiclassicalJacobiWeight(B.t, wB.a-1, wB.b, wB.c) .* C
