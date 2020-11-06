@@ -35,7 +35,7 @@ end
             y = @.(sqrt(x)*sqrt(2-x))
             T̃ = LanczosPolynomial(1 ./ y, P₋)
             @test T[0.1,1:10] ≈ T̃[0.1,1:10]/T̃[0.1,1]
-            @test (T.P \ T)[1:10,1:10] == Eye(10)/T̃[0.1,1]
+            @test (T.P \ T)[1:10,1:10] ≈ Eye(10)/T̃[0.1,1]
             @test Normalized(T).scaling[1:10] ≈ fill(1/sqrt(sum(w_T)), 10)
 
             P₊ = jacobi(0,1/2,0..1)
