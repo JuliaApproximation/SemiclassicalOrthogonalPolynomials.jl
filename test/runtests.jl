@@ -149,7 +149,7 @@ end
             A_V,B_V,C_V = recurrencecoefficients(V)
             X_V = V \ (x .* V)
 
-            @test V[0.1,2] == A_V[1]*0.1 + B_V[1]
+            @test V[0.1,2] ≈ A_V[1]*0.1 + B_V[1]
             @test V[0.1,3] ≈ (A_V[2]*0.1 + B_V[2])*(A_V[1]*0.1 + B_V[1]) - C_V[2]
 
             @test V[0.1,1:11]'*X_V[1:11,1:10] ≈ 0.1 * V[0.1,1:10]'
