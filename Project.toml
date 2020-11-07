@@ -21,10 +21,13 @@ ArrayLayouts = "0.4"
 BandedMatrices = "0.15.15"
 ContinuumArrays = "0.3"
 FillArrays = "0.10"
+HypergeometricFunctions = "0.3.4"
 InfiniteArrays = "0.8"
 LazyArrays = "0.19"
 OrthogonalPolynomialsQuasi = "0.4"
 QuasiArrays = "0.3"
+SpecialFunctions = "0.10"
+julia = "1.5"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
