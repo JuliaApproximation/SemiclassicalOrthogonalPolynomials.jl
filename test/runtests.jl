@@ -248,5 +248,26 @@ end
         end
     end
 
+    @testset "Normalized" begin
+        T = SemiclassicalJacobi(2, -0.5, 0, -0.5)
+        T̃ = Normalized(T)
+        @test T̃[0.1,1:10] ≈ T[0.1,1:10]/sqrt(sum(orthogonalityweight(T)))
+        U = SemiclassicalJacobi(2, 0.5, 0, 0.5, T)
+        Ũ = Normalized(U)
+        K = U \ Ũ
+        Ki = Ũ \ U
+        @test Ũ[0.1,1:10]' ≈ U[0.1,1:10]'* K[1:10,1:10]
+        @test Ũ[0.1,1:10]'* Ki[1:10,1:10] ≈ U[0.1,1:10]'
+        X_U = jacobimatrix(U)
+        X_Ũ = jacobimatrix(Ũ);
+        @test X_Ũ[1:10,1:10] ≈ Ki[1:10,1:10] * X_U[1:10,1:10] * K[1:10,1:10]
+        R = U \ T;
+        R̃ = Ũ \ T;
+        @test R̃[1:10,1:10] ≈ Ki[1:10,1:10] * R[1:10,1:10]
+        R̃ = Ũ \ T̃;
+        @test R̃[1:10,1:10] ≈ Ki[1:10,1:10] * R[1:10,1:10]/sqrt(sum(orthogonalityweight(T)))
 
+        L̃ = T \ (SemiclassicalJacobiWeight(2,1,0,1) .* Ũ);
+        @test (2-0.1)*0.1*Ũ[0.1,1:10]' ≈ T[0.1,1:12]'* L̃[1:12,1:10]
+    end
 end

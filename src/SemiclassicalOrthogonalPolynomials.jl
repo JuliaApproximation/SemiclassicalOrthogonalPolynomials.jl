@@ -26,6 +26,8 @@ function SemiclassicalJacobiWeight(t, a, b, c)
     SemiclassicalJacobiWeight{T}(t, a, b, c)
 end
 
+copy(w::SemiclassicalJacobiWeight) = w
+
 axes(P::SemiclassicalJacobiWeight{T}) where T = (Inclusion(UnitInterval{T}()),)
 function getindex(P::SemiclassicalJacobiWeight, x::Real)
     t,a,b,c = P.t,P.a,P.b,P.c
@@ -74,7 +76,7 @@ function SemiclassicalJacobi(t, a, b, c)
     SemiclassicalJacobi(t, a, b, c, LanczosPolynomial(@.(x^ã * (1-x)^b̃ * (t-x)^c̃), P))
 end
 
-
+copy(P::SemiclassicalJacobi) = P
 axes(P::SemiclassicalJacobi) = axes(P.P)
 
 ==(A::SemiclassicalJacobi, B::SemiclassicalJacobi) = A.t == B.t && A.a == B.a && A.b == B.b && A.c == B.c
@@ -227,6 +229,9 @@ function semijacobi_ldiv(P::SemiclassicalJacobi, Q)
     (P \ R) * _p0(P.P) * (P.P \ Q)
 end
 
+\(Q::Normalized, P::SemiclassicalJacobi) = copy(Ldiv{ApplyLayout{typeof(*)},typeof(MemoryLayout(P))}(Q, P))
+\(P::SemiclassicalJacobi, Q::Normalized) = copy(Ldiv{typeof(MemoryLayout(P)),ApplyLayout{typeof(*)}}(P, Q))
+
 \(Q::OrthogonalPolynomial, P::SemiclassicalJacobi) = semijacobi_ldiv(Q, P)
 \(Q::LanczosPolynomial, P::SemiclassicalJacobi) = semijacobi_ldiv(Q, P)
 \(Q::SemiclassicalJacobi, P::OrthogonalPolynomial) = semijacobi_ldiv(Q, P)
@@ -284,6 +289,11 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
 end
 
 \(A::SemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi) = (SemiclassicalJacobiWeight(A.t,0,0,0) .* A) \ w_B
+function \(A::SemiclassicalJacobi, w_B::BroadcastQuasiMatrix{<:Any,typeof(*),<:Tuple{SemiclassicalJacobiWeight,Normalized}})
+    w,B = arguments(w_B)
+    P,K = arguments(ApplyLayout{typeof(*)}(), B)
+    (A\ (w .* P)) * K
+end
 
 massmatrix(::Normalized{T}) where T = SquareEye{T}(∞)
 
