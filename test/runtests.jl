@@ -270,4 +270,15 @@ end
         L̃ = T \ (SemiclassicalJacobiWeight(2,1,0,1) .* Ũ);
         @test (2-0.1)*0.1*Ũ[0.1,1:10]' ≈ T[0.1,1:12]'* L̃[1:12,1:10]
     end
+
+    @testset "P" begin
+        P = SemiclassicalJacobi(2.0,0,0,0)
+        P̃ = Normalized(legendre(0..1))
+        @test P̃[0.1,1:10] ≈ P[0.1,1:10]
+        Q = SemiclassicalJacobi(2.0,0,0,1)
+        Q \ P
+        x = axes(Q,1)
+        X = Q \ (x .* Q)
+        @time X[1:1000,1:1000];
+    end
 end

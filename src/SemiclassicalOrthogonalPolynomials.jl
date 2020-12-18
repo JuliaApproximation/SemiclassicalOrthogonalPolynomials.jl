@@ -14,6 +14,12 @@ import FillArrays: SquareEye
 
 export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, ConjugateTridiagonal
 
+
+""""
+    SemiclassicalJacobiWeight(t, a, b, c)
+
+is a quasi-vector corresponding to the weight `x^a * (1-x)^b * (t-x)^c`
+"""
 struct SemiclassicalJacobiWeight{T} <: Weight{T}
     t::T
     a::T
