@@ -281,4 +281,32 @@ end
         X = Q \ (x .* Q)
         @time X[1:1000,1:1000];
     end
+
+    @testset "BigFloat" begin
+        T = SemiclassicalJacobi(2, -BigFloat(1)/2, 0, -BigFloat(1)/2)
+    end
 end
+
+@testset "Semiclassical operator asymptotics" begin
+    t = BigFloat(3)/2
+
+
+    t = 2
+    P = SemiclassicalJacobi(t, 0, 0, 0);
+
+    L1 = P \ WeightedSemiclassicalJacobi(t,0,0,1,P)
+
+    U = ChebyshevU()
+    n = 20; Base.unsafe_getindex(P,t,n)/Base.unsafe_getindex(U,2t-1,n)
+
+    R_0 = Normalized(SemiclassicalJacobi(t, 1, 0, 0, P)) \ Normalized(P);
+    R_1 = Normalized(SemiclassicalJacobi(t, 0, 1, 0, P)) \ Normalized(P);
+    R_t = Normalized(SemiclassicalJacobi(t, 0, 0, 1, P)) \ Normalized(P);
+
+    @test R_0[999,999:1000] ≈ [0.5,0.5] atol=1e-2
+    @test R_1[999,999:1000] ≈ [0.5,-0.5] atol=1e-2
+    σ = (1 + sqrt(t))/2
+    @test R_t[200,200:201] ≈ [σ,1-σ] atol=1e-2
+
+    n = 100; R_t[n,n:n+1]
+endi

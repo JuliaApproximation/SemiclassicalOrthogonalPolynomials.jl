@@ -12,7 +12,7 @@ import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify
 import FillArrays: SquareEye
 
-export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, ConjugateTridiagonal
+export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, ConjugateTridiagonal
 
 
 """"
@@ -63,21 +63,26 @@ struct SemiclassicalJacobi{T,PP<:LanczosPolynomial} <: OrthogonalPolynomial{T}
     c::T
     P::PP # We need to store the basic case where ã,b̃,c̃ = mod(a,-1),mod(b,-1),mod(c,-1)
           # in order to compute lowering operators, etc.
+    SemiclassicalJacobi{T,PP}(t::T,a::T,b::T,c::T,P::PP) where {T,PP<:LanczosPolynomial} = 
+        new{T,PP}(t,a,b,c,P)
 end
 
 const WeightedSemiclassicalJacobi{T} = WeightedBasis{T,<:SemiclassicalJacobiWeight,<:SemiclassicalJacobi}
 
 function SemiclassicalJacobi(t, a, b, c, P::LanczosPolynomial)
-    T = promote_type(typeof(t), typeof(a), typeof(b), typeof(c), eltype(P))
-    SemiclassicalJacobi(T(t), T(a), T(b), T(c), P)
+    T = float(promote_type(typeof(t), typeof(a), typeof(b), typeof(c), eltype(P)))
+    SemiclassicalJacobi{T,typeof(P)}(T(t), T(a), T(b), T(c), P)
 end
 
 SemiclassicalJacobi(t, a, b, c, P::SemiclassicalJacobi) = SemiclassicalJacobi(t, a, b, c, P.P)
 
+WeightedSemiclassicalJacobi(t, a, b, c, P...) = SemiclassicalJacobiWeight(t, a, b, c) .* SemiclassicalJacobi(t, a, b, c, P...)
+
 
 function SemiclassicalJacobi(t, a, b, c)
     ã,b̃,c̃ = mod(a,-1),mod(b,-1),mod(c,-1)
-    P = jacobi(b̃, ã, UnitInterval())
+    T = promote_type(typeof(t), typeof(a), typeof(b), typeof(c))
+    P = jacobi(b̃, ã, UnitInterval{T}())
     x = axes(P,1)
     SemiclassicalJacobi(t, a, b, c, LanczosPolynomial(@.(x^ã * (1-x)^b̃ * (t-x)^c̃), P))
 end
