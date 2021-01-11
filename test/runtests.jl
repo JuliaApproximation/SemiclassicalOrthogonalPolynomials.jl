@@ -9,6 +9,9 @@ import OrthogonalPolynomialsQuasi: recurrencecoefficients, orthogonalityweight
     L̃ = P \ WeightedJacobi(1,0)
     # off by diagonal
     @test (L ./ L̃)[5,5] ≈ (L ./ L̃)[6,5]
+
+    P̃ = Normalized(SemiclassicalJacobi(t, 0, 0, 0))
+    @test P̃[0.1,1:10] ≈ P[2*0.1-1,1:10]/P[0.1,1]
 end
 
 @testset "SemiclassicalJacobiWeight" begin
@@ -288,13 +291,21 @@ end
 end
 
 @testset "Semiclassical operator asymptotics" begin
-    t = BigFloat(3)/2
-
-
     t = 2
-    P = SemiclassicalJacobi(t, 0, 0, 0);
+    P = SemiclassicalJacobi(t, 0, 0, 0)
+    # ratio asymptotics
+    φ = z -> (z + sqrt(z-1)sqrt(z+1))/2
+    U = ChebyshevU()
 
-    L1 = P \ WeightedSemiclassicalJacobi(t,0,0,1,P)
+    @testset "ratio asymptotics" begin
+        n = 200; 
+        @test 2φ(t)*Base.unsafe_getindex(U,t,n)/(Base.unsafe_getindex(U,t,n+1)) ≈ 1
+        @test 2φ(2t-1)*Base.unsafe_getindex(P,t,n)/(Base.unsafe_getindex(P,t,n+1)) ≈ 1 atol=1E-3
+
+    
+        L1 = P \ WeightedSemiclassicalJacobi(t,0,0,1,P)
+        @test L1[n+1,n]/L1[n,n] ≈ -1/(2φ(2t-1)) atol=1E-3
+    end
 
     U = ChebyshevU()
     n = 20; Base.unsafe_getindex(P,t,n)/Base.unsafe_getindex(U,2t-1,n)
