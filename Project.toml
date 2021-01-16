@@ -19,7 +19,7 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 [compat]
 ArrayLayouts = "0.4"
 BandedMatrices = "0.15.15"
-ContinuumArrays = "0.3"
+ContinuumArrays = "0.3, 0.4"
 FillArrays = "0.10"
 HypergeometricFunctions = "0.3.4"
 InfiniteArrays = "0.8"
