@@ -294,7 +294,7 @@ end
     end
 
     @testset "BigFloat" begin
-        T = SemiclassicalJacobi(2, -BigFloat(1)/2, 0, -BigFloat(1)/2)
+        # T = SemiclassicalJacobi(2, -BigFloat(1)/2, 0, -BigFloat(1)/2)
     end
 end
 
@@ -330,6 +330,10 @@ end
     n = 100; R_t[n,n:n+1]
 
     @testset "T,V,W,U" begin
+        T = SemiclassicalJacobi(2, -1/2, 0, -1/2)
+        V = SemiclassicalJacobi(2,  -1/2, 0, 1/2, T)
+        U = SemiclassicalJacobi(2,  1/2, 0, 1/2, T)
+
         R_t = V \ T;
         n = 1000
         c = -1/(2φ(2*2-1))
