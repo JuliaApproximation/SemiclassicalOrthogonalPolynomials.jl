@@ -6,14 +6,16 @@ import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe
 
 import ArrayLayouts: MemoryLayout, ldiv
 import BandedMatrices: bandwidths, _BandedMatrix, AbstractBandedMatrix, BandedLayout
-import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport
-import OrthogonalPolynomialsQuasi: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, recurrencecoefficients, _p0, UnitInterval, orthogonalityweight
+import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector
+import OrthogonalPolynomialsQuasi: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify
 import FillArrays: SquareEye
 
-export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, ConjugateTridiagonal
+export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, ConjugateTridiagonal, OrthogonalPolynomialRatio
 
+
+include("ratios.jl")
 
 """"
     SemiclassicalJacobiWeight(t, a, b, c)
@@ -63,21 +65,26 @@ struct SemiclassicalJacobi{T,PP<:LanczosPolynomial} <: OrthogonalPolynomial{T}
     c::T
     P::PP # We need to store the basic case where ã,b̃,c̃ = mod(a,-1),mod(b,-1),mod(c,-1)
           # in order to compute lowering operators, etc.
+    SemiclassicalJacobi{T,PP}(t::T,a::T,b::T,c::T,P::PP) where {T,PP<:LanczosPolynomial} = 
+        new{T,PP}(t,a,b,c,P)
 end
 
 const WeightedSemiclassicalJacobi{T} = WeightedBasis{T,<:SemiclassicalJacobiWeight,<:SemiclassicalJacobi}
 
 function SemiclassicalJacobi(t, a, b, c, P::LanczosPolynomial)
-    T = promote_type(typeof(t), typeof(a), typeof(b), typeof(c), eltype(P))
-    SemiclassicalJacobi(T(t), T(a), T(b), T(c), P)
+    T = float(promote_type(typeof(t), typeof(a), typeof(b), typeof(c), eltype(P)))
+    SemiclassicalJacobi{T,typeof(P)}(T(t), T(a), T(b), T(c), P)
 end
 
 SemiclassicalJacobi(t, a, b, c, P::SemiclassicalJacobi) = SemiclassicalJacobi(t, a, b, c, P.P)
 
+WeightedSemiclassicalJacobi(t, a, b, c, P...) = SemiclassicalJacobiWeight(t, a, b, c) .* SemiclassicalJacobi(t, a, b, c, P...)
+
 
 function SemiclassicalJacobi(t, a, b, c)
     ã,b̃,c̃ = mod(a,-1),mod(b,-1),mod(c,-1)
-    P = jacobi(b̃, ã, UnitInterval())
+    T = promote_type(typeof(t), typeof(a), typeof(b), typeof(c))
+    P = jacobi(b̃, ã, UnitInterval{T}())
     x = axes(P,1)
     SemiclassicalJacobi(t, a, b, c, LanczosPolynomial(@.(x^ã * (1-x)^b̃ * (t-x)^c̃), P))
 end
@@ -208,19 +215,13 @@ Gives the Lowering operator from OPs w.r.t. (x-y)*w(x) to Q
 as constructed from Chistoffel–Darboux
 """
 function op_lowering(Q, y)
-    X = jacobimatrix(Q)
-    M = massmatrix(Q)
-    b = X[band(1)] ./ M[band(0)][2:end] .* M[1,1]
-    _BandedMatrix(Vcat((-b .* Q[y,2:∞])', (b .* Q[y,1:∞])'), ∞, 1, 0)
+    R = OrthogonalPolynomialRatio(Q,y)
+    A,_,_ = recurrencecoefficients(Q)
+    # we first use Christoff-Darboux with d = 1
+    # But we want the first OP to be 1 so we rescale
+    d = inv(A[1]*_p0(Q)*R[1])
+    _BandedMatrix(Vcat(Fill(-d,1,∞), (d .* R)'), ∞, 1, 0)
 end
-
-function unsafe_op_lowering(Q, y)
-    X = jacobimatrix(Q)
-    M = massmatrix(Q)
-    b = X[band(1)] ./ M[band(0)][2:end] .* M[1,1]
-    _BandedMatrix(Vcat((-b .* unsafe_getindex(Q,y,2:∞))', (b .* unsafe_getindex(Q,y,1:∞))'), ∞, 1, 0)
-end
-
 
 function semijacobi_ldiv(Q, P::SemiclassicalJacobi)
     if P.a ≤ 0 && P.b ≤ 0 && P.c ≤ 0
@@ -268,7 +269,7 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
         @assert A.a == B.a && A.b == B.b && A.c+1 == B.c
         # priority goes to lowering b
         if A.a ≤ 0 && A.b ≤ 0
-            -unsafe_op_lowering(A,A.t)
+            -op_lowering(A,A.t)
         elseif A.b ≤ 0 #lower then raise by inverting
             T = SemiclassicalJacobi(B.t, B.a-1, B.b, B.c-1)
             L = T \ (SemiclassicalJacobiWeight(B.t,1,0,1) .* B)
