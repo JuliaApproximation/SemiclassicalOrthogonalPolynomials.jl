@@ -299,7 +299,7 @@ end
 end
 
 @testset "Semiclassical operator asymptotics" begin
-    t = 2
+    t = 2.2
     P = SemiclassicalJacobi(t, 0, 0, 0)
     # ratio asymptotics
     φ = z -> (z + sqrt(z-1)sqrt(z+1))/2
@@ -315,28 +315,24 @@ end
         @test L1[n+1,n]/L1[n,n] ≈ -1/(2φ(2t-1)) atol=1E-3
     end
 
-    U = ChebyshevU()
-    n = 20; Base.unsafe_getindex(P,t,n)/Base.unsafe_getindex(U,2t-1,n)
+    @testset "single raising" begin
+        R_0 = Normalized(SemiclassicalJacobi(t, 1, 0, 0, P)) \ Normalized(P);
+        R_1 = Normalized(SemiclassicalJacobi(t, 0, 1, 0, P)) \ Normalized(P);
+        R_t = Normalized(SemiclassicalJacobi(t, 0, 0, 1, P)) \ Normalized(P);
 
-    R_0 = Normalized(SemiclassicalJacobi(t, 1, 0, 0, P)) \ Normalized(P);
-    R_1 = Normalized(SemiclassicalJacobi(t, 0, 1, 0, P)) \ Normalized(P);
-    R_t = Normalized(SemiclassicalJacobi(t, 0, 0, 1, P)) \ Normalized(P);
-
-    @test R_0[999,999:1000] ≈ [0.5,0.5] atol=1e-2
-    @test R_1[999,999:1000] ≈ [0.5,-0.5] atol=1e-2
-    σ = (1 + sqrt(t))/2
-    @test R_t[200,200:201] ≈ [σ,1-σ] atol=1e-2
-
-    n = 100; R_t[n,n:n+1]
+        @test R_0[999,999:1000] ≈ [0.5,0.5] atol=1e-2
+        @test R_1[999,999:1000] ≈ [0.5,-0.5] atol=1e-2
+        @test R_t[200,201]/R_t[200,200] ≈ -1/(2*φ(2t-1)) atol=1e-2 
+    end
 
     @testset "T,V,W,U" begin
-        T = SemiclassicalJacobi(2, -1/2, 0, -1/2)
-        V = SemiclassicalJacobi(2,  -1/2, 0, 1/2, T)
-        U = SemiclassicalJacobi(2,  1/2, 0, 1/2, T)
+        T = SemiclassicalJacobi(t, -1/2, 0, -1/2)
+        V = SemiclassicalJacobi(t, -1/2, 0, 1/2, T)
+        U = SemiclassicalJacobi(t,  1/2, 0, 1/2, T)
 
         R_t = V \ T;
         n = 1000
-        c = -1/(2φ(2*2-1))
+        c = -1/(2φ(2*t-1))
         @test R_t[n,n+1]/R_t[n,n] ≈ c atol=1E-3
         R = U \ T;
         @test R[n,n+1]/R[n,n] ≈ 1+c atol=1E-3
