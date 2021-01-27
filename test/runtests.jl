@@ -1,7 +1,7 @@
-using SemiclassicalOrthogonalPolynomials, OrthogonalPolynomialsQuasi, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
+using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
 import BandedMatrices: _BandedMatrix
 import SemiclassicalOrthogonalPolynomials: op_lowering
-import OrthogonalPolynomialsQuasi: recurrencecoefficients, orthogonalityweight
+import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight
 
 @testset "OrthogonalPolynomialRatio" begin
     P = Legendre()

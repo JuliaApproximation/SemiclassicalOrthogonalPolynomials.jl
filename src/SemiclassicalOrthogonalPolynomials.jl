@@ -1,5 +1,5 @@
 module SemiclassicalOrthogonalPolynomials
-using OrthogonalPolynomialsQuasi, FillArrays, LazyArrays, ArrayLayouts, QuasiArrays, InfiniteArrays, ContinuumArrays, LinearAlgebra, BandedMatrices, 
+using ClassicalOrthogonalPolynomials, FillArrays, LazyArrays, ArrayLayouts, QuasiArrays, InfiniteArrays, ContinuumArrays, LinearAlgebra, BandedMatrices, 
         SpecialFunctions, HypergeometricFunctions
 
 import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe_getindex
@@ -7,7 +7,7 @@ import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe
 import ArrayLayouts: MemoryLayout, ldiv
 import BandedMatrices: bandwidths, _BandedMatrix, AbstractBandedMatrix, BandedLayout
 import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector
-import OrthogonalPolynomialsQuasi: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight
+import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify
 import FillArrays: SquareEye
