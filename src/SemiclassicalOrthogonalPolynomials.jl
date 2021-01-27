@@ -58,20 +58,19 @@ end
 
 is a quasi-matrix for the  orthogonal polynomials w.r.t. x^a * (1-x)^b * (t-x)^c on [0,1]
 """
-struct SemiclassicalJacobi{T,PP<:LanczosPolynomial} <: OrthogonalPolynomial{T}
+struct SemiclassicalJacobi{T,PP} <: OrthogonalPolynomial{T}
     t::T
     a::T
     b::T
     c::T
     P::PP # We need to store the basic case where ã,b̃,c̃ = mod(a,-1),mod(b,-1),mod(c,-1)
           # in order to compute lowering operators, etc.
-    SemiclassicalJacobi{T,PP}(t::T,a::T,b::T,c::T,P::PP) where {T,PP<:LanczosPolynomial} = 
-        new{T,PP}(t,a,b,c,P)
+    SemiclassicalJacobi{T,PP}(t::T,a::T,b::T,c::T,P::PP) where {T,PP} = new{T,PP}(t,a,b,c,P)
 end
 
 const WeightedSemiclassicalJacobi{T} = WeightedBasis{T,<:SemiclassicalJacobiWeight,<:SemiclassicalJacobi}
 
-function SemiclassicalJacobi(t, a, b, c, P::LanczosPolynomial)
+function SemiclassicalJacobi(t, a, b, c, P::OrthogonalPolynomial)
     T = float(promote_type(typeof(t), typeof(a), typeof(b), typeof(c), eltype(P)))
     SemiclassicalJacobi{T,typeof(P)}(T(t), T(a), T(b), T(c), P)
 end
@@ -87,6 +86,14 @@ function SemiclassicalJacobi(t, a, b, c)
     P = jacobi(b̃, ã, UnitInterval{T}())
     x = axes(P,1)
     SemiclassicalJacobi(t, a, b, c, LanczosPolynomial(@.(x^ã * (1-x)^b̃ * (t-x)^c̃), P))
+end
+
+
+function SemiclassicalJacobi(t, a::Int, b::Int, c::Int)
+    T = promote_type(typeof(t), typeof(a), typeof(b), typeof(c))
+    P = Normalized(legendre(UnitInterval{T}()))
+    x = axes(P,1)
+    SemiclassicalJacobi(t, a, b, c, P)
 end
 
 copy(P::SemiclassicalJacobi) = P

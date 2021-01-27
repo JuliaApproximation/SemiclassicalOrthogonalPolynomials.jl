@@ -298,6 +298,17 @@ end
     end
 end
 
+@testset "Legendre" begin
+    t = 2
+    P =   SemiclassicalJacobi(t, 0, 0, 0)
+    P¹¹ = SemiclassicalJacobi(t, 1, 1, 0)
+    Q = SemiclassicalJacobi(t, 0, 0, 1)
+    @test P[0.1,1:10] ≈ Normalized(legendre(0..1))[0.1,1:10]
+    @test Normalized(P¹¹)[0.1,1:10] ≈ 2Normalized(jacobi(1,1,0..1))[0.1,1:10]
+    x = axes(P,1)
+    @test LanczosPolynomial(t .- x, legendre(0..1))[0.1,1:10] ≈ Normalized(Q)[0.1,1:10]
+end
+
 @testset "Semiclassical operator asymptotics" begin
     t = 2.2
     P = SemiclassicalJacobi(t, 0, 0, 0)
@@ -326,6 +337,7 @@ end
     end
 
     @testset "T,V,W,U" begin
+        t = 2
         T = SemiclassicalJacobi(t, -1/2, 0, -1/2)
         V = SemiclassicalJacobi(t, -1/2, 0, 1/2, T)
         U = SemiclassicalJacobi(t,  1/2, 0, 1/2, T)
@@ -337,10 +349,8 @@ end
         R = U \ T;
         @test R[n,n+1]/R[n,n] ≈ 1+c atol=1E-3
         @test R[n,n+2]/R[n,n]  ≈ c atol=1E-3
-        L =T \ (SemiclassicalJacobiWeight(2, 1, 0, 1) .* U)
+        L =T \ (SemiclassicalJacobiWeight(t, 1, 0, 1) .* U)
         @test 2L[n+1,n] ≈ 1+c atol=1E-3
         @test 2L[n+2,n] ≈ c atol=1E-3
-
-        # x = z -> 
     end
 end
