@@ -353,4 +353,14 @@ end
         @test 2L[n+1,n] ≈ 1+c atol=1E-3
         @test 2L[n+2,n] ≈ c atol=1E-3
     end
+
+    @testset "P,Q" begin
+        Q = SemiclassicalJacobi(t, 1, 1, 1, P)
+        R = Q \ P
+        c = -1/(2*φ(2t-1))
+        # (1 + c*z)*(1-z^2) == 1 + c*z - z^2 - c*z^2
+        @test R[200,201]/R[200,200] ≈ c atol=1e-2
+        @test R[200,202]/R[200,200] ≈ -1 atol=1e-2
+        @test R[200,203]/R[200,200] ≈ -c atol=1e-2
+    end
 end
