@@ -1,8 +1,9 @@
 # SemiclassicalOrthogonalPolynomials.jl
 A Julia repository for semiclassical orthogonal polynomials
 
-[![Build Status](https://travis-ci.org/JuliaApproximation/SemiclassicalOrthogonalPolynomials.jl.svg?branch=master)](https://travis-ci.org/JuliaApproximation/SemiclassicalOrthogonalPolynomials.jl)
 
+[![Build Status](https://github.com/JuliaApproximation/SemiclassicalOrthogonalPolynomials.jl/workflows/CI/badge.svg)](https://github.com/JuliaArrays/InfiniteArrays.jl/actions)
+[![codecov](https://codecov.io/gh/JuliaApproximation/SemiclassicalOrthogonalPolynomials.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaArrays/InfiniteArrays.jl)
 
 This package implements `SemiclassicalJacobi`, a family of orthogonal 
 polynomials orthogonal with respect to the weight `x^a * (1-x)^b * (t-x)^c`. 
