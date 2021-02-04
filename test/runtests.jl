@@ -337,7 +337,6 @@ end
     end
 
     @testset "T,V,W,U" begin
-        t = 2
         T = SemiclassicalJacobi(t, -1/2, 0, -1/2)
         V = SemiclassicalJacobi(t, -1/2, 0, 1/2, T)
         U = SemiclassicalJacobi(t,  1/2, 0, 1/2, T)
@@ -350,8 +349,8 @@ end
         @test R[n,n+1]/R[n,n] ≈ 1+c atol=1E-3
         @test R[n,n+2]/R[n,n]  ≈ c atol=1E-3
         L =T \ (SemiclassicalJacobiWeight(t, 1, 0, 1) .* U)
-        @test 2L[n+1,n] ≈ 1+c atol=1E-3
-        @test 2L[n+2,n] ≈ c atol=1E-3
+        @test L[n+1,n]/L[n,n] ≈ 1+c atol=1E-3
+        @test L[n+2,n]/L[n,n] ≈ c atol=1E-3
     end
 
     @testset "P,Q" begin
