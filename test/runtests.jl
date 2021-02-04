@@ -1,7 +1,7 @@
-using SemiclassicalOrthogonalPolynomials, OrthogonalPolynomialsQuasi, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
+using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
 import BandedMatrices: _BandedMatrix
 import SemiclassicalOrthogonalPolynomials: op_lowering
-import OrthogonalPolynomialsQuasi: recurrencecoefficients, orthogonalityweight
+import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight
 
 @testset "OrthogonalPolynomialRatio" begin
     P = Legendre()
@@ -298,6 +298,17 @@ end
     end
 end
 
+@testset "Legendre" begin
+    t = 2
+    P =   SemiclassicalJacobi(t, 0, 0, 0)
+    P¹¹ = SemiclassicalJacobi(t, 1, 1, 0)
+    Q = SemiclassicalJacobi(t, 0, 0, 1)
+    @test P[0.1,1:10] ≈ Normalized(legendre(0..1))[0.1,1:10]
+    @test Normalized(P¹¹)[0.1,1:10] ≈ 2Normalized(jacobi(1,1,0..1))[0.1,1:10]
+    x = axes(P,1)
+    @test LanczosPolynomial(t .- x, legendre(0..1))[0.1,1:10] ≈ Normalized(Q)[0.1,1:10]
+end
+
 @testset "Semiclassical operator asymptotics" begin
     t = 2.2
     P = SemiclassicalJacobi(t, 0, 0, 0)
@@ -337,10 +348,18 @@ end
         R = U \ T;
         @test R[n,n+1]/R[n,n] ≈ 1+c atol=1E-3
         @test R[n,n+2]/R[n,n]  ≈ c atol=1E-3
-        L =T \ (SemiclassicalJacobiWeight(2, 1, 0, 1) .* U)
-        @test 2L[n+1,n] ≈ 1+c atol=1E-3
-        @test 2L[n+2,n] ≈ c atol=1E-3
+        L =T \ (SemiclassicalJacobiWeight(t, 1, 0, 1) .* U)
+        @test L[n+1,n]/L[n,n] ≈ 1+c atol=1E-3
+        @test L[n+2,n]/L[n,n] ≈ c atol=1E-3
+    end
 
-        # x = z -> 
+    @testset "P,Q" begin
+        Q = SemiclassicalJacobi(t, 1, 1, 1, P)
+        R = Q \ P
+        c = -1/(2*φ(2t-1))
+        # (1 + c*z)*(1-z^2) == 1 + c*z - z^2 - c*z^2
+        @test R[200,201]/R[200,200] ≈ c atol=1e-2
+        @test R[200,202]/R[200,200] ≈ -1 atol=1e-2
+        @test R[200,203]/R[200,200] ≈ -c atol=1e-2
     end
 end

@@ -7,7 +7,7 @@ A Julia repository for semiclassical orthogonal polynomials
 
 This package implements `SemiclassicalJacobi`, a family of orthogonal 
 polynomials orthogonal with respect to the weight `x^a * (1-x)^b * (t-x)^c`. 
-This builds on top of [OrthogonalPolynomialsQuasi.jl](https://github.com/JuliaApproximation/OrthogonalPolynomialsQuasi.jl) and usage is similar.
+This builds on top of [ClassicalOrthogonalPolynomials.jl](https://github.com/JuliaApproximation/ClassicalOrthogonalPolynomials.jl) and usage is similar.
 
 For example, the following gives a half-range Chebyshev polynomial:
 ```julia
