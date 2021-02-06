@@ -246,9 +246,10 @@ end
 \(Q::Normalized, P::SemiclassicalJacobi) = copy(Ldiv{ApplyLayout{typeof(*)},typeof(MemoryLayout(P))}(Q, P))
 \(P::SemiclassicalJacobi, Q::Normalized) = copy(Ldiv{typeof(MemoryLayout(P)),ApplyLayout{typeof(*)}}(P, Q))
 
-\(Q::OrthogonalPolynomial, P::SemiclassicalJacobi) = semijacobi_ldiv(Q, P)
+\(Q::SemiclassicalJacobi{<:Any,<:Normalized}, P::Normalized) = semijacobi_ldiv(Q, P)
+\(Q::AbstractQuasiMatrix, P::SemiclassicalJacobi) = semijacobi_ldiv(Q, P)
 \(Q::LanczosPolynomial, P::SemiclassicalJacobi) = semijacobi_ldiv(Q, P)
-\(Q::SemiclassicalJacobi, P::OrthogonalPolynomial) = semijacobi_ldiv(Q, P)
+\(Q::SemiclassicalJacobi, P::AbstractQuasiMatrix) = semijacobi_ldiv(Q, P)
 \(Q::SemiclassicalJacobi, P::LanczosPolynomial) = semijacobi_ldiv(Q, P)
 function \(Q::SemiclassicalJacobi{T}, P::SemiclassicalJacobi{V}) where {T,V}
     @assert Q.t == P.t

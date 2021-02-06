@@ -301,12 +301,20 @@ end
 @testset "Legendre" begin
     t = 2
     P =   SemiclassicalJacobi(t, 0, 0, 0)
-    P¹¹ = SemiclassicalJacobi(t, 1, 1, 0)
-    Q = SemiclassicalJacobi(t, 0, 0, 1)
+    P¹¹ = SemiclassicalJacobi(t, 1, 1, 0, P)
+    Q = SemiclassicalJacobi(t, 0, 0, 1, P)
+    R = SemiclassicalJacobi(t, 1, 1, 1, P)
+
     @test P[0.1,1:10] ≈ Normalized(legendre(0..1))[0.1,1:10]
     @test Normalized(P¹¹)[0.1,1:10] ≈ 2Normalized(jacobi(1,1,0..1))[0.1,1:10]
     x = axes(P,1)
     @test LanczosPolynomial(t .- x, legendre(0..1))[0.1,1:10] ≈ Normalized(Q)[0.1,1:10]
+
+    @testset "expansion" begin
+        @test (P * (P \ exp.(x)))[0.1] ≈ exp(0.1)
+        @test (Q * (Q \ exp.(x)))[0.1] ≈ exp(0.1)
+        @test (R * (R \ exp.(x)))[0.1] ≈ exp(0.1)
+    end
 end
 
 @testset "Semiclassical operator asymptotics" begin
@@ -362,4 +370,25 @@ end
         @test R[200,202]/R[200,200] ≈ -1 atol=1e-2
         @test R[200,203]/R[200,200] ≈ -c atol=1e-2
     end
+end
+
+@testset "Derivative" begin
+    t = 2
+    P = SemiclassicalJacobi(t, -0.5, -0.5, -0.5)
+    Q = SemiclassicalJacobi(t, 0.5, 0.5, 0.5, P)
+
+    @test (Q \ P.P)[1:10,1:10] ≈ 0.6175596179729587*(Q \ P)[1:10,1:10]
+
+    x = axes(P,1)
+    D = Derivative(x)
+
+    for n = 3:10
+        u = (D * (P.P * [[zeros(n);1]; zeros(∞)]))
+        @test norm((Q \ u)[1:n-2]) ≤ 1000eps()
+    end
+
+    L = Q \ (D * P.P);
+    # L is bidiagonal
+    @test norm(triu(L[1:10,1:10],3)) ≤ 1000eps()
+    @test L[:,5] isa Vcat
 end
