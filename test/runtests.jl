@@ -446,4 +446,10 @@ end
             ((n-1)*(ev1(n-1) + B[n]/A[n]) - n*ξ[n-1]/κ[n-1]) * ev3(n) ≈
             ((n-1)*(ev1(n-1) + B[n]/A[n]) - n*(α[n-1]*ev2(n-1) + β[n-1]/α[n-1])) * ev3(n)
     end     
+
+    @testset "annuli D_-" begin
+        t = 2
+        P = SemiclassicalJacobi(t, 0, 0, 0)
+        Q = SemiclassicalJacobi(t, 1, 1, -1)
+    end
 end
