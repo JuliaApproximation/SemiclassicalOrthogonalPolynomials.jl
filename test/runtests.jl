@@ -391,4 +391,58 @@ end
     # L is bidiagonal
     @test norm(triu(L[1:10,1:10],3)) ≤ 1000eps()
     @test L[:,5] isa Vcat
+
+    A,B,C = recurrencecoefficients(P)
+    α,β,γ = recurrencecoefficients(Q)
+
+    P[0.1,1]
+    Q[0.1,1]
+
+    k = cumprod(A)
+    κ = cumprod(α)
+    j = Vector{Float64}(undef, 100)
+    j[1] = B[1]
+    for n = 1:length(j)-1
+        j[n+1] = A[n+1]*j[n] + B[n+1]*k[n]
+    end
+    ξ = Vector{Float64}(undef, 100)
+    ξ[1] = β[1]
+    for n = 1:length(ξ)-1
+        ξ[n+1] = α[n+1]*ξ[n] + β[n+1]*κ[n]
+    end
+
+    for n = 3:5
+        @test Base.unsafe_getindex(P.P,100,n+1) ≈ (k[n]*100^n + j[n]*100^(n-1)) * P.P[0.1,1] rtol=0.001
+        @test Base.unsafe_getindex(Q,100,n+1) ≈ (κ[n]*100^n + ξ[n]*100^(n-1)) rtol=0.001
+    end
+
+
+
+    
+    @test k[1]*P.P[0.1,1] ≈ L[1,2]
+    n = 2
+    @test L[n,n+1] ≈ n*k[n]/κ[n-1]*P.P[0.1,1]
+    @test L[n-1,n+1] ≈ ((n-1)*j[n] - n*k[n]*ξ[n-1]/κ[n-1])*P.P[0.1,1]
+    for n = 3:6
+        @test L[n,n+1] ≈ n*k[n]/κ[n-1]*P.P[0.1,1]
+        @test L[n-1,n+1] ≈ ((n-1)*j[n]/κ[n-2] - n*k[n]*ξ[n-1]/(κ[n-2]κ[n-1]))*P.P[0.1,1]
+    end
+
+    n = 3
+    dv = n -> k[n]/κ[n-1]
+    ev1 = n -> j[n]/k[n]
+    ev2 = n -> ξ[n-1]/κ[n]
+    ev3 = n -> k[n]/κ[n-2]
+    # ev = n -> (n-1)*j[n]/κ[n-2] - n*k[n]*ξ[n-1]/(κ[n-2]κ[n-1])
+    @test dv(n+1) ≈ dv(n) * A[n+1]/α[n]
+
+    n = 3
+    @test ev1(n+1) ≈ ev1(n) + B[n+1]/A[n+1]
+    @test ev2(n+1) ≈ ev2(n)*α[n]/α[n+1] + β[n]/(α[n]α[n+1])
+    @test ev3(n+1) ≈ ev3(n) * A[n+1]/α[n-1]
+
+    @test ((n-1)*j[n]/k[n] - n*ξ[n-1]/κ[n-1]) * k[n]/κ[n-2] ≈
+        ((n-1)*(ev1(n-1) + B[n]/A[n]) - n*ξ[n-1]/κ[n-1]) * ev3(n) ≈
+        ((n-1)*(ev1(n-1) + B[n]/A[n]) - n*(α[n-1]*ev2(n-1) + β[n-1]/α[n-1])) * ev3(n)
+    
 end
