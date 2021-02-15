@@ -413,3 +413,53 @@ end
     @test evalϕn(1,x,α) ≈ evalϕn(1,x,t) ≈ 0.3430825224938977
     @test evalϕn(2,x,α) ≈ evalϕn(2,x,t) ≈ -0.5371542038747678
 end
+
+@testset "OPs for a=b=0, c=-1 - B operator consistency" begin
+    # basis
+    t = 1.1
+    P = Legendre()
+    x = axes(P,1)
+    # compute coefficients for basis
+    N = 10
+    α = zeros(N)'
+    α[1] = initialα(t)
+    αcoefficients!(α,t,2:N)
+    # generate B operator
+    B = BandedMatrices._BandedMatrix(Vcat((-1).^(1:N)' .* α,(-1).^(0:N-1)'), N, 0,1)
+    # represent some ϕ_n(x) in Legendre polynomial basis
+    n = 1
+    ϕ1 = P \ @.(α[n+1]*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,-x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,-x))
+    n = 2
+    ϕ2 = P \ @.(α[n+1]*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,-x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,-x))
+    # test B operator consistency
+    @test ϕ1[1:N] ≈ B[1:N,2]
+    @test (B \ ϕ1[1:N])[2] ≈ 1
+    @test ϕ2[1:N]≈ B[1:N,3]
+    @test (B \ ϕ2[1:N])[3] ≈ 1
+end
+
+@testset "OPs for a=b=0, c=-1 - basic evaluation consistency" begin
+    # basis
+    t = 1.1
+    P = Legendre()
+    x = axes(P,1)
+    # compute coefficients for basis
+    N = 20
+    α = zeros(N)'
+    α[1] = initialα(t)
+    αcoefficients!(α,t,2:N)
+    # generate B operator
+    B = BandedMatrices._BandedMatrix(Vcat((-1).^(1:N)' .* α,(-1).^(0:N-1)'), N, 0,1)
+    # some test functions
+    f1(x) = x^2
+    f2(x) = (t-x)^2
+    f3(x) = exp(t-x)
+    # test basic expansion and evaluation via Legendre()
+    y = 2*rand(1)[1]-1
+    u1 = B \ (P[:,1:20] \ f1.(x))
+    @test (P[:,1:20]*(B*u1))[y] ≈ f1(y)
+    u2 = B \ (P[:,1:20] \ f2.(x))
+    @test (P[:,1:20]*(B*u2))[y] ≈ f2(y)
+    u3 = B \ (P[:,1:20] \ f3.(x))
+    @test (P[:,1:20]*(B*u3))[y] ≈ f3(y)
+end

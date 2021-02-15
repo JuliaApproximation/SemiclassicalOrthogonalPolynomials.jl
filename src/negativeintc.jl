@@ -17,7 +17,7 @@ function evalϕn(n::Integer,x,α::AbstractArray)
 end
 function evalϕn(n::Integer,x,t::Real)
     # this version recomputes α based on t
-    t < 1 && error("t must be greater than 1.")
+    t <= 1 && error("t must be greater than 1.")
     n == 0 && return 2
     α = zeros(n+1)'
     α[1] = initialα(t)
