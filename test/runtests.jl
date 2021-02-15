@@ -363,3 +363,52 @@ end
         @test R[200,203]/R[200,200] ≈ -c atol=1e-2
     end
 end
+
+@testset "OPs for a=b=0, c=-1 - inital α" begin
+    t1 = 1.1
+    t2 = 1.841
+    t3 = 3.91899
+    t4 = BigFloat("1.0000000000000000000001")
+    # Mathematica
+    @test initialα(t1) ≈ 0.4430825224938773
+    @test initialα(t2) ≈ 0.1980462516542294
+    @test initialα(t3) ≈ 0.0865853392346796
+    @test initialα(t4) ≈ 0.9610516212042500
+end
+
+@testset "OPs for a=b=0, c=-1 - inital α" begin
+    t1 = 1.1
+    t2 = 1.841
+    t3 = 3.91899
+    t4 = BigFloat("1.0000000000000000000001")
+    # Mathematica
+    @test initialα(t1) ≈ 0.4430825224938773
+    @test initialα(t2) ≈ 0.1980462516542294
+    @test initialα(t3) ≈ 0.0865853392346796
+    @test initialα(t4) ≈ 0.9610516212042500
+end
+
+@testset "OPs for a=b=0, c=-1 - finite length α" begin
+    # set parameters
+    N = 20
+    t1 = BigFloat("1.841")
+    t2 = BigFloat("1.0000000000000000000001")
+    # initialize α
+    α1 = zeros(BigFloat,N)'
+    α1[1] = initialα(t1)
+    α2 = zeros(BigFloat,N)'
+    α2[1] = initialα(t2)
+    # compute coefficients
+    αcoefficients!(α1,t1,2:N)
+    αcoefficients!(α2,t2,2:N)
+    # Mathematica α1
+    @test α1[4]  ≈ 0.2627087329083997432601245145
+    @test α1[6]  ≈ 0.2726876922606060640122507098
+    @test α1[10] ≈ 0.2812643917877115432790583025
+    @test α1[20] ≈ 0.2880838431944433456283995763
+    # Mathematica α2
+    @test α2[3]  ≈ 0.986211656637723626293540966790017664
+    @test α2[5]  ≈ 0.991522433691133726090899962435555803
+    @test α2[10] ≈ 0.995622874071374814990725616007916588
+    @test α2[20] ≈ 0.997740344827931106767714485687576347
+end
