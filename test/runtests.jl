@@ -404,6 +404,7 @@ end
 @testset "OPs for a=b=0, c=-1 - evaluation" begin
     t = 1.1
     x = 0.1
+    n = 5
     α = zeros(n+1)'
     α[1] = initialα(t)
     αcoefficients!(α,t,2:n)
