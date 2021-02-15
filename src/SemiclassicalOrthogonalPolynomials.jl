@@ -16,6 +16,7 @@ export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, 
 
 
 include("ratios.jl")
+include("negativeintc.jl")
 
 """"
     SemiclassicalJacobiWeight(t, a, b, c)
