@@ -376,18 +376,6 @@ end
     @test initialα(t4) ≈ 0.9610516212042500
 end
 
-@testset "OPs for a=b=0, c=-1 - inital α" begin
-    t1 = 1.1
-    t2 = 1.841
-    t3 = 3.91899
-    t4 = BigFloat("1.0000000000000000000001")
-    # Mathematica
-    @test initialα(t1) ≈ 0.4430825224938773
-    @test initialα(t2) ≈ 0.1980462516542294
-    @test initialα(t3) ≈ 0.0865853392346796
-    @test initialα(t4) ≈ 0.9610516212042500
-end
-
 @testset "OPs for a=b=0, c=-1 - finite length α" begin
     # set parameters
     N = 20
