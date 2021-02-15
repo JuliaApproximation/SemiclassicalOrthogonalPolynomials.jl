@@ -1,6 +1,6 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
 import BandedMatrices: _BandedMatrix
-import SemiclassicalOrthogonalPolynomials: op_lowering
+import SemiclassicalOrthogonalPolynomials: op_lowering, initialα, αcoefficients
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight
 
 @testset "OrthogonalPolynomialRatio" begin
