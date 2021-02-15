@@ -1,6 +1,6 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
 import BandedMatrices: _BandedMatrix
-import SemiclassicalOrthogonalPolynomials: op_lowering, initialα, αcoefficients!
+import SemiclassicalOrthogonalPolynomials: op_lowering, initialα, αcoefficients!, evalϕn
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight
 
 @testset "OrthogonalPolynomialRatio" begin
@@ -399,4 +399,17 @@ end
     @test α2[5]  ≈ 0.991522433691133726090899962435555803
     @test α2[10] ≈ 0.995622874071374814990725616007916588
     @test α2[20] ≈ 0.997740344827931106767714485687576347
+end
+
+@testset "OPs for a=b=0, c=-1 - evaluation" begin
+    t = 1.1
+    x = 0.1
+    α = zeros(n+1)'
+    α[1] = initialα(t)
+    αcoefficients!(α,t,2:n)
+    evalϕn(1,0.1,α)
+    # compare versions with and without recomputing α with Mathematica results
+    @test evalϕn(0,x,α) == evalϕn(0,x,t) == 2
+    @test evalϕn(1,x,α) ≈ evalϕn(1,x,t) ≈ 0.3430825224938977
+    @test evalϕn(2,x,α) ≈ evalϕn(2,x,t) ≈ -0.5371542038747678
 end
