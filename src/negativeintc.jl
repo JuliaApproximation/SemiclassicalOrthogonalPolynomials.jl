@@ -1,10 +1,19 @@
 # inital value n=0 for α_{n,n-1}(t) coefficients
 initialα(t) = t-2/(log1p(t)-log(t-1))
 
+# compute n-th coefficient from direct evaluation formula
+αdirect(n,t) = gamma((2*n+1)/2)*gamma(1+n)*_₂F₁((1+n)/2,(2+n)/2,(2n+3)/2,1/t^2)/(2*t*gamma(n)*gamma((2*n+3)/2)*_₂F₁(n/2,(n+1)/2,(2*n+1)/2,1/t^2))
+# this version takes a pre-existing vector v and fills in the missing data guided by indices in inds using explicit formula
+function αdirect!(v,t,inds) 
+    @inbounds for n in inds
+        v[n] = gamma((2*n+1)/2)*gamma(1+n)*_₂F₁((1+n)/2,(2+n)/2,(2n+3)/2,1/t^2)/(2*t*gamma(n)*gamma((2*n+3)/2)*_₂F₁(n/2,(n+1)/2,(2*n+1)/2,1/t^2))
+    end
+end
+
 # takes a previously computed vector of α_{n,n-1}(t) that has been increased in size and fills in the missing data guided by indices in inds
 function αcoefficients!(α,t,inds)
     @inbounds for n in inds
-       α[n] = (t*(2*n-1)-(n-1)/α[n-1])/n
+       α[n] = (t*(2*n-1)/n-(n-1)/(n*α[n-1]))
     end
 end
 
