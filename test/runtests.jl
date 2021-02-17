@@ -364,103 +364,154 @@ end
     end
 end
 
-@testset "OPs for a=b=0, c=-1 - inital α" begin
-    t1 = 1.1
-    t2 = 1.841
-    t3 = 3.91899
-    t4 = BigFloat("1.0000000000000000000001")
-    # Mathematica
-    @test initialα(t1) ≈ 0.4430825224938773
-    @test initialα(t2) ≈ 0.1980462516542294
-    @test initialα(t3) ≈ 0.0865853392346796
-    @test initialα(t4) ≈ 0.9610516212042500
-end
+@testset "OPs for a=b=0, c=-1" begin
+    @testset "inital α" begin
+        t1 = 1.1
+        t2 = 1.841
+        t3 = 3.91899
+        t4 = BigFloat("1.0000000000000000000001")
+        # Mathematica
+        @test initialα(t1) ≈ 0.4430825224938773
+        @test initialα(t2) ≈ 0.1980462516542294
+        @test initialα(t3) ≈ 0.0865853392346796
+        @test initialα(t4) ≈ 0.9610516212042500
+    end
 
-@testset "OPs for a=b=0, c=-1 - finite length α" begin
-    # set parameters
-    N = 20
-    t1 = BigFloat("1.841")
-    t2 = BigFloat("1.0000000000000000000001")
-    # initialize α
-    α1 = zeros(BigFloat,N)'
-    α1[1] = initialα(t1)
-    α2 = zeros(BigFloat,N)'
-    α2[1] = initialα(t2)
-    # compute coefficients
-    αcoefficients!(α1,t1,2:N)
-    αcoefficients!(α2,t2,2:N)
-    # Mathematica α1
-    @test α1[4]  ≈ 0.2627087329083997432601245145
-    @test α1[6]  ≈ 0.2726876922606060640122507098
-    @test α1[10] ≈ 0.2812643917877115432790583025
-    @test α1[20] ≈ 0.2880838431944433456283995763
-    # Mathematica α2
-    @test α2[3]  ≈ 0.986211656637723626293540966790017664
-    @test α2[5]  ≈ 0.991522433691133726090899962435555803
-    @test α2[10] ≈ 0.995622874071374814990725616007916588
-    @test α2[20] ≈ 0.997740344827931106767714485687576347
-end
+    @testset "αdirect! consistency" begin
+        N = 5
+        t1 = 1.1
+        t2 = 1.841
+        t3 = 3.91899
+        t4 = BigFloat("1.0000000000000000000001")
+        α1 = zeros(eltype(float(t1)), N)
+        α2 = zeros(eltype(float(t2)), N)
+        α3 = zeros(eltype(float(t3)), N)
+        α4 = zeros(eltype(float(t3)), N)
+        αdirect!(α1,t1,1:N)
+        αdirect!(α2,t2,1:N)
+        αdirect!(α3,t3,1:N)
+        αdirect!(α4,t4,1:N)
+        @test αdirect.((1:N),t1) ≈ α1
+        @test αdirect.((1:N),t2) ≈ α2
+        @test αdirect.((1:N),t3) ≈ α3
+        @test αdirect.((1:N),t4) ≈ α4
+    end
 
-@testset "OPs for a=b=0, c=-1 - evaluation" begin
-    t = 1.1
-    x = 0.1
-    n = 5
-    α = zeros(n+1)'
-    α[1] = initialα(t)
-    αcoefficients!(α,t,2:n)
-    evalϕn(1,0.1,α)
-    # compare versions with and without recomputing α with Mathematica results
-    @test evalϕn(0,x,α) == evalϕn(0,x,t) == 2
-    @test evalϕn(1,x,α) ≈ evalϕn(1,x,t) ≈ 0.3430825224938977
-    @test evalϕn(2,x,α) ≈ evalϕn(2,x,t) ≈ -0.5371542038747678
-end
+    @testset "OPs for a=b=0, c=-1 - basic forward and back recurrence" begin
+        # set parameters
+        N = 30
+        t1 = BigFloat("1.841")
+        t2 = BigFloat("1.0000000000000000000001")
+        # initialize α
+        α1f = zeros(eltype(float(t1)), N)
+        α1f[1] = initialα(t1)
+        α2f = zeros(eltype(float(t2)), N)
+        α2f[1] = initialα(t2)
+        α1b = zeros(eltype(float(t1)), N)
+        α2b = zeros(eltype(float(t2)), N)
+        # compute coefficients via forward recurrence
+        αcoefficients!(α1f,t1,BigInt.(2:N))
+        αcoefficients!(α2f,t2,BigInt.(2:N))
+        # compute coefficients via back recurrence
+        backαcoeff!(α1b,t1,BigInt.(2:N))
+        backαcoeff!(α2b,t2,BigInt.(2:N))
+        # Mathematica α1
+        @test α1b[4]  ≈ 0.262708732908399743 ≈ α1f[4]  
+        @test α1b[6]  ≈ 0.272687692260606064 ≈ α1f[6]  
+        @test α1b[10] ≈ 0.281264391787711543 ≈ α1f[10] 
+        @test α1b[20] ≈ 0.288083843194443346 ≈ α1f[20]
+        # Mathematica α2
+        @test α2b[3]  ≈ 0.98621165663772362 ≈ α2f[3]
+        @test α2b[5]  ≈ 0.99152243369113373 ≈ α2f[5]
+        @test α2b[10] ≈ 0.99562287407137481 ≈ α2f[10]  
+        @test α2b[20] ≈ 0.99774034482793111 ≈ α2f[20] 
+    end
 
-@testset "OPs for a=b=0, c=-1 - B operator consistency" begin
-    # basis
-    t = 1.1
-    P = Legendre()
-    x = axes(P,1)
-    # compute coefficients for basis
-    N = 10
-    α = zeros(N)'
-    α[1] = initialα(t)
-    αcoefficients!(α,t,2:N)
-    # generate B operator
-    B = BandedMatrices._BandedMatrix(Vcat((-1).^(1:N)' .* α,(-1).^(0:N-1)'), N, 0,1)
-    # represent some ϕ_n(x) in Legendre polynomial basis
-    n = 1
-    ϕ1 = P \ @.(α[n+1]*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,-x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,-x))
-    n = 2
-    ϕ2 = P \ @.(α[n+1]*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,-x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,-x))
-    # test B operator consistency
-    @test ϕ1[1:N] ≈ B[1:N,2]
-    @test (B \ ϕ1[1:N])[2] ≈ 1
-    @test ϕ2[1:N]≈ B[1:N,3]
-    @test (B \ ϕ2[1:N])[3] ≈ 1
-end
+    @testset "OPs for a=b=0, c=-1 - high n, high and low t back recurrence" begin
+        # set parameters
+        N = 10000
+        t0 = BigFloat("2.0")
+        t1 = BigFloat("371.138")
+        t2 = BigFloat("1.0000000000000000000001")
+        t3 = BigFloat("500")
+        # initialize α
+        α0 = zeros(eltype(float(t0)), N)
+        α1 = zeros(eltype(float(t1)), N)
+        α2 = zeros(eltype(float(t2)), N)
+        α3 = zeros(eltype(float(t3)), N)
+        # compute coefficients via back recurrence
+        backαcoeff!(α0,t0,BigInt.(2:N))
+        backαcoeff!(α1,t1,BigInt.(2:N))
+        backαcoeff!(α2,t2,BigInt.(2:N))
+        backαcoeff!(α3,t3,BigInt.(2:N))
+        # Mathematica α1
+        @test α0[1] ≈ Float64(initialα(t0))
+        @test α1[1] ≈ Float64(initialα(t1))
+        @test α2[1] ≈ Float64(initialα(t2))
+        @test α3[1] ≈ Float64(initialα(t3))
+    end
 
-@testset "OPs for a=b=0, c=-1 - basic evaluation consistency" begin
-    # basis
-    t = 1.1
-    P = Legendre()
-    x = axes(P,1)
-    # compute coefficients for basis
-    N = 20
-    α = zeros(N)'
-    α[1] = initialα(t)
-    αcoefficients!(α,t,2:N)
-    # generate B operator
-    B = BandedMatrices._BandedMatrix(Vcat((-1).^(1:N)' .* α,(-1).^(0:N-1)'), N, 0,1)
-    # some test functions
-    f1(x) = x^2
-    f2(x) = (t-x)^2
-    f3(x) = exp(t-x)
-    # test basic expansion and evaluation via Legendre()
-    y = 2*rand(1)[1]-1
-    u1 = B \ (P[:,1:20] \ f1.(x))
-    @test (P[:,1:20]*(B*u1))[y] ≈ f1(y)
-    u2 = B \ (P[:,1:20] \ f2.(x))
-    @test (P[:,1:20]*(B*u2))[y] ≈ f2(y)
-    u3 = B \ (P[:,1:20] \ f3.(x))
-    @test (P[:,1:20]*(B*u3))[y] ≈ f3(y)
+    @testset "OPs for a=b=0, c=-1 - evaluation" begin
+        t = 1.1
+        x = 0.1
+        n = 5
+        α = zeros(n+1)'
+        α[1] = initialα(t)
+        αcoefficients!(α,t,2:n)
+        evalϕn(1,0.1,α)
+        # compare versions with and without recomputing α with Mathematica results
+        @test evalϕn(0,x,α) == evalϕn(0,x,t) == 2
+        @test evalϕn(1,x,α) ≈ evalϕn(1,x,t) ≈ 0.3430825224938977
+        @test evalϕn(2,x,α) ≈ evalϕn(2,x,t) ≈ -0.5371542038747678
+    end
+
+    @testset "OPs for a=b=0, c=-1 - B operator consistency" begin
+        # basis
+        t = 1.1
+        P = Legendre()
+        x = axes(P,1)
+        # compute coefficients for basis
+        N = 10
+        α = zeros(N)'
+        α[1] = initialα(t)
+        αcoefficients!(α,t,2:N)
+        # generate B operator
+        B = BandedMatrices._BandedMatrix(Vcat((-1).^(1:N)' .* α,(-1).^(0:N-1)'), N, 0,1)
+        # represent some ϕ_n(x) in Legendre polynomial basis
+        n = 1
+        ϕ1 = P \ @.(α[n+1]*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,-x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,-x))
+        n = 2
+        ϕ2 = P \ @.(α[n+1]*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,-x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,-x))
+        # test B operator consistency
+        @test ϕ1[1:N] ≈ B[1:N,2]
+        @test (B \ ϕ1[1:N])[2] ≈ 1
+        @test ϕ2[1:N]≈ B[1:N,3]
+        @test (B \ ϕ2[1:N])[3] ≈ 1
+    end
+
+    @testset "OPs for a=b=0, c=-1 - basic evaluation consistency" begin
+        # basis
+        t = 1.1
+        P = Legendre()
+        x = axes(P,1)
+        # compute coefficients for basis
+        N = 20
+        α = zeros(N)'
+        α[1] = initialα(t)
+        αcoefficients!(α,t,2:N)
+        # generate B operator
+        B = BandedMatrices._BandedMatrix(Vcat((-1).^(1:N)' .* α,(-1).^(0:N-1)'), N, 0,1)
+        # some test functions
+        f1(x) = x^2
+        f2(x) = (t-x)^2
+        f3(x) = exp(t-x)
+        # test basic expansion and evaluation via Legendre()
+        y = 2*rand(1)[1]-1
+        u1 = B \ (P[:,1:20] \ f1.(x))
+        @test (P[:,1:20]*(B*u1))[y] ≈ f1(y)
+        u2 = B \ (P[:,1:20] \ f2.(x))
+        @test (P[:,1:20]*(B*u2))[y] ≈ f2(y)
+        u3 = B \ (P[:,1:20] \ f3.(x))
+        @test (P[:,1:20]*(B*u3))[y] ≈ f3(y)
+    end
 end
