@@ -20,7 +20,7 @@ end
 # takes a previously computed vector of α_{n,n-1}(t) that has been increased in size and fills in the missing data guided by indices in inds, using a final condition computation and backward recurrence
 function backαcoeff!(α,t,inds)
     α[end] = αdirect(BigInt(length(α)),t)
-    @inbounds for n in reverse(inds[1:end])
+    @inbounds for n in reverse(inds)
        α[n-1] = (1-n)/(t-2*n*t+n*α[n])
     end
 end
