@@ -5,9 +5,10 @@ using ClassicalOrthogonalPolynomials, FillArrays, LazyArrays, ArrayLayouts, Quas
 import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe_getindex
 
 import ArrayLayouts: MemoryLayout, ldiv
-import BandedMatrices: bandwidths, _BandedMatrix, AbstractBandedMatrix, BandedLayout
+import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout
 import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector
-import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedBasisLayout
+import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedBasisLayout,
+                                        Bidiagonal, Tridiagonal, SymTridiagonal
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout
 import FillArrays: SquareEye
@@ -122,6 +123,10 @@ struct ConjugateTridiagonal{T,XX<:AbstractMatrix{T},LL<:AbstractMatrix{T}} <: Ab
     L::LL
 end
 
+ArrayLayouts.subdiagonaldata(T::ConjugateTridiagonal) = T[band(-1)]
+ArrayLayouts.diagonaldata(T::ConjugateTridiagonal) = T[band(0)]
+ArrayLayouts.supdiagonaldata(T::ConjugateTridiagonal) = T[band(1)]
+
 MemoryLayout(::Type{<:ConjugateTridiagonal}) = BandedLayout()
 bandwidths(::ConjugateTridiagonal) = (1,1)
 size(::ConjugateTridiagonal) = (∞,∞)
@@ -148,7 +153,7 @@ end
     InvMulBidiagonal(A, B)
 
 represents a bidiagonal matrix formed as `inv(A)*B`.
-Here we assume `A` is bi-diagonal, `B` is tidiagonal and the non-bidiagonal entries
+Here we assume `A` is bi-diagonal, `B` is tridiagonal and the non-bidiagonal entries
 will be 0.
 """
 struct InvMulBidiagonal{T} <: AbstractBandedMatrix{T}
@@ -226,8 +231,9 @@ function op_lowering(Q, y)
     A,_,_ = recurrencecoefficients(Q)
     # we first use Christoff-Darboux with d = 1
     # But we want the first OP to be 1 so we rescale
+
     d = inv(A[1]*_p0(Q)*R[1])
-    _BandedMatrix(Vcat(Fill(-d,1,∞), (d .* R)'), ∞, 1, 0)
+    Bidiagonal(Fill(-d,∞), d .* R, :L)
 end
 
 function semijacobi_ldiv(Q, P::SemiclassicalJacobi)
