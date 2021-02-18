@@ -456,17 +456,20 @@ end
 
 
 @testset "Normalized" begin
-    P = SemiclassicalJacobi(2,0,0,0)
-    Q = SemiclassicalJacobi(2,0,0,1,P)
-    X_P = jacobimatrix(P)
-    L = (P \ (SemiclassicalJacobiWeight(2,0,0,1) .* Q))
-    X = jacobimatrix(Normalized(Q))
-    ℓ = L[band(-1)]/L[1,1]
-    a,b = X_P.dv,X_P.ev
-    @test X[1,1] ≈ a[1]+b[1]ℓ[1]
-    @test X[1,2] ≈ X[2,1] ≈ sqrt(b[1] * (-a[1]ℓ[1]+b[1]*(1-ℓ[1]^2)+a[2]ℓ[1]))
-    for n = 2:5
-        @test X[n,n] ≈ -ℓ[n-1]b[n-1]+a[n]+b[n]ℓ[n]
-        @test X[n,n+1] ≈ X[n+1,n] ≈ sqrt(b[n] * (b[n-1]ℓ[n-1]ℓ[n]-a[n]ℓ[n]+b[n]*(1-ℓ[n]^2)+a[n+1]ℓ[n]))
+    for (a,b,c) in ((-0.5,-0.4,-0.3),(0,0,0))
+        P = SemiclassicalJacobi(2,a,b,c)
+        Q = SemiclassicalJacobi(2,a,b,c+1,P)
+
+        X_P = jacobimatrix(P)
+        L = (P \ (SemiclassicalJacobiWeight(2,0,0,1) .* Q))
+        X = jacobimatrix(Normalized(Q))
+        ℓ = L[band(-1)]/L[1,1]
+        a,b = X_P.dv,X_P.ev
+        @test X[1,1] ≈ a[1]+b[1]ℓ[1]
+        @test X[1,2] ≈ X[2,1] ≈ sqrt(b[1] * (-a[1]ℓ[1]+b[1]*(1-ℓ[1]^2)+a[2]ℓ[1]))
+        for n = 2:5
+            @test X[n,n] ≈ -ℓ[n-1]b[n-1]+a[n]+b[n]ℓ[n]
+            @test X[n,n+1] ≈ X[n+1,n] ≈ sqrt(b[n] * (b[n-1]ℓ[n-1]ℓ[n]-a[n]ℓ[n]+b[n]*(1-ℓ[n]^2)+a[n+1]ℓ[n]))
+        end
     end
 end
