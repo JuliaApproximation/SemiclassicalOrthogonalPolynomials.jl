@@ -268,7 +268,7 @@ copy(L::Ldiv{<:Any,SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
 function copy(L::Ldiv{SemiclassicalJacobiLayout,SemiclassicalJacobiLayout})
     Q,P = L.A,L.B
     @assert Q.t == P.t
-    Q == P && return SquareEye{eltype(L)}(∞)
+    Q == P && return SquareEye{eltype(L)}((axes(P,2),))
     M_Q = massmatrix(Q)
     M_P = massmatrix(P)
     L = P \ (SemiclassicalJacobiWeight(Q.t, Q.a-P.a, Q.b-P.b, Q.c-P.c) .* Q)

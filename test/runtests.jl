@@ -90,11 +90,13 @@ end
             A_W,B_W,C_W = recurrencecoefficients(W)
             X_W = W \ (x .* W)
 
-            @test W[0.1,2] == A_W[1]*0.1 + B_W[1]
+            @test W[0.1,2] ≈ A_W[1]*0.1 + B_W[1]
             @test W[0.1,3] ≈ (A_W[2]*0.1 + B_W[2])*(A_W[1]*0.1 + B_W[1]) - C_W[2]
 
             @test W[0.1,1:11]'*X_W[1:11,1:10] ≈ 0.1 * W[0.1,1:10]'
             @test 0.1*W[0.1,1:10]' ≈ T[0.1,1:11]' * L[1:11,1:10]
+
+            @test  Normalized(W)[0.1,1:3] ≈ [1.323608096788513,-2.6865315578413216,2.9959128991503907]
         end
 
         @testset "Mass matrix" begin
@@ -463,13 +465,19 @@ end
         X_P = jacobimatrix(P)
         L = (P \ (SemiclassicalJacobiWeight(2,0,0,1) .* Q))
         X = jacobimatrix(Normalized(Q))
-        ℓ = L[band(-1)]/L[1,1]
+        ℓ = OrthogonalPolynomialRatio(P,2)
         a,b = X_P.dv,X_P.ev
-        @test X[1,1] ≈ a[1]+b[1]ℓ[1]
-        @test X[1,2] ≈ X[2,1] ≈ sqrt(b[1] * (-a[1]ℓ[1]+b[1]*(1-ℓ[1]^2)+a[2]ℓ[1]))
+        @test X[1,1] ≈ a[1]-b[1]ℓ[1]
+        @test X[1,2] ≈ X[2,1] ≈ sqrt(b[1] * (a[1]ℓ[1]+b[1]*(1-ℓ[1]^2)-a[2]ℓ[1]))
         for n = 2:5
-            @test X[n,n] ≈ -ℓ[n-1]b[n-1]+a[n]+b[n]ℓ[n]
-            @test X[n,n+1] ≈ X[n+1,n] ≈ sqrt(b[n] * (b[n-1]ℓ[n-1]ℓ[n]-a[n]ℓ[n]+b[n]*(1-ℓ[n]^2)+a[n+1]ℓ[n]))
+            @test X[n,n] ≈ ℓ[n-1]b[n-1]+a[n]-b[n]ℓ[n]
+            @test X[n,n+1] ≈ X[n+1,n] ≈ sqrt(b[n] * (b[n-1]ℓ[n-1]ℓ[n]+a[n]ℓ[n]+b[n]*(1-ℓ[n]^2)-a[n+1]ℓ[n]))
         end
+
+        T = Float64
+        bl = b .* ℓ
+        X̃ = ClassicalOrthogonalPolynomials.SymTridiagonal(a .- bl .+ Vcat(zero(T),bl),
+                           sqrt.(bl .* a .+ b .^2 .- bl .^ 2 .- b .* a[2:∞] .* ℓ .+ Vcat(zero(T),bl .* bl[2:∞])));
+        @test X̃[1:10,1:10] ≈ X[1:10,1:10]
     end
 end
