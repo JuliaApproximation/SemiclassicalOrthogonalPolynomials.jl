@@ -18,7 +18,7 @@ end
 
 OrthogonalPolynomialRatio(P::AbstractQuasiMatrix{T}, x) where T = OrthogonalPolynomialRatio{T,typeof(P)}(P, convert(T, x))
 
-size(K::OrthogonalPolynomialRatio) = (∞,)
+size(K::OrthogonalPolynomialRatio) = (ℵ₀,)
 
 
 function LazyArrays.cache_filldata!(R::OrthogonalPolynomialRatio, inds)

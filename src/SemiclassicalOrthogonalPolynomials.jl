@@ -4,11 +4,11 @@ using ClassicalOrthogonalPolynomials, FillArrays, LazyArrays, ArrayLayouts, Quas
 
 import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe_getindex
 
-import ArrayLayouts: MemoryLayout, ldiv
+import ArrayLayouts: MemoryLayout, ldiv, diagonaldata, subdiagonaldata, supdiagonaldata
 import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout
 import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector
 import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedBasisLayout,
-                                        Bidiagonal, Tridiagonal, SymTridiagonal
+                                        Bidiagonal, Tridiagonal, SymTridiagonal, symtridagonalize, NormalizationConstant
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout
 import FillArrays: SquareEye
@@ -199,24 +199,42 @@ function recurrencecoefficients(P::SemiclassicalJacobi)
         JacobiMatrix2Recurrence{:A}(X),JacobiMatrix2Recurrence{:B}(X),JacobiMatrix2Recurrence{:C}(X)
     end
 end
-function jacobimatrix(P::SemiclassicalJacobi)
+
+"""
+   RaisedOP(P, y)
+
+gives the OPs w.r.t. (y - x) .* w based on lowering to Q.
+"""
+
+struct RaisedOP{T, QQ, LL<:OrthogonalPolynomialRatio} <: OrthogonalPolynomial{T}
+    Q::QQ
+    ℓ::LL
+end
+
+RaisedOP(Q, ℓ::OrthogonalPolynomialRatio) = RaisedOP{eltype(Q),typeof(Q),typeof(ℓ)}(Q, ℓ)
+RaisedOP(Q, y::Number) = RaisedOP(Q, OrthogonalPolynomialRatio(Q,y))
+
+function jacobimatrix(P::RaisedOP{T}) where T
+    ℓ = P.ℓ
+    X = jacobimatrix(P.Q)
+    a,b = diagonaldata(X), supdiagonaldata(X)
+    # non-normalized lower diag of Jacobi
+    c = ℓ .* a .+ b .- b .* ℓ.^2 .- a[2:∞] .* ℓ .+ Vcat(zero(T),b .* ℓ .* ℓ[2:∞])
+    Tridiagonal(c, a .- b .* ℓ .+ Vcat(zero(T),b .* ℓ), b)
+end
+
+function jacobimatrix(P::SemiclassicalJacobi{T}) where T
     if P.a ≤ 0 && P.b ≤ 0 && P.c ≤ 0
         jacobimatrix(P.P)
     elseif P.a > 0
         Q = SemiclassicalJacobi(P.t, P.a-1, P.b, P.c, P.P)
-        L = Q \ (SemiclassicalJacobiWeight(P.t,1,0,0) .* P)
-        X = jacobimatrix(Q)
-        ConjugateTridiagonal(X,L)        
+        symtridagonalize(jacobimatrix(RaisedOP(Q, 0)))
     elseif P.b > 0
         Q = SemiclassicalJacobi(P.t, P.a, P.b-1, P.c, P.P)
-        L = Q \ (SemiclassicalJacobiWeight(P.t,0,1,0) .* P)
-        X = jacobimatrix(Q)
-        ConjugateTridiagonal(X,L)
+        symtridagonalize(jacobimatrix(RaisedOP(Q, 1)))
     elseif P.c > 0
         Q = SemiclassicalJacobi(P.t, P.a, P.b, P.c-1, P.P)
-        L = Q \ (SemiclassicalJacobiWeight(P.t,0,0,1) .* P)
-        X = jacobimatrix(Q)
-        ConjugateTridiagonal(X,L)
+        symtridagonalize(jacobimatrix(RaisedOP(Q, P.t)))
     else
         error("Implement")
     end
@@ -227,13 +245,13 @@ Gives the Lowering operator from OPs w.r.t. (x-y)*w(x) to Q
 as constructed from Chistoffel–Darboux
 """
 function op_lowering(Q, y)
-    R = OrthogonalPolynomialRatio(Q,y)
-    A,_,_ = recurrencecoefficients(Q)
     # we first use Christoff-Darboux with d = 1
     # But we want the first OP to be 1 so we rescale
-
-    d = inv(A[1]*_p0(Q)*R[1])
-    Bidiagonal(Fill(-d,∞), d .* R, :L)
+    P = RaisedOP(Q, y)
+    A,_,_ = recurrencecoefficients(Q)
+    d = -inv(A[1]*_p0(Q)*P.ℓ[1])
+    κ = NormalizationConstant(d, P)
+    Bidiagonal(κ, -(κ .* P.ℓ), :L)
 end
 
 function semijacobi_ldiv(Q, P::SemiclassicalJacobi)
@@ -292,17 +310,7 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
         -op_lowering(A,1)
     elseif wA.a == wB.a && wA.b == wB.b && wA.c+1 == wB.c
         @assert A.a == B.a && A.b == B.b && A.c+1 == B.c
-        # priority goes to lowering b
-        if A.a ≤ 0 && A.b ≤ 0
-            -op_lowering(A,A.t)
-        elseif A.b ≤ 0 #lower then raise by inverting
-            T = SemiclassicalJacobi(B.t, B.a-1, B.b, B.c-1)
-            L = T \ (SemiclassicalJacobiWeight(B.t,1,0,1) .* B)
-            L_1 = T \ (SemiclassicalJacobiWeight(B.t,1,0,0) .* A)
-            InvMulBidiagonal(L_1, L)
-        else
-            error("Not Implement")
-        end
+        -op_lowering(A,A.t)
     elseif wA.a+1 ≤ wB.a
         C = SemiclassicalJacobi(B.t, B.a-1, B.b, B.c, B)
         w_C = SemiclassicalJacobiWeight(B.t, wB.a-1, wB.b, wB.c) .* C
