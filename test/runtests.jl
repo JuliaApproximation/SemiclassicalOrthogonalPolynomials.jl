@@ -181,32 +181,38 @@ end
         V = SemiclassicalJacobi(2, -1/2, 0, 1/2, T)
         U = SemiclassicalJacobi(2, 1/2, 0, 1/2, T)
 
-        L_1 = T \ (SemiclassicalJacobiWeight(2,0,0,1) .* V);
-        L_2 = V \ (SemiclassicalJacobiWeight(2,1,0,0) .* U);
+        @testset "Jacobi matrix derivation" begin
+            L_1 = T \ (SemiclassicalJacobiWeight(2,0,0,1) .* V);
+            L_2 = V \ (SemiclassicalJacobiWeight(2,1,0,0) .* U);
 
 
-        X_V = jacobimatrix(V)
-        X_U = jacobimatrix(U)
-        @test (inv(L_2[1:12,1:12]) * X_V[1:12,1:11] * L_2[1:11,1:10])[1:10,1:10] ≈ X_U[1:10,1:10]
+            X_V = jacobimatrix(V)
+            X_U = jacobimatrix(U)
+            @test (inv(L_2[1:12,1:12]) * X_V[1:12,1:11] * L_2[1:11,1:10])[1:10,1:10] ≈ X_U[1:10,1:10]
 
-        @test 0.1*U[0.1,1:10]' ≈ V[0.1,1:11]' * L_2[1:11,1:10]
-        @test 0.1 * V[0.1,1:10]'V[0.0,1:10] ≈ V[0.1,1:11]'*X_V[1:11,1:10]*V[0.0,1:10]
+            @test 0.1*U[0.1,1:10]' ≈ V[0.1,1:11]' * L_2[1:11,1:10]
+            @test 0.1 * V[0.1,1:10]'V[0.0,1:10] ≈ V[0.1,1:11]'*X_V[1:11,1:10]*V[0.0,1:10]
 
-        L = T \ (SemiclassicalJacobiWeight(2,1,0,1) .* U);
-        @test L[1:10,1:10] ≈ L_1[1:10,1:10] * L_2[1:10,1:10]
-        @test (2-0.1)*0.1 * U[0.1,1:10]' ≈ T[0.1,1:12]' * L[1:12,1:10]
+            L = T \ (SemiclassicalJacobiWeight(2,1,0,1) .* U);
+            @test L[1:10,1:10] ≈ L_1[1:10,1:10] * L_2[1:10,1:10]
+            @test (2-0.1)*0.1 * U[0.1,1:10]' ≈ T[0.1,1:12]' * L[1:12,1:10]
 
-        L̃_1 = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W);
-        L̃_3 = inv(L̃_1[1:11,1:11])*L[1:11,1:10]
-        @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L̃_3[1:11,1:10]
-        L̄_3 = SemiclassicalOrthogonalPolynomials.InvMulBidiagonal(L̃_1, L)
-        @test L̄_3[1:11,1:10] ≈ L̃_3
+            L̃_1 = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W);
+            L̃_3 = inv(L̃_1[1:11,1:11])*L[1:11,1:10]
+            @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L̃_3[1:11,1:10]
+            L̄_3 = SemiclassicalOrthogonalPolynomials.InvMulBidiagonal(L̃_1, L)
+            @test L̄_3[1:11,1:10] ≈ L̃_3
 
-        L_3 = W \ (SemiclassicalJacobiWeight(2,0,0,1) .* U);
-        @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L_3[1:11,1:10]
+            L_3 = W \ (SemiclassicalJacobiWeight(2,0,0,1) .* U);
+            @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L_3[1:11,1:10]
 
-        R = U \ T;
-        @test T[0.1,1:10]' ≈ U[0.1,1:10]' * R[1:10,1:10]
+            R = U \ T;
+            @test T[0.1,1:10]' ≈ U[0.1,1:10]' * R[1:10,1:10]
+        end
+
+        @testset "Evaluation" begin
+            @test Normalized(U)[0.1,1:4] ≈ [1.1283791670955114, -2.03015300715061, 2.131688648563451, -1.3816046198529939]
+        end
     end
 
     @testset "Expansions" begin
