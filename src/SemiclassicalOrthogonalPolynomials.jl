@@ -82,7 +82,7 @@ WeightedSemiclassicalJacobi(t, a, b, c, P...) = SemiclassicalJacobiWeight(t, a, 
 
 
 function SemiclassicalJacobi(t, a, b, c)
-    ã,b̃,c̃ = mod(a,-1),mod(b,-1),mod(c,-1)
+    ã,b̃,c̃ = mod(a,-1),mod(b,-1),min(c, mod(c,-1))
     T = promote_type(typeof(t), typeof(a), typeof(b), typeof(c))
     P = jacobi(b̃, ã, UnitInterval{T}())
     x = axes(P,1)

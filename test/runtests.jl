@@ -445,6 +445,22 @@ end
     end
 end
 
+@testset "equilibrium measure" begin
+    ρ = 0.5
+    t = inv(1-ρ^2)
+    P = SemiclassicalJacobi(t, -1/2, -1/2, 0)
+    Q = SemiclassicalJacobi(t, -1/2, -1/2, 1/2)
+
+    P̃ = SemiclassicalJacobi(t, 1/2, 1/2, -1);
+    Q̃ = SemiclassicalJacobi(t, 1/2, 1/2, 0, Q);
+
+    jacobimatrix(P)[1:5,1:5]
+    jacobimatrix(P̃)[1:5,1:5]
+
+    jacobimatrix(Q)[1:5,1:5]
+    jacobimatrix(Q̃)[1:5,1:5]
+end
+
 @testset "Normalized" begin
     # here we derive the formula for the Jacobi operators
     for (a,b,c) in ((-0.5,-0.4,-0.3),(0,0,0))
