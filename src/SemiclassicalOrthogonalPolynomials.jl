@@ -5,11 +5,12 @@ using ClassicalOrthogonalPolynomials, FillArrays, LazyArrays, ArrayLayouts, Quas
 import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe_getindex
 
 import ArrayLayouts: MemoryLayout, ldiv
-import BandedMatrices: bandwidths, _BandedMatrix, AbstractBandedMatrix, BandedLayout
+import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout
 import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector
-import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight
+import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedBasisLayout,
+                                        Bidiagonal, Tridiagonal, SymTridiagonal
 import InfiniteArrays: OneToInf, InfUnitRange
-import ContinuumArrays: basis, Weight, @simplify
+import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout
 import FillArrays: SquareEye
 
 export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, ConjugateTridiagonal, OrthogonalPolynomialRatio
@@ -123,6 +124,10 @@ struct ConjugateTridiagonal{T,XX<:AbstractMatrix{T},LL<:AbstractMatrix{T}} <: Ab
     L::LL
 end
 
+ArrayLayouts.subdiagonaldata(T::ConjugateTridiagonal) = T[band(-1)]
+ArrayLayouts.diagonaldata(T::ConjugateTridiagonal) = T[band(0)]
+ArrayLayouts.supdiagonaldata(T::ConjugateTridiagonal) = T[band(1)]
+
 MemoryLayout(::Type{<:ConjugateTridiagonal}) = BandedLayout()
 bandwidths(::ConjugateTridiagonal) = (1,1)
 size(::ConjugateTridiagonal) = (∞,∞)
@@ -149,7 +154,7 @@ end
     InvMulBidiagonal(A, B)
 
 represents a bidiagonal matrix formed as `inv(A)*B`.
-Here we assume `A` is bi-diagonal, `B` is tidiagonal and the non-bidiagonal entries
+Here we assume `A` is bi-diagonal, `B` is tridiagonal and the non-bidiagonal entries
 will be 0.
 """
 struct InvMulBidiagonal{T} <: AbstractBandedMatrix{T}
@@ -227,8 +232,9 @@ function op_lowering(Q, y)
     A,_,_ = recurrencecoefficients(Q)
     # we first use Christoff-Darboux with d = 1
     # But we want the first OP to be 1 so we rescale
+
     d = inv(A[1]*_p0(Q)*R[1])
-    _BandedMatrix(Vcat(Fill(-d,1,∞), (d .* R)'), ∞, 1, 0)
+    Bidiagonal(Fill(-d,∞), d .* R, :L)
 end
 
 function semijacobi_ldiv(Q, P::SemiclassicalJacobi)
@@ -244,22 +250,34 @@ function semijacobi_ldiv(P::SemiclassicalJacobi, Q)
     (P \ R) * _p0(P.P) * (P.P \ Q)
 end
 
-\(Q::Normalized, P::SemiclassicalJacobi) = copy(Ldiv{ApplyLayout{typeof(*)},typeof(MemoryLayout(P))}(Q, P))
-\(P::SemiclassicalJacobi, Q::Normalized) = copy(Ldiv{typeof(MemoryLayout(P)),ApplyLayout{typeof(*)}}(P, Q))
+struct SemiclassicalJacobiLayout <: AbstractBasisLayout end
+MemoryLayout(::Type{<:SemiclassicalJacobi}) = SemiclassicalJacobiLayout()
 
-\(Q::OrthogonalPolynomial, P::SemiclassicalJacobi) = semijacobi_ldiv(Q, P)
-\(Q::LanczosPolynomial, P::SemiclassicalJacobi) = semijacobi_ldiv(Q, P)
-\(Q::SemiclassicalJacobi, P::OrthogonalPolynomial) = semijacobi_ldiv(Q, P)
-\(Q::SemiclassicalJacobi, P::LanczosPolynomial) = semijacobi_ldiv(Q, P)
-function \(Q::SemiclassicalJacobi{T}, P::SemiclassicalJacobi{V}) where {T,V}
+copy(L::Ldiv{<:NormalizedBasisLayout,SemiclassicalJacobiLayout}) = copy(Ldiv{ApplyLayout{typeof(*)},SemiclassicalJacobiLayout}(L.A, L.B))
+copy(L::Ldiv{SemiclassicalJacobiLayout,<:NormalizedBasisLayout}) = copy(Ldiv{SemiclassicalJacobiLayout,ApplyLayout{typeof(*)}}(L.A, L.B))
+
+copy(L::Ldiv{ApplyLayout{typeof(*)},SemiclassicalJacobiLayout}) = copy(Ldiv{ApplyLayout{typeof(*)},BasisLayout}(L.A, L.B))
+copy(L::Ldiv{SemiclassicalJacobiLayout,ApplyLayout{typeof(*)}}) = copy(Ldiv{BasisLayout,ApplyLayout{typeof(*)}}(L.A, L.B))
+
+
+copy(L::Ldiv{MappedBasisLayout,SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
+copy(L::Ldiv{SemiclassicalJacobiLayout,MappedBasisLayout}) = semijacobi_ldiv(L.A, L.B)
+
+
+copy(L::Ldiv{SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
+copy(L::Ldiv{<:Any,SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
+function copy(L::Ldiv{SemiclassicalJacobiLayout,SemiclassicalJacobiLayout})
+    Q,P = L.A,L.B
     @assert Q.t == P.t
-    Q == P && return SquareEye{promote_type(T,V)}(∞)
+    Q == P && return SquareEye{eltype(L)}((axes(P,2),))
     M_Q = massmatrix(Q)
     M_P = massmatrix(P)
     L = P \ (SemiclassicalJacobiWeight(Q.t, Q.a-P.a, Q.b-P.b, Q.c-P.c) .* Q)
     inv(M_Q) * L' * M_P
 end
 
+\(A::LanczosPolynomial, B::SemiclassicalJacobi) = semijacobi_ldiv(A, B)
+\(A::SemiclassicalJacobi, B::LanczosPolynomial) = semijacobi_ldiv(A, B)
 function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
     wA,A = w_A.args
     wB,B = w_B.args
