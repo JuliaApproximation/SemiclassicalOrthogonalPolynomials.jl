@@ -384,11 +384,8 @@ end
         @test norm(triu(L[1:10,1:10],3)) ≤ 1000eps()
         @test L[:,5] isa Vcat
 
-        A,B,C = recurrencecoefficients(P)
-        α,β,γ = recurrencecoefficients(Q)
-
-        P[0.1,1]
-        Q[0.1,1]
+        A,B,C = recurrencecoefficients(P);
+        α,β,γ = recurrencecoefficients(Q);
 
         k = cumprod(A)
         κ = cumprod(α)
@@ -408,8 +405,6 @@ end
             @test Base.unsafe_getindex(Q,100,n+1) ≈ (κ[n]*100^n + ξ[n]*100^(n-1)) rtol=0.001
         end
 
-
-
         
         @test k[1]*P.P[0.1,1] ≈ L[1,2]
         n = 2
@@ -420,15 +415,14 @@ end
             @test L[n-1,n+1] ≈ ((n-1)*j[n]/κ[n-2] - n*k[n]*ξ[n-1]/(κ[n-2]κ[n-1]))*P.P[0.1,1]
         end
 
-        n = 3
         dv = n -> k[n]/κ[n-1]
         ev1 = n -> j[n]/k[n]
         ev2 = n -> ξ[n-1]/κ[n]
         ev3 = n -> k[n]/κ[n-2]
         # ev = n -> (n-1)*j[n]/κ[n-2] - n*k[n]*ξ[n-1]/(κ[n-2]κ[n-1])
-        @test dv(n+1) ≈ dv(n) * A[n+1]/α[n]
-
+        
         n = 3
+        @test dv(n+1) ≈ dv(n) * A[n+1]/α[n]
         @test ev1(n+1) ≈ ev1(n) + B[n+1]/A[n+1]
         @test ev2(n+1) ≈ ev2(n)*α[n]/α[n+1] + β[n]/(α[n]α[n+1])
         @test ev3(n+1) ≈ ev3(n) * A[n+1]/α[n-1]
