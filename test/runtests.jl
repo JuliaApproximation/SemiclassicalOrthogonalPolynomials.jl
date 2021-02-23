@@ -486,3 +486,5 @@ end
         @test X̃[1:10,1:10] ≈ X[1:10,1:10]
     end
 end
+
+include("test_twointerval.jl")
