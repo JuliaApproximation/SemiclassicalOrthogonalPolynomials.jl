@@ -44,7 +44,7 @@ end
         L = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W);
         @test bandwidths(L) == (1,0)
 
-        @testset "Relationship with Lanczos" begin
+        @time @testset "Relationship with Lanczos" begin
             P₋ = jacobi(0,-1/2,0..1)
             x = axes(P₋,1)
             y = @.(sqrt(x)*sqrt(2-x))
@@ -116,7 +116,7 @@ end
         end
     end
 
-    @testset "T and V" begin
+    @time @testset "T and V" begin
         T = SemiclassicalJacobi(2, -1/2, 0, -1/2)
         V = SemiclassicalJacobi(2, -1/2, 0, 1/2, T)
         w_T = orthogonalityweight(T)
@@ -180,7 +180,7 @@ end
         end
     end
 
-    @testset "U" begin
+    @time @testset "U" begin
         T = SemiclassicalJacobi(2, -1/2, 0, -1/2)
         W = SemiclassicalJacobi(2, 1/2, 0, -1/2, T)
         V = SemiclassicalJacobi(2, -1/2, 0, 1/2, T)
@@ -235,7 +235,7 @@ end
         @test U[:,1:20] \ exp.(x) ≈ u.args[2][1:20]
     end
 
-    @testset "Derivation" begin
+    @time @testset "Derivation" begin
         P₋ = jacobi(0,-1/2,0..1)
         P₊ = jacobi(0,1/2,0..1)
         x = axes(P₋,1)
@@ -295,12 +295,12 @@ end
     Q = SemiclassicalJacobi(t, 0, 0, 1, P)
     R = SemiclassicalJacobi(t, 1, 1, 1, P)
 
-    @test P[0.1,1:10] ≈ Normalized(legendre(0..1))[0.1,1:10]
+    @time @test P[0.1,1:10] ≈ Normalized(legendre(0..1))[0.1,1:10]
     @test P¹¹[0.1,1:10] ≈ Normalized(jacobi(1,1,0..1))[0.1,1:10]/Normalized(jacobi(1,1,0..1))[0.1,1]
     x = axes(P,1)
-    @test LanczosPolynomial(t .- x, legendre(0..1))[0.1,1:10] ≈ Q[0.1,1:10] / sqrt(sum(orthogonalityweight(Q)))
+    @time @test LanczosPolynomial(t .- x, legendre(0..1))[0.1,1:10] ≈ Q[0.1,1:10] / sqrt(sum(orthogonalityweight(Q)))
 
-    @testset "expansion" begin
+    @time @testset "expansion" begin
         @test (P * (P \ exp.(x)))[0.1] ≈ exp(0.1)
         @test (Q * (Q \ exp.(x)))[0.1] ≈ exp(0.1)
         @test (R * (R \ exp.(x)))[0.1] ≈ exp(0.1)
