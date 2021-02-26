@@ -3,14 +3,6 @@ import BandedMatrices: _BandedMatrix
 import SemiclassicalOrthogonalPolynomials: op_lowering
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight
 
-@testset "OrthogonalPolynomialRatio" begin
-    P = Legendre()
-    R = OrthogonalPolynomialRatio(P,0.1)
-    @test P[0.1,1:10] ./ P[0.1,2:11] ≈ R[1:10]
-    R = OrthogonalPolynomialRatio(P,-1)
-    @test R[1:10] ≈ fill(-1,10)
-end
-
 @testset "Jacobi" begin
     P = Normalized(Legendre())
     L = op_lowering(P,1)
@@ -205,10 +197,9 @@ end
             L̃_1 = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W);
             L̃_3 = inv(L̃_1[1:11,1:11])*L[1:11,1:10]
             @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L̃_3[1:11,1:10]
-            L̄_3 = SemiclassicalOrthogonalPolynomials.InvMulBidiagonal(L̃_1, L)
             L_3 = W \ (SemiclassicalJacobiWeight(2,0,0,1) .* U);
             @test L_3 isa ClassicalOrthogonalPolynomials.Bidiagonal
-            @test L̄_3[1:11,1:10] ≈ L̃_3 ≈ L_3[1:11,1:10]
+            @test L̃_3 ≈ L_3[1:11,1:10]
             @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L_3[1:11,1:10]
 
             R = U \ T;
@@ -363,82 +354,6 @@ end
     end
 end
 
-@testset "Derivative" begin
-    @testset "basic Derivative" begin
-        t = 2
-        P = SemiclassicalJacobi(t, -0.5, -0.5, -0.5)
-        Q = SemiclassicalJacobi(t, 0.5, 0.5, 0.5, P)
-
-        @test (Q \ P.P)[1:10,1:10] ≈ 0.6175596179729587*(Q \ P)[1:10,1:10]
-
-        x = axes(P,1)
-        D = Derivative(x)
-
-        for n = 3:10
-            u = (D * (P.P * [[zeros(n);1]; zeros(∞)]))
-            @test norm((Q \ u)[1:n-2]) ≤ 1000eps()
-        end
-
-        L = Q \ (D * P.P);
-        # L is bidiagonal
-        @test norm(triu(L[1:10,1:10],3)) ≤ 1000eps()
-        @test L[:,5] isa Vcat
-
-        A,B,C = recurrencecoefficients(P);
-        α,β,γ = recurrencecoefficients(Q);
-
-        k = cumprod(A)
-        κ = cumprod(α)
-        j = Vector{Float64}(undef, 100)
-        j[1] = B[1]
-        for n = 1:length(j)-1
-            j[n+1] = A[n+1]*j[n] + B[n+1]*k[n]
-        end
-        ξ = Vector{Float64}(undef, 100)
-        ξ[1] = β[1]
-        for n = 1:length(ξ)-1
-            ξ[n+1] = α[n+1]*ξ[n] + β[n+1]*κ[n]
-        end
-
-        for n = 3:5
-            @test Base.unsafe_getindex(P.P,100,n+1) ≈ (k[n]*100^n + j[n]*100^(n-1)) * P.P[0.1,1] rtol=0.001
-            @test Base.unsafe_getindex(Q,100,n+1) ≈ (κ[n]*100^n + ξ[n]*100^(n-1)) rtol=0.001
-        end
-
-        
-        @test k[1]*P.P[0.1,1] ≈ L[1,2]
-        n = 2
-        @test L[n,n+1] ≈ n*k[n]/κ[n-1]*P.P[0.1,1]
-        @test L[n-1,n+1] ≈ ((n-1)*j[n] - n*k[n]*ξ[n-1]/κ[n-1])*P.P[0.1,1]
-        for n = 3:6
-            @test L[n,n+1] ≈ n*k[n]/κ[n-1]*P.P[0.1,1]
-            @test L[n-1,n+1] ≈ ((n-1)*j[n]/κ[n-2] - n*k[n]*ξ[n-1]/(κ[n-2]κ[n-1]))*P.P[0.1,1]
-        end
-
-        dv = n -> k[n]/κ[n-1]
-        ev1 = n -> j[n]/k[n]
-        ev2 = n -> ξ[n-1]/κ[n]
-        ev3 = n -> k[n]/κ[n-2]
-        # ev = n -> (n-1)*j[n]/κ[n-2] - n*k[n]*ξ[n-1]/(κ[n-2]κ[n-1])
-        
-        n = 3
-        @test dv(n+1) ≈ dv(n) * A[n+1]/α[n]
-        @test ev1(n+1) ≈ ev1(n) + B[n+1]/A[n+1]
-        @test ev2(n+1) ≈ ev2(n)*α[n]/α[n+1] + β[n]/(α[n]α[n+1])
-        @test ev3(n+1) ≈ ev3(n) * A[n+1]/α[n-1]
-
-        @test ((n-1)*j[n]/k[n] - n*ξ[n-1]/κ[n-1]) * k[n]/κ[n-2] ≈
-            ((n-1)*(ev1(n-1) + B[n]/A[n]) - n*ξ[n-1]/κ[n-1]) * ev3(n) ≈
-            ((n-1)*(ev1(n-1) + B[n]/A[n]) - n*(α[n-1]*ev2(n-1) + β[n-1]/α[n-1])) * ev3(n)
-    end     
-
-    @testset "annuli D_-" begin
-        t = 2
-        P = SemiclassicalJacobi(t, 0, 0, 0)
-        Q = SemiclassicalJacobi(t, 1, 1, -1)
-    end
-end
-
 @testset "equilibrium measure" begin
     ρ = 0.5
     t = inv(1-ρ^2)
@@ -482,3 +397,4 @@ end
 end
 
 include("test_twointerval.jl")
+include("test_derivative.jl")
