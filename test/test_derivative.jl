@@ -13,8 +13,7 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate
         D = Derivative(x)
         D = Q \ (D*P)
 
-        D * (P \ exp.(x))
-        Q \ exp.(x)
+        @test D * (P \ exp.(x)) ≈ Q \ exp.(x)
     end
 
     @testset "Derivation" begin
