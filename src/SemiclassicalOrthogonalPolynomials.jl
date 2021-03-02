@@ -254,21 +254,9 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
 end
 
 \(A::SemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi) = (SemiclassicalJacobiWeight(A.t,0,0,0) .* A) \ w_B
-function \(A::SemiclassicalJacobi, w_B::BroadcastQuasiMatrix{<:Any,typeof(*),<:Tuple{SemiclassicalJacobiWeight,Normalized}})
-    w,B = arguments(w_B)
-    P,K = arguments(ApplyLayout{typeof(*)}(), B)
-    (A\ (w .* P)) * K
-end
 
-massmatrix(::Normalized{T}) where T = SquareEye{T}(∞)
 
-function massmatrix(P::SemiclassicalJacobi)
-    if P.a ≤ 0 && P.b ≤ 0 && P.c ≤ 0
-        Diagonal(Fill(sum(orthogonalityweight(P)),∞))
-    else
-        Diagonal(Normalized(P).scaling .^ (-2))
-    end
-end
+massmatrix(P::SemiclassicalJacobi) = Diagonal(Fill(sum(orthogonalityweight(P)),∞))
 
 @simplify function *(Ac::QuasiAdjoint{<:Any,<:SemiclassicalJacobi}, wB::WeightedBasis{<:Any,<:SemiclassicalJacobiWeight,<:SemiclassicalJacobi})
     A = parent(Ac)

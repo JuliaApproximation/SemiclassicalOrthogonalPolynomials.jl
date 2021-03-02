@@ -34,6 +34,7 @@ end
         X = jacobimatrix(T)
         A, B, C = recurrencecoefficients(T)
         L = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W);
+        R = W \ T;
         @test bandwidths(L) == (1,0)
 
         @time @testset "Relationship with Lanczos" begin
@@ -99,11 +100,7 @@ end
         @testset "Mass matrix" begin
             @test (T'*(w_T .* T))[1:10,1:10] ≈ sum(w_T)I
             M = W'*(w_W .* W)
-            # emperical from mathematica with recurrence
-            # broken since I changed the scaling
-            @test_broken M[1:3,1:3] ≈ Diagonal([0.5707963267948967,0.5600313808965515,0.5574362259623227])
-
-            R = W \ T;
+            @test (sum(w_T)*inv(R)'L)[1:10,1:10] ≈ M[1:10,1:10]
             @test T[0.1,1:10]' ≈ W[0.1,1:10]' * R[1:10,1:10]
         end
     end
