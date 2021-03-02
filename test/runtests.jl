@@ -3,21 +3,18 @@ import BandedMatrices: _BandedMatrix
 import SemiclassicalOrthogonalPolynomials: op_lowering, initialα, αcoefficients!, evalϕn, backαcoeff!, αdirect!, αdirect
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight
 
-@testset "OrthogonalPolynomialRatio" begin
-    P = Legendre()
-    R = OrthogonalPolynomialRatio(P,0.1)
-    @test P[0.1,1:10] ./ P[0.1,2:11] ≈ R[1:10]
-end
-
 @testset "Jacobi" begin
     P = Normalized(Legendre())
     L = op_lowering(P,1)
     L̃ = P \ WeightedJacobi(1,0)
     # off by scaling
     @test (L ./ L̃)[5,5] ≈ (L ./ L̃)[6,5]
+    L = op_lowering(P,-1)
+    L̃ = P \ WeightedJacobi(0,1)
+    @test (L ./ L̃)[5,5] ≈ (L ./ L̃)[6,5]
 
     t = 2
-    P̃ = Normalized(SemiclassicalJacobi(t, 0, 0, 0))
+    P̃ = SemiclassicalJacobi(t, 0, 0, 0)
     @test P̃[0.1,1:10] ≈ P[2*0.1-1,1:10]/P[0.1,1]
 end
 
@@ -36,10 +33,11 @@ end
         w_W = orthogonalityweight(W)
         X = jacobimatrix(T)
         A, B, C = recurrencecoefficients(T)
-        L = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W)
+        L = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W);
+        R = W \ T;
         @test bandwidths(L) == (1,0)
 
-        @testset "Relationship with Lanczos" begin
+        @time @testset "Relationship with Lanczos" begin
             P₋ = jacobi(0,-1/2,0..1)
             x = axes(P₋,1)
             y = @.(sqrt(x)*sqrt(2-x))
@@ -52,8 +50,8 @@ end
             W̃ = LanczosPolynomial(@.(sqrt(x)/sqrt(2-x)), P₊)
             A_W̃, B_W̃, C_W̃ = recurrencecoefficients(W̃)
 
-            @test Normalized(W)[0.1,1:10] ≈ W̃[0.1,1:10]
-
+            @test Normalized(W)[0.1,1:10] ≈ W̃[0.1,1]W[0.1,1:10] ≈ W̃[0.1,1:10]
+            
             # this expresses W in terms of W̃
             kᵀ = cumprod(A)
             k_W̃ = cumprod(A_W̃)
@@ -79,8 +77,8 @@ end
                 @test L[2:4,2:4] \ X[2:4,3:4]*L[3:4,3] ≈ X_W_N[2:4,3]
 
                 x = axes(W,1)
-                X_W = W \ (x .* W)
-                @test X_W isa ConjugateTridiagonal
+                X_W = W \ (x .* W);
+                @test X_W isa ClassicalOrthogonalPolynomials.SymTridiagonal
                 @test X_W[1:11,1:10] ≈ X_W_N
             end
         end
@@ -88,7 +86,7 @@ end
         @testset "Evaluation" begin
             x = axes(W,1)
             A_W,B_W,C_W = recurrencecoefficients(W)
-            X_W = W \ (x .* W)
+            X_W = W \ (x .* W);
 
             @test W[0.1,2] ≈ A_W[1]*0.1 + B_W[1]
             @test W[0.1,3] ≈ (A_W[2]*0.1 + B_W[2])*(A_W[1]*0.1 + B_W[1]) - C_W[2]
@@ -96,29 +94,25 @@ end
             @test W[0.1,1:11]'*X_W[1:11,1:10] ≈ 0.1 * W[0.1,1:10]'
             @test 0.1*W[0.1,1:10]' ≈ T[0.1,1:11]' * L[1:11,1:10]
 
-            @test  Normalized(W)[0.1,1:3] ≈ [1.323608096788513,-2.6865315578413216,2.9959128991503907]
+            @test  W[0.1,1:3] ≈ [1,-2.029703176007828,2.2634440711109365]
         end
 
         @testset "Mass matrix" begin
             @test (T'*(w_T .* T))[1:10,1:10] ≈ sum(w_T)I
             M = W'*(w_W .* W)
-            # emperical from mathematica with recurrence
-            # broken since I changed the scaling
-            @test_broken M[1:3,1:3] ≈ Diagonal([0.5707963267948967,0.5600313808965515,0.5574362259623227])
-
-            R = W \ T;
+            @test (sum(w_T)*inv(R)'L)[1:10,1:10] ≈ M[1:10,1:10]
             @test T[0.1,1:10]' ≈ W[0.1,1:10]' * R[1:10,1:10]
         end
     end
 
-    @testset "T and V" begin
+    @time @testset "T and V" begin
         T = SemiclassicalJacobi(2, -1/2, 0, -1/2)
         V = SemiclassicalJacobi(2, -1/2, 0, 1/2, T)
         w_T = orthogonalityweight(T)
         w_V = orthogonalityweight(V)
         X = jacobimatrix(T)
         A, B, C = recurrencecoefficients(T)
-        L = T \ (SemiclassicalJacobiWeight(2,0,0,1) .* V)
+        L = T \ (SemiclassicalJacobiWeight(2,0,0,1) .* V);
         @test eltype(L) == Float64
         @test bandwidths(L) == (1,0)
 
@@ -152,7 +146,7 @@ end
 
                 x = axes(V,1)
                 X_V = V \ (x .* V)
-                @test X_V isa ConjugateTridiagonal
+                @test X_V isa ClassicalOrthogonalPolynomials.SymTridiagonal
                 @test X_V[1:11,1:10] ≈ X_V_N
             end
         end
@@ -175,7 +169,7 @@ end
         end
     end
 
-    @testset "U" begin
+    @time @testset "U" begin
         T = SemiclassicalJacobi(2, -1/2, 0, -1/2)
         W = SemiclassicalJacobi(2, 1/2, 0, -1/2, T)
         V = SemiclassicalJacobi(2, -1/2, 0, 1/2, T)
@@ -200,10 +194,9 @@ end
             L̃_1 = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W);
             L̃_3 = inv(L̃_1[1:11,1:11])*L[1:11,1:10]
             @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L̃_3[1:11,1:10]
-            L̄_3 = SemiclassicalOrthogonalPolynomials.InvMulBidiagonal(L̃_1, L)
-            @test L̄_3[1:11,1:10] ≈ L̃_3
-
             L_3 = W \ (SemiclassicalJacobiWeight(2,0,0,1) .* U);
+            @test L_3 isa ClassicalOrthogonalPolynomials.Bidiagonal
+            @test L̃_3 ≈ L_3[1:11,1:10]
             @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L_3[1:11,1:10]
 
             R = U \ T;
@@ -211,7 +204,7 @@ end
         end
 
         @testset "Evaluation" begin
-            @test Normalized(U)[0.1,1:4] ≈ [1.1283791670955114, -2.03015300715061, 2.131688648563451, -1.3816046198529939]
+            @test U[0.1,1:4] ≈ [1.1283791670955114, -2.03015300715061, 2.131688648563451, -1.3816046198529939] * sqrt(sum(SemiclassicalJacobiWeight(2, 1/2,0,1/2)))
         end
     end
 
@@ -230,7 +223,7 @@ end
         @test U[:,1:20] \ exp.(x) ≈ u.args[2][1:20]
     end
 
-    @testset "Derivation" begin
+    @time @testset "Derivation" begin
         P₋ = jacobi(0,-1/2,0..1)
         P₊ = jacobi(0,1/2,0..1)
         x = axes(P₋,1)
@@ -267,29 +260,6 @@ end
         end
     end
 
-    @testset "Normalized" begin
-        T = SemiclassicalJacobi(2, -0.5, 0, -0.5)
-        T̃ = Normalized(T)
-        @test T̃[0.1,1:10] ≈ T[0.1,1:10]/sqrt(sum(orthogonalityweight(T)))
-        U = SemiclassicalJacobi(2, 0.5, 0, 0.5, T)
-        Ũ = Normalized(U)
-        K = U \ Ũ
-        Ki = Ũ \ U
-        @test Ũ[0.1,1:10]' ≈ U[0.1,1:10]'* K[1:10,1:10]
-        @test Ũ[0.1,1:10]'* Ki[1:10,1:10] ≈ U[0.1,1:10]'
-        X_U = jacobimatrix(U)
-        X_Ũ = jacobimatrix(Ũ);
-        @test X_Ũ[1:10,1:10] ≈ Ki[1:10,1:10] * X_U[1:10,1:10] * K[1:10,1:10]
-        R = U \ T;
-        R̃ = Ũ \ T;
-        @test R̃[1:10,1:10] ≈ Ki[1:10,1:10] * R[1:10,1:10]
-        R̃ = Ũ \ T̃;
-        @test R̃[1:10,1:10] ≈ Ki[1:10,1:10] * R[1:10,1:10]/sqrt(sum(orthogonalityweight(T)))
-
-        L̃ = T \ (SemiclassicalJacobiWeight(2,1,0,1) .* Ũ);
-        @test (2-0.1)*0.1*Ũ[0.1,1:10]' ≈ T[0.1,1:12]'* L̃[1:12,1:10]
-    end
-
     @testset "P" begin
         P = SemiclassicalJacobi(2.0,0,0,0)
         P̃ = Normalized(legendre(0..1))
@@ -313,12 +283,12 @@ end
     Q = SemiclassicalJacobi(t, 0, 0, 1, P)
     R = SemiclassicalJacobi(t, 1, 1, 1, P)
 
-    @test P[0.1,1:10] ≈ Normalized(legendre(0..1))[0.1,1:10]
-    @test Normalized(P¹¹)[0.1,1:10] ≈ 2Normalized(jacobi(1,1,0..1))[0.1,1:10]
+    @time @test P[0.1,1:10] ≈ Normalized(legendre(0..1))[0.1,1:10]
+    @test P¹¹[0.1,1:10] ≈ Normalized(jacobi(1,1,0..1))[0.1,1:10]/Normalized(jacobi(1,1,0..1))[0.1,1]
     x = axes(P,1)
-    @test LanczosPolynomial(t .- x, legendre(0..1))[0.1,1:10] ≈ Normalized(Q)[0.1,1:10]
+    @time @test LanczosPolynomial(t .- x, legendre(0..1))[0.1,1:10] ≈ Q[0.1,1:10] / sqrt(sum(orthogonalityweight(Q)))
 
-    @testset "expansion" begin
+    @time @testset "expansion" begin
         @test (P * (P \ exp.(x)))[0.1] ≈ exp(0.1)
         @test (Q * (Q \ exp.(x)))[0.1] ≈ exp(0.1)
         @test (R * (R \ exp.(x)))[0.1] ≈ exp(0.1)
@@ -343,12 +313,13 @@ end
     end
 
     @testset "single raising" begin
-        R_0 = Normalized(SemiclassicalJacobi(t, 1, 0, 0, P)) \ Normalized(P);
-        R_1 = Normalized(SemiclassicalJacobi(t, 0, 1, 0, P)) \ Normalized(P);
-        R_t = Normalized(SemiclassicalJacobi(t, 0, 0, 1, P)) \ Normalized(P);
+        R_0 = SemiclassicalJacobi(t, 1, 0, 0, P) \ P;
+        R_1 = SemiclassicalJacobi(t, 0, 1, 0, P) \ P;
+        R_t = SemiclassicalJacobi(t, 0, 0, 1, P) \ P;
 
-        @test R_0[999,999:1000] ≈ [0.5,0.5] atol=1e-2
-        @test R_1[999,999:1000] ≈ [0.5,-0.5] atol=1e-2
+        sqrt(0.5)
+        @test R_0[999,999:1000] ≈ sqrt.([0.5,0.5]) atol=1e-2
+        @test R_1[999,999:1000] ≈ [sqrt(0.5),-sqrt(0.5)] atol=1e-2
         @test R_t[200,201]/R_t[200,200] ≈ -1/(2*φ(2t-1)) atol=1e-2 
     end
 
@@ -379,6 +350,7 @@ end
         @test R[200,203]/R[200,200] ≈ -c atol=1e-2
     end
 end
+
 
 @testset "OPs for a=b=0, c=-1" begin
     @testset "inital α" begin
@@ -547,75 +519,26 @@ end
             u = (D * (P.P * [[zeros(n);1]; zeros(∞)]))
             @test norm((Q \ u)[1:n-2]) ≤ 1000eps()
         end
-
-        L = Q \ (D * P.P);
-        # L is bidiagonal
-        @test norm(triu(L[1:10,1:10],3)) ≤ 1000eps()
-        @test L[:,5] isa Vcat
-
-        A,B,C = recurrencecoefficients(P)
-        α,β,γ = recurrencecoefficients(Q)
-
-        P[0.1,1]
-        Q[0.1,1]
-
-        k = cumprod(A)
-        κ = cumprod(α)
-        j = Vector{Float64}(undef, 100)
-        j[1] = B[1]
-        for n = 1:length(j)-1
-            j[n+1] = A[n+1]*j[n] + B[n+1]*k[n]
-        end
-        ξ = Vector{Float64}(undef, 100)
-        ξ[1] = β[1]
-        for n = 1:length(ξ)-1
-            ξ[n+1] = α[n+1]*ξ[n] + β[n+1]*κ[n]
-        end
-
-        for n = 3:5
-            @test Base.unsafe_getindex(P.P,100,n+1) ≈ (k[n]*100^n + j[n]*100^(n-1)) * P.P[0.1,1] rtol=0.001
-            @test Base.unsafe_getindex(Q,100,n+1) ≈ (κ[n]*100^n + ξ[n]*100^(n-1)) rtol=0.001
-        end
-
-
-
-        
-        @test k[1]*P.P[0.1,1] ≈ L[1,2]
-        n = 2
-        @test L[n,n+1] ≈ n*k[n]/κ[n-1]*P.P[0.1,1]
-        @test L[n-1,n+1] ≈ ((n-1)*j[n] - n*k[n]*ξ[n-1]/κ[n-1])*P.P[0.1,1]
-        for n = 3:6
-            @test L[n,n+1] ≈ n*k[n]/κ[n-1]*P.P[0.1,1]
-            @test L[n-1,n+1] ≈ ((n-1)*j[n]/κ[n-2] - n*k[n]*ξ[n-1]/(κ[n-2]κ[n-1]))*P.P[0.1,1]
-        end
-
-        n = 3
-        dv = n -> k[n]/κ[n-1]
-        ev1 = n -> j[n]/k[n]
-        ev2 = n -> ξ[n-1]/κ[n]
-        ev3 = n -> k[n]/κ[n-2]
-        # ev = n -> (n-1)*j[n]/κ[n-2] - n*k[n]*ξ[n-1]/(κ[n-2]κ[n-1])
-        @test dv(n+1) ≈ dv(n) * A[n+1]/α[n]
-
-        n = 3
-        @test ev1(n+1) ≈ ev1(n) + B[n+1]/A[n+1]
-        @test ev2(n+1) ≈ ev2(n)*α[n]/α[n+1] + β[n]/(α[n]α[n+1])
-        @test ev3(n+1) ≈ ev3(n) * A[n+1]/α[n-1]
-
-        @test ((n-1)*j[n]/k[n] - n*ξ[n-1]/κ[n-1]) * k[n]/κ[n-2] ≈
-            ((n-1)*(ev1(n-1) + B[n]/A[n]) - n*ξ[n-1]/κ[n-1]) * ev3(n) ≈
-            ((n-1)*(ev1(n-1) + B[n]/A[n]) - n*(α[n-1]*ev2(n-1) + β[n-1]/α[n-1])) * ev3(n)
-    end     
-
-    @testset "annuli D_-" begin
-        t = 2
-        P = SemiclassicalJacobi(t, 0, 0, 0)
-        Q = SemiclassicalJacobi(t, 1, 1, -1)
     end
 end
+@testset "equilibrium measure" begin
+    ρ = 0.5
+    t = inv(1-ρ^2)
+    P = SemiclassicalJacobi(t, -1/2, -1/2, 0)
+    Q = SemiclassicalJacobi(t, -1/2, -1/2, 1/2)
 
+    P̃ = SemiclassicalJacobi(t, 1/2, 1/2, -1);
+    Q̃ = SemiclassicalJacobi(t, 1/2, 1/2, 0, Q);
+
+    jacobimatrix(P)[1:5,1:5]
+    jacobimatrix(P̃)[1:5,1:5]
+
+    jacobimatrix(Q)[1:5,1:5]
+    jacobimatrix(Q̃)[1:5,1:5]
+end
 
 @testset "Normalized" begin
+    # here we derive the formula for the Jacobi operators
     for (a,b,c) in ((-0.5,-0.4,-0.3),(0,0,0))
         P = SemiclassicalJacobi(2,a,b,c)
         Q = SemiclassicalJacobi(2,a,b,c+1,P)
@@ -640,3 +563,5 @@ end
     end
 end
 
+include("test_twointerval.jl")
+include("test_derivative.jl")
