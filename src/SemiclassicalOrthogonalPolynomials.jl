@@ -20,7 +20,7 @@ export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, 
 """"
     SemiclassicalJacobiWeight(t, a, b, c)
 
-is a quasi-vector corresponding to the weight `x^a * (1-x)^b * (t-x)^c`
+is a quasi-vector corresponding to the weight `x^a * (1-x)^b * (t-x)^c` on `x in 0..1`
 """
 struct SemiclassicalJacobiWeight{T} <: Weight{T}
     t::T
