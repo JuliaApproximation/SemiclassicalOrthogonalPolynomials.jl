@@ -9,7 +9,7 @@ import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout, _BandedMa
 import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAbstractVector, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector, AccumulateAbstractVector
 import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedBasisLayout,
                                         Bidiagonal, Tridiagonal, SymTridiagonal, symtridiagonalize, normalizationconstant,
-                                        OrthogonalPolynomialRatio, normalized_recurrencecoefficients
+                                        OrthogonalPolynomialRatio, normalized_recurrencecoefficients, Weighted
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout
 import FillArrays: SquareEye
