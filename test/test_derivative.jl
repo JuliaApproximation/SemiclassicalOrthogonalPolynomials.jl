@@ -1,5 +1,5 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, LazyArrays, Test
-import ClassicalOrthogonalPolynomials: recurrencecoefficients, _BandedMatrix, _p0
+import ClassicalOrthogonalPolynomials: recurrencecoefficients, _BandedMatrix, _p0, Weighted
 import LazyArrays: Accumulate, AccumulateAbstractVector
 import SemiclassicalOrthogonalPolynomials: MulAddAccumulate
 
@@ -8,7 +8,7 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate
     @testset "basics" begin
         t = 2
         P = SemiclassicalJacobi(t, -0.5, -0.5, -0.5)
-        Q = SemiclassicalJacobi(t, 0.5, 0.5, 0.5, P)
+        Q = SemiclassicalJacobi(t,  0.5,  0.5,  0.5, P)
         x = axes(P,1)
         D = Derivative(x)
         D = Q \ (D*P)
@@ -19,7 +19,7 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate
     @testset "Derivation" begin
         t = 2
         P = SemiclassicalJacobi(t, -0.5, -0.5, -0.5)
-        Q = SemiclassicalJacobi(t, 0.5, 0.5, 0.5, P)
+        Q = SemiclassicalJacobi(t,  0.5,  0.5,  0.5, P)
 
         @test (Q \ P.P)[1:10,1:10] ≈ 0.6175596179729587*(Q \ P)[1:10,1:10]
 
@@ -119,9 +119,16 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate
         # accumulate_abs(*,
     end
 
-    @testset "annuli D_-" begin
+    @testset "annuli Weighted" begin
         t = 2
         P = SemiclassicalJacobi(t, 0, 0, 0)
-        Q = SemiclassicalJacobi(t, 1, 1, -1)
+        Q = SemiclassicalJacobi(t, 1, 1, 1, P)
+        D = Derivative(axes(P,1))
+        @test (D * Weighted(Q))[0.1,1:5]' ≈ (D * P)[0.1,1:8]'* (P \ Weighted(Q))[1:8,1:5]
+
+        P = SemiclassicalJacobi(t, -1/2, -1/2, -1/2)
+        Q = SemiclassicalJacobi(t, 1/2, 1/2, 1/2, P)
+        h = 0.00001
+        @test (D * Weighted(Q))[0.1,1:5] ≈  (Weighted(Q)[0.1+h,1:5] - Weighted(Q)[0.1,1:5])/h atol=100h
     end
 end
