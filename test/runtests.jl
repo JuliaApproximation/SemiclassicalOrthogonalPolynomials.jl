@@ -506,6 +506,7 @@ end
     @testset "OPs for a=b=0, c=-1 - Jacobi matrix basics" begin
         t = BigFloat("1.2")
         Jinf = JacobiMatrixM1(t)
+        @test size(Jinf) == (∞,∞)
         Jinit = initialjacobi(t,20)
         Jfill = jacobiopm1extension!(initialjacobi(t,20),Array(10:20),t)
         @test isbanded(Jinf.data)

@@ -54,10 +54,6 @@ size(K::JacobiMatrixM1) = (∞,∞)
 cache_filldata!(J::JacobiMatrixM1, inds) = jacobiopm1extension!(J.data, inds, J.t)
 
 # force square-shaped LazyArrays caching and resizing
-function getindex(J::JacobiMatrixM1{T}, I::CartesianIndex) where T
-    resizedata!(J, Tuple(I))
-    J.data[I]
-end
 function getindex(J::JacobiMatrixM1{T}, I::Vararg{Int,2}) where T
     resizedata!(J, Tuple([I...]))
     getindex(J.data,I...)
