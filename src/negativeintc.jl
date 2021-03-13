@@ -53,36 +53,33 @@ size(K::JacobiMatrixM1) = (∞,∞)
 # data filling
 cache_filldata!(J::JacobiMatrixM1, inds) = jacobiopm1extension!(J.data, inds, J.t)
 
-# force square-shaped LazyArrays caching and resizing
+# LazyArrays caching and resizing for tridiagonal banded matrix
 function getindex(J::JacobiMatrixM1{T}, I::Vararg{Int,2}) where T
     resizedata!(J, Tuple([I...]))
-    getindex(J.data,I...)
+    getindex(Tridiagonal(J.data[1][1:end-1],J.data[2],J.data[3][2:end]),I...)
 end
 function getindex(J::JacobiMatrixM1{T}, I::Vararg{UnitRange,2}) where T
     resizedata!(J, (maximum(I[1]),maximum(I[2])))
-    view(J.data,I[1],I[2])
+    view(Tridiagonal(J.data[1][1:end-1],J.data[2],J.data[3][2:end]),I[1],I[2])
 end
 
 function resizedata!(J::JacobiMatrixM1, nm) 
-    olddata = J.data
-    νμ = size(olddata)
-    nm = (maximum(nm),maximum(nm))
-    nm = max.(νμ,nm)
-    nm = (maximum(nm),maximum(nm))
+    olddata = copy(J.data)
+    νμ = length(olddata[1])
+    nm = maximum(nm)
+    nm = max(νμ,nm)
     if νμ ≠ nm
-        J.data = similar(olddata,maximum(nm),maximum(nm))
-        for j = 1:maximum(νμ)
-            for ii = 1:maximum(νμ)
-                if (ii in [j-1,j,j+1])
-                    J.data[j,ii] = olddata[j,ii]
-                end
-            end
-        end
+        J.data[1] = similar(olddata[1],maximum(nm))
+        J.data[2] = similar(olddata[2],maximum(nm))
+        J.data[3] = similar(olddata[3],maximum(nm))
+        J.data[1][1:νμ] = olddata[1][1:νμ]
+        J.data[2][1:νμ] = olddata[2][1:νμ]
+        J.data[3][1:νμ] = olddata[3][1:νμ]
     end
-    if maximum(nm) > maximum(νμ)
-        inds = Array(maximum(νμ)-1:maximum(nm))
+    if maximum(nm) > νμ
+        inds = Array(νμ-1:maximum(nm))
         cache_filldata!(J, inds)
-        J.datasize = nm
+        J.datasize = (nm,nm)
     end
     J
 end
@@ -103,14 +100,9 @@ function jacobiopm1extension!(J,inds,t)
         N = (BigInt(m):BigInt(n-1))
         SuperD = [BigFloat("0")]
         append!(SuperD,(-1)*(N.-1)./(2 .*N.-1).*α0[N]./α0[N.-1])
-    newdata = (BandedMatrices._BandedMatrix(Vcat(SuperD',D',SubD'),(1:length(m:n)),1,1))
-    for j in inds
-        for ii in inds
-            if (ii in [j-1,j,j+1])
-                 J[ii,j] = newdata[ii-m+1,j-m+1]
-            end
-        end
-    end
+    J[1][m:n] = SubD
+    J[2][m:n] = D
+    J[3][m:n] = SuperD
     J
 end
 
@@ -132,7 +124,7 @@ function initialjacobi(t,n)
         SuperD = [BigFloat("0"),(3*α0[1]^2-2*α0[1]*α0[2]-1)/BigInt(3)]
         append!(SuperD,(-1)*(N.-1)./(2 .*N.-1).*α0[N]./α0[N.-1])
     # build operator
-    return BandedMatrices._BandedMatrix(Vcat(SuperD',D',SubD'),(1:n),1,1)[1:n,1:n]
+    return [SubD,D,SuperD]
 end
 
 # multiply to convert from OPs wrt 1/(t-x) to Legendre. Use \ to convert from Legendre to OPs wrt 1/(t-x).

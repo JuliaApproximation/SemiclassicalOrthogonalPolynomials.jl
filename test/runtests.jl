@@ -509,16 +509,7 @@ end
         @test size(Jinf) == (∞,∞)
         Jinit = initialjacobi(t,20)
         Jfill = jacobiopm1extension!(initialjacobi(t,20),Array(10:20),t)
-        @test isbanded(Jinf.data)
-        @test isbanded(Jinit)
-        @test isbanded(Jfill)
         @test Jfill ≈ Jinit
-        # still seeing some odd getindex behavior, for now this works
-        for j = 1:20
-            for i = 1:20
-                @test Jinf[i,j] ≈ Jinit[i,j]
-            end
-        end
     end
     
     @testset "OPs for a=b=0, c=-1 - Jacobi matrix application" begin
