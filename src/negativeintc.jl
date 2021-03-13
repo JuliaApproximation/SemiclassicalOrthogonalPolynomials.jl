@@ -102,7 +102,7 @@ function jacobiopm1extension!(J,inds,t)
         append!(SuperD,(-1)*(N.-1)./(2 .*N.-1).*α0[N]./α0[N.-1])
     J[1][m:n] = SubD
     J[2][m:n] = D
-    J[3][m:n] = SuperD
+    J[3][m+1:n] = SuperD[2:end]
     J
 end
 
