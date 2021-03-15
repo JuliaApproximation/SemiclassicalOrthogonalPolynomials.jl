@@ -1,4 +1,4 @@
-using SemiclassicalOrthogonalPolynomials
+using SemiclassicalOrthogonalPolynomials, Test
 
 function interlace(a::AbstractVector{S},b::AbstractVector{V}) where {S<:Number,V<:Number}
     na=length(a);nb=length(b)
@@ -27,7 +27,7 @@ end
     t = inv(1-ρ^2)
 
     P = SemiclassicalJacobi(t, a, b, c-1/2)
-    Q = SemiclassicalJacobi(t, a, b, c+1/2)
+    Q = SemiclassicalJacobi(t, a, b, c+1/2, P)
 
     L = P \ (SemiclassicalJacobiWeight(t,0,0,1) .* Q);
 
@@ -44,10 +44,13 @@ end
         @test x * p(n,x) ≈  (p(n-1,x) * L[m,m-1] + p(n+1,x) * L[m,m])/L[1,1]
     end
 
-    dv = L.dv[1:10]
-    ev = L.ev[1:10]
-    J = Tridiagonal(interlace((1-ρ^2) * dv,ev/L[1,1]), zeros(21), interlace(dv/L[1,1], (1-ρ^2) * ev));
-    @test x * p.(0:19,x) ≈ J[1:end-1,:] * p.(0:20,x)
+    n =20
+    ev = L.ev[1:n]
+    dv = L.dv[1:n]
+    J = Tridiagonal(interlace((1-ρ^2) * dv,ev/L[1,1]), zeros(2n+1), interlace(dv/L[1,1], (1-ρ^2) * ev));
+    @test x * p.(0:2n-1,x) ≈ J[1:end-1,:] * p.(0:2n,x)
+    ρ
+    sort(eigvals(Matrix(J[2:end,2:end])); lt=(x,y) -> isless(abs(x),abs(y)))
 end
 
 @testset "Chebyshev U case" begin

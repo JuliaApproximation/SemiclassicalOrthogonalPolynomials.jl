@@ -295,6 +295,16 @@ end
     end
 end
 
+@testset "Hierarchy" begin
+    P = SemiclassicalJacobi(2, 0, 0, 0)
+    @time    P[0.1,1:100_000];
+    Q = SemiclassicalJacobi(2, 0, 0, 1, P);
+    @time    Q[0.1,1:200]
+    X = jacobimatrix(Q)
+    n = 1_000; @time B = X[1:n,1:n];
+    @ent recurrencecoefficients(Q)
+end
+
 @testset "Semiclassical operator asymptotics" begin
     t = 2.2
     P = SemiclassicalJacobi(t, 0, 0, 0)

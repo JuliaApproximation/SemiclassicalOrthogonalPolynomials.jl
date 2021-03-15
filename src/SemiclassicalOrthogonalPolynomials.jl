@@ -53,6 +53,31 @@ function summary(io::IO, P::SemiclassicalJacobiWeight)
     print(io, "x^$a * (1-x)^$b * ($t-x)^$c")
 end
 
+
+"""
+   RaisedOP(P, y)
+
+gives the OPs w.r.t. (y - x) .* w based on lowering to Q.
+"""
+
+struct RaisedOP{T, QQ, LL<:OrthogonalPolynomialRatio} <: OrthogonalPolynomial{T}
+    Q::QQ
+    ℓ::LL
+end
+
+RaisedOP(Q, ℓ::OrthogonalPolynomialRatio) = RaisedOP{eltype(Q),typeof(Q),typeof(ℓ)}(Q, ℓ)
+RaisedOP(Q, y::Number) = RaisedOP(Q, OrthogonalPolynomialRatio(Q,y))
+
+function jacobimatrix(P::RaisedOP{T}) where T
+    ℓ = P.ℓ
+    X = jacobimatrix(P.Q)
+    a,b = diagonaldata(X), supdiagonaldata(X)
+    # non-normalized lower diag of Jacobi
+    v = Vcat(zero(T),b .* ℓ)
+    c = BroadcastVector((ℓ,a,b,sa,v) -> ℓ*a + b - b*ℓ^2 - sa*ℓ + ℓ*v, ℓ, a, b, a[2:∞], v)
+    Tridiagonal(c, BroadcastVector((ℓ,a,b,v) -> a - b * ℓ + v, ℓ,a,b,v), b)
+end
+
 """
    SemiclassicalJacobi(t, a, b, c)
 
@@ -63,9 +88,8 @@ struct SemiclassicalJacobi{T} <: OrthogonalPolynomial{T}
     a::T
     b::T
     c::T
-    P # We need to store the basic case where ã,b̃,c̃ = mod(a,-1),mod(b,-1),mod(c,-1)
-          # in order to compute lowering operators, etc.
-    SemiclassicalJacobi{T}(t::T,a::T,b::T,c::T,P) where T = new{T}(t,a,b,c,P)
+    X::AbstractMatrix{T}
+    SemiclassicalJacobi{T}(t::T,a::T,b::T,c::T,X::AbstractMatrix{T}) where T = new{T}(t,a,b,c,X)
 end
 
 const WeightedSemiclassicalJacobi{T} = WeightedBasis{T,<:SemiclassicalJacobiWeight,<:SemiclassicalJacobi}
@@ -96,44 +120,6 @@ function SemiclassicalJacobi(t, a::Int, b::Int, c::Int)
     SemiclassicalJacobi(t, a, b, c, P)
 end
 
-copy(P::SemiclassicalJacobi) = P
-axes(P::SemiclassicalJacobi) = axes(P.P)
-
-==(A::SemiclassicalJacobi, B::SemiclassicalJacobi) = A.t == B.t && A.a == B.a && A.b == B.b && A.c == B.c
-==(::AbstractQuasiMatrix, ::SemiclassicalJacobi) = false
-==(::SemiclassicalJacobi, ::AbstractQuasiMatrix) = false
-
-orthogonalityweight(P::SemiclassicalJacobi) = SemiclassicalJacobiWeight(P.t, P.a, P.b, P.c)
-
-function summary(io::IO, P::SemiclassicalJacobi)
-    t,a,b,c = P.t,P.a,P.b,P.c
-    print(io, "SemiclassicalJacobi with weight x^$a * (1-x)^$b * ($t-x)^$c")
-end
-
-"""
-   RaisedOP(P, y)
-
-gives the OPs w.r.t. (y - x) .* w based on lowering to Q.
-"""
-
-struct RaisedOP{T, QQ, LL<:OrthogonalPolynomialRatio} <: OrthogonalPolynomial{T}
-    Q::QQ
-    ℓ::LL
-end
-
-RaisedOP(Q, ℓ::OrthogonalPolynomialRatio) = RaisedOP{eltype(Q),typeof(Q),typeof(ℓ)}(Q, ℓ)
-RaisedOP(Q, y::Number) = RaisedOP(Q, OrthogonalPolynomialRatio(Q,y))
-
-function jacobimatrix(P::RaisedOP{T}) where T
-    ℓ = P.ℓ
-    X = jacobimatrix(P.Q)
-    a,b = diagonaldata(X), supdiagonaldata(X)
-    # non-normalized lower diag of Jacobi
-    v = Vcat(zero(T),b .* ℓ)
-    c = BroadcastVector((ℓ,a,b,sa,v) -> ℓ*a + b - b*ℓ^2 - sa*ℓ + ℓ*v, ℓ, a, b, a[2:∞], v)
-    Tridiagonal(c, BroadcastVector((ℓ,a,b,v) -> a - b * ℓ + v, ℓ,a,b,v), b)
-end
-
 """
    cache_abstract(A)
 
@@ -159,6 +145,23 @@ function jacobimatrix(P::SemiclassicalJacobi{T}) where T
         error("Implement")
     end
 end
+
+copy(P::SemiclassicalJacobi) = P
+axes(P::SemiclassicalJacobi) = axes(P.P)
+
+==(A::SemiclassicalJacobi, B::SemiclassicalJacobi) = A.t == B.t && A.a == B.a && A.b == B.b && A.c == B.c
+==(::AbstractQuasiMatrix, ::SemiclassicalJacobi) = false
+==(::SemiclassicalJacobi, ::AbstractQuasiMatrix) = false
+
+orthogonalityweight(P::SemiclassicalJacobi) = SemiclassicalJacobiWeight(P.t, P.a, P.b, P.c)
+
+function summary(io::IO, P::SemiclassicalJacobi)
+    t,a,b,c = P.t,P.a,P.b,P.c
+    print(io, "SemiclassicalJacobi with weight x^$a * (1-x)^$b * ($t-x)^$c")
+end
+
+
+
 
 recurrencecoefficients(P::SemiclassicalJacobi) = normalized_recurrencecoefficients(P)
 
