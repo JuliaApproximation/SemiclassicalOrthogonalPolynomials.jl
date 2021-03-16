@@ -1,10 +1,13 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
 import BandedMatrices: _BandedMatrix
-import SemiclassicalOrthogonalPolynomials: op_lowering
+import SemiclassicalOrthogonalPolynomials: op_lowering, RaisedOP
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight
 
 @testset "Jacobi" begin
     P = Normalized(Legendre())
+    Q = RaisedOP(P, 1)
+    @test jacobimatrix(Q)[1:10,1:10] ≈ jacobimatrix(Normalized(Jacobi(1,0)))[1:10,1:10]
+    
     L = op_lowering(P,1)
     L̃ = P \ WeightedJacobi(1,0)
     # off by scaling
@@ -33,8 +36,8 @@ end
         w_W = orthogonalityweight(W)
         X = jacobimatrix(T)
         A, B, C = recurrencecoefficients(T)
-        L = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W);
-        R = W \ T;
+        L = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W)
+        R = W \ T
         @test bandwidths(L) == (1,0)
 
         @time @testset "Relationship with Lanczos" begin
@@ -43,7 +46,7 @@ end
             y = @.(sqrt(x)*sqrt(2-x))
             T̃ = LanczosPolynomial(1 ./ y, P₋)
             @test T[0.1,1:10] ≈ T̃[0.1,1:10]/T̃[0.1,1]
-            @test (T.P \ T)[1:10,1:10] ≈ Eye(10)/T̃[0.1,1]
+            
             @test Normalized(T).scaling[1:10] ≈ fill(1/sqrt(sum(w_T)), 10)
 
             P₊ = jacobi(0,1/2,0..1)
@@ -164,7 +167,7 @@ end
         end
 
         @testset "Mass matrix" begin
-            R = V \ T;
+            R = V \ T
             @test T[0.1,1:10]' ≈ V[0.1,1:10]' * R[1:10,1:10]
         end
     end
@@ -173,7 +176,7 @@ end
         T = SemiclassicalJacobi(2, -1/2, 0, -1/2)
         W = SemiclassicalJacobi(2, 1/2, 0, -1/2, T)
         V = SemiclassicalJacobi(2, -1/2, 0, 1/2, T)
-        U = SemiclassicalJacobi(2, 1/2, 0, 1/2, T)
+        U = SemiclassicalJacobi(2, 1/2, 0, 1/2, W)
 
         @testset "Jacobi matrix derivation" begin
             L_1 = T \ (SemiclassicalJacobiWeight(2,0,0,1) .* V);
@@ -187,11 +190,11 @@ end
             @test 0.1*U[0.1,1:10]' ≈ V[0.1,1:11]' * L_2[1:11,1:10]
             @test 0.1 * V[0.1,1:10]'V[0.0,1:10] ≈ V[0.1,1:11]'*X_V[1:11,1:10]*V[0.0,1:10]
 
-            L = T \ (SemiclassicalJacobiWeight(2,1,0,1) .* U);
+            L = T \ (SemiclassicalJacobiWeight(2,1,0,1) .* U)
             @test L[1:10,1:10] ≈ L_1[1:10,1:10] * L_2[1:10,1:10]
             @test (2-0.1)*0.1 * U[0.1,1:10]' ≈ T[0.1,1:12]' * L[1:12,1:10]
 
-            L̃_1 = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W);
+            L̃_1 = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W)
             L̃_3 = inv(L̃_1[1:11,1:11])*L[1:11,1:10]
             @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L̃_3[1:11,1:10]
             L_3 = W \ (SemiclassicalJacobiWeight(2,0,0,1) .* U);
@@ -199,7 +202,7 @@ end
             @test L̃_3 ≈ L_3[1:11,1:10]
             @test (2-0.1) * U[0.1,1:10]' ≈ W[0.1,1:11]' * L_3[1:11,1:10]
 
-            R = U \ T;
+            R = U \ T
             @test T[0.1,1:10]' ≈ U[0.1,1:10]' * R[1:10,1:10]
         end
 
@@ -239,7 +242,6 @@ end
             @test (x-y) * T[x,1:n]'*T[y,1:n] ≈ T[x,n:n+1]' * [0 -β; β 0] * T[y,n:n+1]
 
             # y = 0.0
-
             @test x * T[x,1:n]'T[0,1:n] ≈ -X[n,n+1]*(T[x,n]*T[0,n+1] - T[x,n+1]*T[0,n])
 
             # y = 2.0
@@ -296,8 +298,13 @@ end
 end
 
 @testset "Hierarchy" begin
+    P = [SemiclassicalJacobi(2, 0, 0, 0)]
+    for _ = 1:4
+        @time push!(P, SemiclassicalJacobi(2, 0, 0, P[end].c+1, P[end]))
+    end
+
     P = SemiclassicalJacobi(2, 0, 0, 0)
-    @time    P[0.1,1:100_000];
+    @time    P[1][0.1,1:100_000];
     Q = SemiclassicalJacobi(2, 0, 0, 1, P);
     @time    Q[0.1,1:200]
     X = jacobimatrix(Q)
