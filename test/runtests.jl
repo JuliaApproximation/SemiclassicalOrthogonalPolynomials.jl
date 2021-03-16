@@ -1,13 +1,15 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
 import BandedMatrices: _BandedMatrix
 import SemiclassicalOrthogonalPolynomials: op_lowering, RaisedOP
-import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight
+import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight, symtridiagonalize
 
 @testset "Jacobi" begin
     P = Normalized(Legendre())
     Q = RaisedOP(P, 1)
-    @test jacobimatrix(Q)[1:10,1:10] ≈ jacobimatrix(Normalized(Jacobi(1,0)))[1:10,1:10]
-    
+    @test symtridiagonalize(jacobimatrix(Q))[1:10,1:10] ≈ jacobimatrix(Normalized(Jacobi(1,0)))[1:10,1:10]
+    Q = RaisedOP(P, -1)
+    @test symtridiagonalize(jacobimatrix(Q))[1:10,1:10] ≈ jacobimatrix(Normalized(Jacobi(0,1)))[1:10,1:10]
+
     L = op_lowering(P,1)
     L̃ = P \ WeightedJacobi(1,0)
     # off by scaling
@@ -46,7 +48,7 @@ end
             y = @.(sqrt(x)*sqrt(2-x))
             T̃ = LanczosPolynomial(1 ./ y, P₋)
             @test T[0.1,1:10] ≈ T̃[0.1,1:10]/T̃[0.1,1]
-            
+
             @test Normalized(T).scaling[1:10] ≈ fill(1/sqrt(sum(w_T)), 10)
 
             P₊ = jacobi(0,1/2,0..1)
@@ -54,7 +56,7 @@ end
             A_W̃, B_W̃, C_W̃ = recurrencecoefficients(W̃)
 
             @test Normalized(W)[0.1,1:10] ≈ W̃[0.1,1]W[0.1,1:10] ≈ W̃[0.1,1:10]
-            
+
             # this expresses W in terms of W̃
             kᵀ = cumprod(A)
             k_W̃ = cumprod(A_W̃)
@@ -74,7 +76,7 @@ end
             @testset "Jacobi operator" begin
                 X_W_N = (L[1:12,1:12] \ X[1:12,1:11] * L[1:11,1:10])[1:11,:]
                 @test 0.1*W̄.(0.1,1:10)' ≈ W̄.(0.1,1:11)' * X_W_N
-    
+
                 @test L[1:2,1:2] \ X[1:2,1:2]*L[1:2,1] ≈ X_W_N[1:2,1]
                 @test L[1:3,1:3] \ X[1:3,2:3]*L[2:3,2] ≈ X_W_N[1:3,2]
                 @test L[2:4,2:4] \ X[2:4,3:4]*L[3:4,3] ≈ X_W_N[2:4,3]
@@ -142,7 +144,7 @@ end
             @testset "Jacobi operator" begin
                 X_V_N = (L[1:12,1:12] \ X[1:12,1:11] * L[1:11,1:10])[1:11,:]
                 @test 0.1*V̄.(0.1,1:10)' ≈ V̄.(0.1,1:11)' * X_V_N
-    
+
                 @test L[1:2,1:2] \ X[1:2,1:2]*L[1:2,1] ≈ X_V_N[1:2,1]
                 @test L[1:3,1:3] \ X[1:3,2:3]*L[2:3,2] ≈ X_V_N[1:3,2]
                 @test L[2:4,2:4] \ X[2:4,3:4]*L[3:4,3] ≈ X_V_N[2:4,3]
@@ -298,18 +300,20 @@ end
 end
 
 @testset "Hierarchy" begin
-    P = [SemiclassicalJacobi(2, 0, 0, 0)]
-    for _ = 1:4
-        @time push!(P, SemiclassicalJacobi(2, 0, 0, P[end].c+1, P[end]))
+    Ps = SemiclassicalJacobi.(2, 0:100,0,0)
+    for m = 0:100
+        @test jacobimatrix(Ps[m+1])[1:10,1:10] ≈ jacobimatrix(Normalized(jacobi(0,m,0..1)))[1:10,1:10]
     end
 
-    P = SemiclassicalJacobi(2, 0, 0, 0)
-    @time    P[1][0.1,1:100_000];
-    Q = SemiclassicalJacobi(2, 0, 0, 1, P);
-    @time    Q[0.1,1:200]
-    X = jacobimatrix(Q)
-    n = 1_000; @time B = X[1:n,1:n];
-    @ent recurrencecoefficients(Q)
+    Ps = SemiclassicalJacobi.(2, 0,0:100,0)
+    for m = 0:100
+        @test jacobimatrix(Ps[m+1])[1:10,1:10] ≈ jacobimatrix(Normalized(jacobi(m,0,0..1)))[1:10,1:10]
+    end
+
+    Ps = SemiclassicalJacobi.(2, 0,0,0:100)
+    m = 5
+    x = Inclusion(0..1)
+    @test jacobimatrix(LanczosPolynomial(@. (2-x)^m))[1:10,1:10] ≈ jacobimatrix(Ps[m+1])[1:10,1:10]
 end
 
 @testset "Semiclassical operator asymptotics" begin
@@ -320,11 +324,11 @@ end
     U = ChebyshevU()
 
     @testset "ratio asymptotics" begin
-        n = 200; 
+        n = 200;
         @test 2φ(t)*Base.unsafe_getindex(U,t,n)/(Base.unsafe_getindex(U,t,n+1)) ≈ 1
         @test 2φ(2t-1)*Base.unsafe_getindex(P,t,n)/(Base.unsafe_getindex(P,t,n+1)) ≈ 1 atol=1E-3
 
-    
+
         L1 = P \ WeightedSemiclassicalJacobi(t,0,0,1,P)
         @test L1[n+1,n]/L1[n,n] ≈ -1/(2φ(2t-1)) atol=1E-3
     end
@@ -337,7 +341,7 @@ end
         sqrt(0.5)
         @test R_0[999,999:1000] ≈ sqrt.([0.5,0.5]) atol=1e-2
         @test R_1[999,999:1000] ≈ [sqrt(0.5),-sqrt(0.5)] atol=1e-2
-        @test R_t[200,201]/R_t[200,200] ≈ -1/(2*φ(2t-1)) atol=1e-2 
+        @test R_t[200,201]/R_t[200,200] ≈ -1/(2*φ(2t-1)) atol=1e-2
     end
 
     @testset "T,V,W,U" begin

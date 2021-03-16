@@ -86,8 +86,27 @@ RaisedOP(Q, ℓ::OrthogonalPolynomialRatio) = RaisedOP{eltype(Q),typeof(Q),typeo
 RaisedOP(Q, y::Number) = RaisedOP(Q, OrthogonalPolynomialRatio(Q,y))
 
 
+function jacobimatrix(P::RaisedOP{T}) where T
+    ℓ = P.ℓ
+    X = jacobimatrix(P.Q)
+    a,b = diagonaldata(X), supdiagonaldata(X)
+    # non-normalized lower diag of Jacobi
+    v = Vcat(zero(T),b .* ℓ)
+    c = BroadcastVector((ℓ,a,b,sa,v) -> ℓ*a + b - b*ℓ^2 - sa*ℓ + ℓ*v, ℓ, a, b, a[2:∞], v)
+    Tridiagonal(c, BroadcastVector((ℓ,a,b,v) -> a - b * ℓ + v, ℓ,a,b,v), b)
+end
 
-mutable struct RaisedOPJacobiBand{dv,T} <: AbstractCachedVector{T}
+
+
+
+
+
+
+
+"""
+  the bands of the Jacobi matrix
+"""
+mutable struct SemiclassicalJacobiBand{dv,T} <: AbstractCachedVector{T}
     data::Vector{T}
     a::AbstractVector{T}
     b::AbstractVector{T}
@@ -95,46 +114,27 @@ mutable struct RaisedOPJacobiBand{dv,T} <: AbstractCachedVector{T}
     datasize::Tuple{Int}
 end
 
-size(::RaisedOPJacobiBand) = (ℵ₀,)
-
-RaisedOPJacobiBand{:dv,T}(a,b,ℓ) where T = RaisedOPJacobiBand{:dv,T}(T[a[1] - b[1]ℓ[1]], a, b, ℓ, (1,))
-RaisedOPJacobiBand{:ev,T}(a,b,ℓ) where T = RaisedOPJacobiBand{:ev,T}(T[sqrt((ℓ[1]*a[1] + b[1] - b[1]*ℓ[1]^2 - a[2]*ℓ[1])b[1])], a, b, ℓ, (1,))
-RaisedOPJacobiBand{dv}(a,b,ℓ) where dv = RaisedOPJacobiBand{dv,promote_type(eltype(a),eltype(b),eltype(ℓ))}(a,b,ℓ)
-
-# function jacobimatrix(P::RaisedOP{T}) where T
-#     ℓ = P.ℓ
-#     X = jacobimatrix(P.Q)
-#     a,b = diagonaldata(X), supdiagonaldata(X)
-#     # non-normalized lower diag of Jacobi
-#     v = Vcat(zero(T),b .* ℓ)
-#     c = BroadcastVector((ℓ,a,b,sa,v) -> ℓ*a + b - b*ℓ^2 - sa*ℓ + ℓ*v, ℓ, a, b, a[2:∞], v)
-#     Tridiagonal(c, BroadcastVector((ℓ,a,b,v) -> a - b * ℓ + v, ℓ,a,b,v), b)
-# end
-
-function LazyArrays.cache_filldata!(r::RaisedOPJacobiBand{:dv}, inds::AbstractUnitRange)
+function LazyArrays.cache_filldata!(r::SemiclassicalJacobiBand{:dv}, inds::AbstractUnitRange)
     rℓ = r.ℓ[inds[1]-1:inds[end]]; ℓ,sℓ = rℓ[2:end], rℓ[1:end-1]
     ra = r.a[inds[1]:(inds[end]+1)]; a = ra[1:end-1]; sa = ra[2:end]
     rb = r.b[inds[1]-1:inds[end]]; b = rb[2:end]; sb = rb[1:end-1]
     r.data[inds] .= @.(a - b * ℓ + sb*sℓ)
 end
 
-function LazyArrays.cache_filldata!(r::RaisedOPJacobiBand{:ev}, inds::AbstractUnitRange)
+function LazyArrays.cache_filldata!(r::SemiclassicalJacobiBand{:ev}, inds::AbstractUnitRange)
     rℓ = r.ℓ[inds[1]-1:inds[end]]; ℓ,sℓ = rℓ[2:end], rℓ[1:end-1]
     ra = r.a[inds[1]:(inds[end]+1)]; a = ra[1:end-1]; sa = ra[2:end]
     rb = r.b[inds[1]-1:inds[end]]; b = rb[2:end]; sb = rb[1:end-1]
     r.data[inds] .= @.(sqrt((ℓ*a + b - b*ℓ^2 - sa*ℓ + ℓ*sb*sℓ)*b))
 end
 
+size(::SemiclassicalJacobiBand) = (ℵ₀,)
 
+SemiclassicalJacobiBand{:dv,T}(a,b,ℓ) where T = SemiclassicalJacobiBand{:dv,T}(T[a[1] - b[1]ℓ[1]], a, b, ℓ, (1,))
+SemiclassicalJacobiBand{:ev,T}(a,b,ℓ) where T = SemiclassicalJacobiBand{:ev,T}(T[sqrt((ℓ[1]*a[1] + b[1] - b[1]*ℓ[1]^2 - a[2]*ℓ[1])b[1])], a, b, ℓ, (1,))
+SemiclassicalJacobiBand{dv}(a,b,ℓ) where dv = SemiclassicalJacobiBand{dv,promote_type(eltype(a),eltype(b),eltype(ℓ))}(a,b,ℓ)
 
-function jacobimatrix(P::RaisedOP{T}) where T
-    ℓ = P.ℓ
-    X = jacobimatrix(P.Q)
-    a,b = diagonaldata(X), supdiagonaldata(X)
-
-    SymTridiagonal(RaisedOPJacobiBand{:dv}(a,b,ℓ), RaisedOPJacobiBand{:ev}(a,b,ℓ))
-end
-
+copy(r::SemiclassicalJacobiBand) = r # immutable
 
 
 
@@ -181,13 +181,21 @@ function semiclassical_jacobimatrix(t, a, b, c)
     jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), P))
 end
 
+
+function symraised_jacobimatrix(Q, y)
+    ℓ = OrthogonalPolynomialRatio(Q,y)
+    X = jacobimatrix(Q)
+    a,b = diagonaldata(X), supdiagonaldata(X)
+    SymTridiagonal(SemiclassicalJacobiBand{:dv}(a,b,ℓ), SemiclassicalJacobiBand{:ev}(a,b,ℓ))
+end
+
 function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     if a == Q.a+1 && b == Q.b && c == Q.c
-        jacobimatrix(RaisedOP(Q, 0))
+        symraised_jacobimatrix(Q, 0)
     elseif a == Q.a && b == Q.b+1 && c == Q.c
-        jacobimatrix(RaisedOP(Q, 1))
+        symraised_jacobimatrix(Q, 1)
     elseif a == Q.a && b == Q.b && c == Q.c+1
-        jacobimatrix(RaisedOP(Q, Q.t))
+        symraised_jacobimatrix(Q, Q.t)
     elseif a > Q.a
         semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a+1, Q.b, Q.c, Q), a, b,c)
     elseif b > Q.b
@@ -351,6 +359,36 @@ end
 # sqrt(1-(1-x)^2) == sqrt(2x-x^2) == sqrt(x)*sqrt(2-x)
 
 include("derivatives.jl")
+
+
+###
+# Hierarchy
+###
+
+function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, ar::AbstractUnitRange, b::Number, c::Number)
+    Ps = [SemiclassicalJacobi(t, first(ar), b, c)]
+    for a in ar[2:end]
+        push!(Ps, SemiclassicalJacobi(t, a, b, c, Ps[end]))
+    end
+    Ps
+end
+
+function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, br::AbstractUnitRange, c::Number)
+    Ps = [SemiclassicalJacobi(t, a, first(br), c)]
+    for b in br[2:end]
+        push!(Ps, SemiclassicalJacobi(t, a, b, c, Ps[end]))
+    end
+    Ps
+end
+
+
+function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, b::Number, cr::AbstractUnitRange)
+    Ps = [SemiclassicalJacobi(t, a, b, first(cr))]
+    for c in cr[2:end]
+        push!(Ps, SemiclassicalJacobi(t, a, b, c, Ps[end]))
+    end
+    Ps
+end
 
 
 end
