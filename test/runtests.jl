@@ -379,13 +379,10 @@ end
     Q = SemiclassicalJacobi(t, -1/2, -1/2, 1/2)
 
     P̃ = SemiclassicalJacobi(t, 1/2, 1/2, -1);
-    Q̃ = SemiclassicalJacobi(t, 1/2, 1/2, 0, Q);
+    Q̃ = SemiclassicalJacobi(t, 1/2, 1/2, 0);
 
-    jacobimatrix(P)[1:5,1:5]
-    jacobimatrix(P̃)[1:5,1:5]
-
-    jacobimatrix(Q)[1:5,1:5]
-    jacobimatrix(Q̃)[1:5,1:5]
+    # finite rank perturbation
+    @test jacobimatrix(P)[2:5,2:5] ≈ jacobimatrix(P̃)[2:5,2:5] ≈ SymTridiagonal(fill(0.5,4), fill(0.25,3))
 end
 
 @testset "Normalized" begin
