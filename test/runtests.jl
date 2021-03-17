@@ -411,5 +411,5 @@ end
     end
 end
 
-include("test_twointerval.jl")
 include("test_derivative.jl")
+include("test_twoband.jl")
