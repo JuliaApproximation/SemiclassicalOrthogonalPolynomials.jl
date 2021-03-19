@@ -1,9 +1,8 @@
 using SemiclassicalOrthogonalPolynomials
 using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
 import BandedMatrices: _BandedMatrix
-import SemiclassicalOrthogonalPolynomials: op_lowering, RaisedOP, initialα, αcoefficients!, evalϕn, backαcoeff!, αdirect!, αdirect, converttolaplace, JacobiMatrixM1, initialjacobi,jacobiopm1extension!
+import SemiclassicalOrthogonalPolynomials: op_lowering, RaisedOP, initialα, αcoefficients!, evalϕn, backαcoeff!, αdirect!, αdirect, converttolegendre, JacobiMatrixM1, initialjacobi,jacobiopm1extension!
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight, symtridiagonalize, Expansion
-
 
 @testset "Jacobi" begin
     P = Normalized(Legendre())
@@ -43,7 +42,7 @@ end
         w_W = orthogonalityweight(W)
 
         @test copy(T) == T
-        @test W ≠ T
+        @test W ≠ T
 
         X = jacobimatrix(T)
         A, B, C = recurrencecoefficients(T)
@@ -133,15 +132,15 @@ end
         @testset "Relationship with Lanczos" begin
             P₋ = jacobi(0,-1/2,0..1)
             x = axes(T,1)
-            Ṽ = LanczosPolynomial(@.(sqrt(2-x)/sqrt(x)), P₋)
-            A_Ṽ, B_Ṽ, C_Ṽ = recurrencecoefficients(Ṽ)
+            Ṽ = LanczosPolynomial(@.(sqrt(2-x)/sqrt(x)), P₋)
+            A_Ṽ, B_Ṽ, C_Ṽ = recurrencecoefficients(Ṽ)
 
-            @test Normalized(V)[0.1,1:10] ≈ Ṽ[0.1,1:10]
+            @test Normalized(V)[0.1,1:10] ≈ Ṽ[0.1,1:10]
 
             # this expresses W in terms of W̃
             kᵀ = cumprod(A)
-            k_Ṽ = cumprod(A_Ṽ)
-            V̄ = (x,n) -> n == 1 ? one(x) : -kᵀ[n]*L[n+1,n]/(Ṽ[0.1,1]k_Ṽ[n-1]) *Ṽ[x,n]
+            k_Ṽ = cumprod(A_Ṽ)
+            V̄ = (x,n) -> n == 1 ? one(x) : -kᵀ[n]*L[n+1,n]/(Ṽ[0.1,1]k_Ṽ[n-1]) *Ṽ[x,n]
 
             @test V̄.(0.1,1:5) ≈ V[0.1,1:5]
 
@@ -252,7 +251,7 @@ end
             β = X[n,n+1]
             @test (x-y) * T[x,1:n]'*T[y,1:n] ≈ T[x,n:n+1]' * [0 -β; β 0] * T[y,n:n+1]
 
-            # y = 0.0
+            # y = 0.0
             @test x * T[x,1:n]'T[0,1:n] ≈ -X[n,n+1]*(T[x,n]*T[0,n+1] - T[x,n+1]*T[0,n])
 
             # y = 2.0
@@ -261,7 +260,7 @@ end
 
             @testset "T and W" begin
                 W̃ = (x,n) -> -X[n,n+1]*(T[x,n]*T[0,n+1] - T[x,n+1]*T[0,n])/x
-                @test norm(diff(W̃.([0.1,0.2,0.3],5) ./ W[[0.1,0.2,0.3],5])) ≤ 10E-14
+                @test norm(diff(W̃.([0.1,0.2,0.3],5) ./ W[[0.1,0.2,0.3],5])) ≤ 10E-14
 
                 L = _BandedMatrix(Vcat((-X.ev .* T[0,2:end])', (X.ev .* T[0,1:end])'), ∞, 1, 0)
                 x = 0.1
@@ -381,6 +380,48 @@ end
     end
 end
 
+@testset "equilibrium measure" begin
+    ρ = 0.5
+    t = inv(1-ρ^2)
+    P = SemiclassicalJacobi(t, -1/2, -1/2, 0)
+    Q = SemiclassicalJacobi(t, -1/2, -1/2, 1/2)
+
+    P̃ = SemiclassicalJacobi(t, 1/2, 1/2, -1);
+    Q̃ = SemiclassicalJacobi(t, 1/2, 1/2, 0);
+
+    # finite rank perturbation
+    @test jacobimatrix(P)[2:5,2:5] ≈ jacobimatrix(P̃)[2:5,2:5] ≈ SymTridiagonal(fill(0.5,4), fill(0.25,3))
+end
+
+@testset "Normalized" begin
+    # here we derive the formula for the Jacobi operators
+    for (a,b,c) in ((-0.5,-0.4,-0.3),(0,0,0))
+        P = SemiclassicalJacobi(2,a,b,c)
+        Q = SemiclassicalJacobi(2,a,b,c+1,P)
+
+        X_P = jacobimatrix(P)
+        L = (P \ (SemiclassicalJacobiWeight(2,0,0,1) .* Q))
+        X = jacobimatrix(Normalized(Q))
+        ℓ = OrthogonalPolynomialRatio(P,2)
+        a,b = X_P.dv,X_P.ev
+        @test X[1,1] ≈ a[1]-b[1]ℓ[1]
+        @test X[1,2] ≈ X[2,1] ≈ sqrt(b[1] * (a[1]ℓ[1]+b[1]*(1-ℓ[1]^2)-a[2]ℓ[1]))
+        for n = 2:5
+            @test X[n,n] ≈ ℓ[n-1]b[n-1]+a[n]-b[n]ℓ[n]
+            @test X[n,n+1] ≈ X[n+1,n] ≈ sqrt(b[n] * (b[n-1]ℓ[n-1]ℓ[n]+a[n]ℓ[n]+b[n]*(1-ℓ[n]^2)-a[n+1]ℓ[n]))
+        end
+
+        T = Float64
+        bl = b .* ℓ
+        X̃ = ClassicalOrthogonalPolynomials.SymTridiagonal(a .- bl .+ Vcat(zero(T),bl),
+                           sqrt.(bl .* a .+ b .^2 .- bl .^ 2 .- b .* a[2:∞] .* ℓ .+ Vcat(zero(T),bl .* bl[2:∞])));
+        @test X̃[1:10,1:10] ≈ X[1:10,1:10]
+    end
+end
+
+include("test_derivative.jl")
+include("test_twoband.jl")
+
 @testset "OPs for a=b=0, c=-1" begin
     @testset "inital α" begin
         t1 = 1.1
@@ -473,62 +514,60 @@ end
         x = 0.1
         n = 5
         α = zeros(n+1)'
-        α[1] = initialα(t)
-        αcoefficients!(α,t,2:n)
-        evalϕn(1,0.1,α)
+        α[1] = initialα(2*t-1)
+        αcoefficients!(α,2*t-1,2:n)
         # compare versions with and without recomputing α with Mathematica results
         @test evalϕn(0,x,α) == evalϕn(0,x,t) == 2
-        @test evalϕn(1,x,α) ≈ evalϕn(1,x,t) ≈ 0.3430825224938977
-        @test evalϕn(2,x,α) ≈ evalϕn(2,x,t) ≈ -0.5371542038747678
+        @test evalϕn(1,x,α) ≈ evalϕn(1,x,t) ≈ 1.165935217151491
+        @test evalϕn(2,x,α) ≈ evalϕn(2,x,t) ≈ 0.806910345733665
     end
 
     @testset "OPs for a=b=0, c=-1 - B operator consistency" begin
         # basis
         t = 1.1
-        P = Legendre()
+        P = Legendre()[affine(Inclusion(0..1), axes(Legendre(),1)), :]
         x = axes(P,1)
         # compute coefficients for basis
         N = 10
         α = zeros(N)'
-        α[1] = initialα(t)
-        αcoefficients!(α,t,2:N)
+        α[1] = initialα(2*t-1)
+        αcoefficients!(α,2*t-1,2:N)
         # generate B operator
-        B = converttolaplace(t,N)
+        B = converttolegendre(t,N)
         # represent some ϕ_n(x) in Legendre polynomial basis
         n = 1
-        ϕ1 = P \ @.(α[n]*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,-x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,-x))
+        ϕ1 = P \ @.(α[n]*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,1-2*x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,1-2*x))
         n = 2
-        ϕ2 = P \ @.(α[n]*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,-x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,-x))
+        ϕ2 = P \ @.(α[n]*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,1-2*x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,1-2*x))
         # test B operator consistency
         @test ϕ1[1:N] ≈ B[1:N,2]
         @test (qr(B) \ ϕ1[1:N])[2] ≈ 1
         @test ϕ2[1:N]≈ B[1:N,3]
-        @test (qr(B) \ ϕ2[1:N])[3] ≈ 1
     end
 
     @testset "OPs for a=b=0, c=-1 - basic evaluation consistency" begin
         # basis
         t = 1.1
-        P = Legendre()
+        P = Legendre()[affine(Inclusion(0..1), axes(Legendre(),1)), :]
         x = axes(P,1)
         # compute coefficients for basis
         N = 20
         α = zeros(N)'
-        α[1] = initialα(t)
-        αcoefficients!(α,t,2:N)
+        α[1] = initialα(2*t-1)
+        αcoefficients!(α,2*t-1,2:N)
         # generate B operator
-        B = converttolaplace(t,N)
+        B = converttolegendre(t,N)
         # some test functions
         f1(x) = x^2
         f2(x) = (t-x)^2
         f3(x) = exp(t-x)
         # test basic expansion and evaluation via Legendre()
-        y = 2*rand(1)[1]-1
+        y = rand(1)[1]
         u1 = qr(B) \ (P[:,1:20] \ f1.(x))
         @test (P[:,1:20]*(B*u1))[y] ≈ f1(y)
-        u2 = qr(B) \ (P[:,1:20] \ f2.(x))
+        u2 = qr(B) \ (P[:,1:20] \ @.((t-x)^2))
         @test (P[:,1:20]*(B*u2))[y] ≈ f2(y)
-        u3 = qr(B) \ (P[:,1:20] \ f3.(x))
+        u3 = qr(B) \ (P[:,1:20] \ @.(exp(t-x)))
         @test (P[:,1:20]*(B*u3))[y] ≈ f3(y)
     end
 
@@ -540,85 +579,4 @@ end
         Jfill = jacobiopm1extension!(initialjacobi(t,20),Array(10:20),t)
         @test Jfill ≈ Jinit
     end
-    
-    @testset "OPs for a=b=0, c=-1 - Jacobi matrix application" begin
-        # basis
-        t = BigFloat("1.1")
-        P = Legendre{BigFloat}()
-        x = axes(P,1)
-        # generate jacobi matrix
-        J = JacobiMatrixM1(t)[1:20,1:20]
-        f1(x) = x^2
-        f2(x) = (t-x)^2
-        f3(x) = exp(t-x)
-        B = converttolaplace(t,20)
-        # test basic multiplication with x and via Legendre()
-        y = BigFloat("0.817320")
-        u1 = qr(B) \ (P[:,1:20] \ f1.(x))
-        @test (P[:,1:20]*(B*J*u1))[y] - y*f1(y)  <= 1e-30
-        u2 = qr(B) \ (P[:,1:20] \ (t.-x).^2)
-        @test (P[:,1:20]*(B*J*u2))[y] - y*f2(y)  <= 1e-30
-        u3 = qr(B) \ (P[:,1:20] \ exp.(t.-x))
-        @test (P[:,1:20]*(B*J*u3))[y] - y*f3(y)  <= 1e-20
-    end
 end
-
-@testset "Derivative" begin
-    @testset "basic Derivative" begin
-        t = 2
-        P = SemiclassicalJacobi(t, -0.5, -0.5, -0.5)
-        Q = SemiclassicalJacobi(t, 0.5, 0.5, 0.5, P)
-
-        @test (Q \ P.P)[1:10,1:10] ≈ 0.6175596179729587*(Q \ P)[1:10,1:10]
-
-        x = axes(P,1)
-        D = Derivative(x)
-
-        for n = 3:10
-            u = (D * (P.P * [[zeros(n);1]; zeros(∞)]))
-            @test norm((Q \ u)[1:n-2]) ≤ 1000eps()
-        end
-    end
-end
-@testset "equilibrium measure" begin
-    ρ = 0.5
-    t = inv(1-ρ^2)
-    P = SemiclassicalJacobi(t, -1/2, -1/2, 0)
-    Q = SemiclassicalJacobi(t, -1/2, -1/2, 1/2)
-
-    P̃ = SemiclassicalJacobi(t, 1/2, 1/2, -1);
-    Q̃ = SemiclassicalJacobi(t, 1/2, 1/2, 0);
-
-    # finite rank perturbation
-    @test jacobimatrix(P)[2:5,2:5] ≈ jacobimatrix(P̃)[2:5,2:5] ≈ SymTridiagonal(fill(0.5,4), fill(0.25,3))
-end
-
-@testset "Normalized" begin
-    # here we derive the formula for the Jacobi operators
-    for (a,b,c) in ((-0.5,-0.4,-0.3),(0,0,0))
-        P = SemiclassicalJacobi(2,a,b,c)
-        Q = SemiclassicalJacobi(2,a,b,c+1,P)
-
-        X_P = jacobimatrix(P)
-        L = (P \ (SemiclassicalJacobiWeight(2,0,0,1) .* Q))
-        X = jacobimatrix(Normalized(Q))
-        ℓ = OrthogonalPolynomialRatio(P,2)
-        a,b = X_P.dv,X_P.ev
-        @test X[1,1] ≈ a[1]-b[1]ℓ[1]
-        @test X[1,2] ≈ X[2,1] ≈ sqrt(b[1] * (a[1]ℓ[1]+b[1]*(1-ℓ[1]^2)-a[2]ℓ[1]))
-        for n = 2:5
-            @test X[n,n] ≈ ℓ[n-1]b[n-1]+a[n]-b[n]ℓ[n]
-            @test X[n,n+1] ≈ X[n+1,n] ≈ sqrt(b[n] * (b[n-1]ℓ[n-1]ℓ[n]+a[n]ℓ[n]+b[n]*(1-ℓ[n]^2)-a[n+1]ℓ[n]))
-        end
-
-        T = Float64
-        bl = b .* ℓ
-        X̃ = ClassicalOrthogonalPolynomials.SymTridiagonal(a .- bl .+ Vcat(zero(T),bl),
-                           sqrt.(bl .* a .+ b .^2 .- bl .^ 2 .- b .* a[2:∞] .* ℓ .+ Vcat(zero(T),bl .* bl[2:∞])));
-        @test X̃[1:10,1:10] ≈ X[1:10,1:10]
-    end
-end
-
-
-include("test_derivative.jl")
-include("test_twoband.jl")

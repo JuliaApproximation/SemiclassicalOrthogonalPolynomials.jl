@@ -30,13 +30,13 @@ end
 function evalϕn(n::Integer,x,α::AbstractArray)
     # this version accepts a vector of coefficients of appropriate length to avoid recomputing α
     n == 0 && return 2
-    return α[n]*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,-x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,-x)
+    return α[n]*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,1-2*x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,1-2*x)
 end
 function evalϕn(n::Integer,x,t::Real)
     # this version recomputes α based on t
     t <= 1 && error("t must be greater than 1.")
     n == 0 && return 2
-    return αdirect(n,t)*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,-x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,-x)
+    return αdirect(n,2*t-1)*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,1-2*x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,1-2*x)
 end
 
 # jacobimatrix for OP wrt 1/(t-x)
@@ -54,13 +54,24 @@ size(K::JacobiMatrixM1) = (∞,∞)
 cache_filldata!(J::JacobiMatrixM1, inds) = jacobiopm1extension!(J.data, inds, J.t)
 
 # LazyArrays caching and resizing for tridiagonal banded matrix
+
+# non-normalized option
+# function getindex(J::JacobiMatrixM1{T}, I::Vararg{Int,2}) where T
+#     resizedata!(J, Tuple([I...]))
+#     getindex(Tridiagonal(J.data[1][1:end-1],J.data[2],J.data[3][2:end]),I...)
+# end
+# function getindex(J::JacobiMatrixM1{T}, I::Vararg{UnitRange,2}) where T
+#     resizedata!(J, (maximum(I[1]),maximum(I[2])))
+#     view(Tridiagonal(J.data[1][1:end-1],J.data[2],J.data[3][2:end]),I[1],I[2])
+# end
+# normalized option
 function getindex(J::JacobiMatrixM1{T}, I::Vararg{Int,2}) where T
-    resizedata!(J, Tuple([I...]))
-    getindex(Tridiagonal(J.data[1][1:end-1],J.data[2],J.data[3][2:end]),I...)
+     resizedata!(J, Tuple([I...]))
+     getindex(ClassicalOrthogonalPolynomials.SymTridiagonal(J.data[2],sqrt.(J.data[1][1:end-1].*J.data[3][2:end])),I...)
 end
 function getindex(J::JacobiMatrixM1{T}, I::Vararg{UnitRange,2}) where T
-    resizedata!(J, (maximum(I[1]),maximum(I[2])))
-    view(Tridiagonal(J.data[1][1:end-1],J.data[2],J.data[3][2:end]),I[1],I[2])
+     resizedata!(J, (maximum(I[1]),maximum(I[2])))
+     view(ClassicalOrthogonalPolynomials.SymTridiagonal(J.data[2],sqrt.(J.data[1][1:end-1].*J.data[3][2:end])),I[1],I[2])
 end
 
 function resizedata!(J::JacobiMatrixM1, nm) 
@@ -88,18 +99,18 @@ function jacobiopm1extension!(J,inds,t)
     n = BigInt(maximum(inds))
     m = BigInt(minimum(inds))
     α0 = zeros(BigFloat, n+2)
-    backαcoeff!(α0,t,BigInt.(m:n+2))
+    backαcoeff!(α0,2*t-1,BigInt.(m:n+2))
     # build bands
         # subdiagonal
         N = (BigInt(m-1):BigInt(n-1))
-        SubD = (-1)*(N.+1)./(2 .*N.+1)
+        SubD = (-1)/BigInt(2)*(N.+1)./(2 .*N.+1)
         # diagonal
         N = (BigInt(m-1):BigInt(n-1))
-        D = (-1).*(N./(2 .*N.-1).*α0[N]-(N.+1)./(2 .*N.+1).*α0[N.+1])
+        D = (-1)/BigInt(2).*(N./(2 .*N.-1).*α0[N]-(N.+1)./(2 .*N.+1).*α0[N.+1].-BigInt(1))
         # superdiagonal
         N = (BigInt(m):BigInt(n-1))
         SuperD = [BigFloat("0")]
-        append!(SuperD,(-1)*(N.-1)./(2 .*N.-1).*α0[N]./α0[N.-1])
+        append!(SuperD,(-1)/BigInt(2)*(N.-1)./(2 .*N.-1).*α0[N]./α0[N.-1])
     J[1][m:n] = SubD
     J[2][m:n] = D
     J[3][m+1:n] = SuperD[2:end]
@@ -110,28 +121,28 @@ end
 function initialjacobi(t,n)
     # build coefficients
     α0 = zeros(BigFloat, n+2)
-    backαcoeff!(α0,t,BigInt.(2:n+2))
+    backαcoeff!(α0,2*t-1,BigInt.(2:n+2))
     # build bands
         # subdiagonal
         N = (BigInt(0):BigInt(n-1))
-        SubD = (-1)*(N.+1)./(2 .*N.+1)
+        SubD = (-1)/BigInt(2)*(N.+1)./(2 .*N.+1)
         # diagonal
         N = (BigInt(1):BigInt(n-1))
-        D = [α0[1]]
-        append!(D,(-1).*(N./(2 .*N.-1).*α0[N]-(N.+1)./(2 .*N.+1).*α0[N.+1]))
+        D = [(α0[1]+1)/BigInt(2)]
+        append!(D,(-1)/BigInt(2).*(N./(2 .*N.-1).*α0[N]-(N.+1)./(2 .*N.+1).*α0[N.+1].-BigInt(1)))
         # superdiagonal
         N = (BigInt(2):BigInt(n-1))
-        SuperD = [BigFloat("0"),(3*α0[1]^2-2*α0[1]*α0[2]-1)/BigInt(3)]
-        append!(SuperD,(-1)*(N.-1)./(2 .*N.-1).*α0[N]./α0[N.-1])
+        SuperD = [BigFloat("0"),(3*α0[1]^2-2*α0[1]*α0[2]-1)/BigInt(3*2)]
+        append!(SuperD,(-1)/BigInt(2)*(N.-1)./(2 .*N.-1).*α0[N]./α0[N.-1])
     # build operator
     return [SubD,D,SuperD]
 end
 
 # multiply to convert from OPs wrt 1/(t-x) to Legendre. Use \ to convert from Legendre to OPs wrt 1/(t-x).
-function converttolaplace(t,N)
+function converttolegendre(t,N)
     α = zeros(BigFloat,N-1)
-    α[1] = initialα(t)
-    backαcoeff!(α,t,BigInt.(2:N-1))
+    α[1] = initialα(2*t-1)
+    backαcoeff!(α,2*t-1,BigInt.(2:N-1))
     α0 = [BigFloat("0")]
     append!(α0,α)
     return BandedMatrices._BandedMatrix(Vcat((BigFloat("-1")).^(1:N)' .* α0',(-1).^(0:N-1)'), N, 0,1)
