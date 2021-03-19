@@ -1,7 +1,7 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
 import BandedMatrices: _BandedMatrix
 import SemiclassicalOrthogonalPolynomials: op_lowering, RaisedOP
-import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight, symtridiagonalize
+import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight, symtridiagonalize, Expansion
 
 @testset "Jacobi" begin
     P = Normalized(Legendre())
@@ -28,6 +28,9 @@ end
     w = SemiclassicalJacobiWeight(2,a,b,c)
     @test w[0.1] ≈ 0.1^a * (1-0.1)^b * (2-0.1)^c
     @test sum(w) ≈ 0.8387185832077594 #Mathematica
+    @test Expansion(w)[0.1] ≈ w[0.1]
+    @test Expansion(w) == w
+    @test w == Expansion(w)
 end
 
 @testset "Half-range Chebyshev" begin
@@ -36,6 +39,10 @@ end
         W = SemiclassicalJacobi(2,  1/2, 0, -1/2, T)
         w_T = orthogonalityweight(T)
         w_W = orthogonalityweight(W)
+
+        @test copy(T) == T
+        @test W ≠ T
+
         X = jacobimatrix(T)
         A, B, C = recurrencecoefficients(T)
         L = T \ (SemiclassicalJacobiWeight(2,1,0,0) .* W)

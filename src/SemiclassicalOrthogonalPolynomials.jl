@@ -164,14 +164,6 @@ SemiclassicalJacobi(t, a, b, c) = SemiclassicalJacobi(t, a, b, c, semiclassical_
 
 WeightedSemiclassicalJacobi(t, a, b, c, P...) = SemiclassicalJacobiWeight(t, a, b, c) .* SemiclassicalJacobi(t, a, b, c, P...)
 
-"""
-   cache_abstract(A)
-
-caches a `A` without storing the type of `A` as a template.
-This prevents exceessive compilation.
-"""
-cache_abstract(v::AbstractVector{T}) where T = CachedAbstractVector(v)
-cache_abstract(S::SymTridiagonal) = SymTridiagonal(cache_abstract(S.dv), cache_abstract(S.ev))
 
 function semiclassical_jacobimatrix(t, a, b, c)
     T = promote_type(typeof(t), typeof(a), typeof(b), typeof(c))

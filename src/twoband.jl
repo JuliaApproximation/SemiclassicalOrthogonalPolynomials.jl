@@ -13,9 +13,7 @@ struct TwoBandWeight{T} <: Weight{T}
     c::T
 end
 
-
-TwoBandWeight{T}() where T = TwoBandWeight{T}(zero(T), zero(T))
-TwoBandWeight() = TwoBandWeight{Float64}()
+TwoBandWeight(ρ::R, a::A, b::B, c::C) where {R,A,B,C} = TwoBandWeight{promote_type(R,A,B,C)}(ρ, a, b, c)
 
 copy(w::TwoBandWeight) = w
 
@@ -23,7 +21,10 @@ axes(w::TwoBandWeight{T}) where T = (Inclusion(twoband(w.ρ)),)
 
 ==(w::TwoBandWeight, v::TwoBandWeight) = w.a == v.a && w.b == v.b && w.ρ == v.ρ && w.c == v.c
 
-getindex(w::TwoBandWeight, x::Real) = abs(x)^(2w.c) * (x^2- ρ^2)^w.b * (1-x^2)^w.a
+function getindex(w::TwoBandWeight, x::Real)
+    @boundscheck checkbounds(w, x)
+    abs(x)^(2w.c) * (x^2- w.ρ^2)^w.b * (1-x^2)^w.a
+end
 
 """
     TwoBandJacobi(a, b)
