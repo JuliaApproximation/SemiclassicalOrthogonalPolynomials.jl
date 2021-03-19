@@ -29,7 +29,7 @@ function LazyArrays.cache_filldata!(K::MulAddAccumulate, inds)
 end
 
 @simplify function *(D::Derivative, P::SemiclassicalJacobi)
-    Q = SemiclassicalJacobi(P.t, P.a+1,P.b+1,P.c+1,P.P)
+    Q = SemiclassicalJacobi(P.t, P.a+1,P.b+1,P.c+1,P)
     A,B,_ = recurrencecoefficients(P)
     α,β,_ = recurrencecoefficients(Q)
 
@@ -38,4 +38,10 @@ end
     v2 = MulAddAccumulate(Vcat(0,0,α[2:∞]) ./ α, Vcat(0,β ./ α) ./ α);
     v3 = AccumulateAbstractVector(*, Vcat(A[1]A[2], A[3:∞] ./ α))
     Q * (_BandedMatrix(Vcat(((1:∞) .* d)', (((1:∞) .* (v1 .+ B[2:end]./A[2:end]) .- (2:∞) .* (α .* v2 .+ β ./ α)) .* v3)'), ∞, 2,-1))'
+end
+
+@simplify function *(D::Derivative, wQ::Weighted{<:Any,<:SemiclassicalJacobi})
+    Q = wQ.P
+    P = SemiclassicalJacobi(Q.t, Q.a-1,Q.b-1,Q.c-1)
+    Weighted(P) * ((-sum(orthogonalityweight(Q))/sum(orthogonalityweight(P))) * (Q \ (D * P))')
 end
