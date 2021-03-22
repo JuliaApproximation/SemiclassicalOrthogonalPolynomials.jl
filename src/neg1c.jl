@@ -126,16 +126,18 @@ end
 ###
 #   explicit polynomial evaluations
 ###
-# Evaluate the n-th non-normalized OP wrt 1/(t-x) at point x, with one of two methods:
-# either with or without recomputing the α coefficients.
-function evalϕn(n::Integer,x,α::AbstractArray)
-    # this version accepts a vector of coefficients of appropriate length to avoid recomputing α
-    n == 0 && return 2
-    return α[n]*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,1-2*x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,1-2*x)
+# Evaluate the n-th normalized OP wrt 1/(t-x) at point x
+function evalQn(n::Integer,x,t::Real)
+    # this version recomputes α based on t
+    t <= 1 && error("t must be greater than 1.")
+    n == 0 && return BigInt(1)/BigInt(2)
+    α = αdirect(n,2*t-1)
+    return (α*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,1-2*x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,1-2*x))*sqrt(BigInt(n)/(2*α))
 end
+# Evaluate the n-th non-normalized OP wrt 1/(t-x) at point x
 function evalϕn(n::Integer,x,t::Real)
     # this version recomputes α based on t
     t <= 1 && error("t must be greater than 1.")
-    n == 0 && return 2
+    n == 0 && return 1
     return αdirect(n,2*t-1)*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,1-2*x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,1-2*x)
 end
