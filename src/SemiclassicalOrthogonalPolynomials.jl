@@ -17,7 +17,7 @@ import FillArrays: SquareEye
 export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio, TwoBandJacobi, TwoBandWeight
 
 
-include("negativeintc.jl")
+include("neg1c.jl")
 
 
 """"
@@ -338,9 +338,15 @@ end
 
 
 function ldiv(Q::SemiclassicalJacobi, f::AbstractQuasiVector)
+    if Q.a==0 && Q.b==0 && Q.c==-1
+        # todo: due to a stdlib error this won't work with bigfloat as is
+        R = Legendre()[affine(Inclusion(0..1), axes(Legendre(),1)), :]
+        B = neg1c_tolegendre(Q.t)
+        return B \ (R \ f)
+    end
     R = SemiclassicalJacobi(Q.t, mod(Q.a,-1), mod(Q.b,-1), mod(Q.c,-1))
     R̃ = toclassical(R)
-    (Q \ R̃) * (R̃ \ f)
+    return (Q \ R̃) * (R̃ \ f)
 end
 function ldiv(Qn::SubQuasiArray{<:Any,2,<:SemiclassicalJacobi,<:Tuple{<:Inclusion,<:Any}}, C::AbstractQuasiArray)
     _,jr = parentindices(Qn)
