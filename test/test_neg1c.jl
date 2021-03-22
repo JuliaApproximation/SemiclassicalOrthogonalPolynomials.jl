@@ -109,29 +109,25 @@ end
     @test evalϕn(2,x,t) ≈ 0.806910345733665
 end
 
-@testset "OPs for a=b=0, c=-1 - basic evaluation consistency" begin
+@testset "OPs for a=b=0, c=-1 - adaptive evaluation consistency" begin
     # basis
     t = 1.1
     P = Legendre()[affine(Inclusion(0..1), axes(Legendre(),1)), :]
     x = axes(P,1)
     # compute coefficients for basis
     N = 20
-    α = zeros(N)'
-    α[1] = initialα(2*t-1)
-    αcoefficients!(α,2*t-1,2:N)
     # generate B operator
     B = neg1c_tolegendre(t)
-    B = B[1:20,1:20]
     # some test functions
     f1(x) = x^2
     f2(x) = (t-x)^2
     f3(x) = exp(t-x)
     # test basic expansion and evaluation via Legendre()
     y = rand(1)[1]
-    u1 = qr(B) \ (P[:,1:20] \ f1.(x))
-    @test (P[:,1:20]*(B*u1))[y] ≈ f1(y)
-    u2 = qr(B) \ (P[:,1:20] \ @.((t-x)^2))
-    @test (P[:,1:20]*(B*u2))[y] ≈ f2(y)
-    u3 = qr(B) \ (P[:,1:20] \ @.(exp(t-x)))
-    @test (P[:,1:20]*(B*u3))[y] ≈ f3(y)
+    u1 = B \ (P \ f1.(x))
+    @test (P*(B*u1))[y] ≈ f1(y)
+    u2 = B \ (P \ @.((t-x)^2))
+    @test (P*(B*u2))[y] ≈ f2(y)
+    u3 = B \ (P \ @.(exp(t-x)))
+    @test (P*(B*u3))[y] ≈ f3(y)
 end

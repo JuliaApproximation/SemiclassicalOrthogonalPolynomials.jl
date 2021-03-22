@@ -35,7 +35,7 @@ mutable struct neg1c_αcfs{T} <: AbstractCachedVector{T}
     data::Vector{T}
     datasize::Tuple{Int}
     array
-    neg1c_αcfs{T}(t::T) where T = new{T}(t, [initialα(2*t-1)], (1,))
+    neg1c_αcfs{T}(t::T) where T = new{T}(t, [initialα(2*t-1),αdirect(2,2*t-1)], (2,))
 end
 neg1c_αcfs(t::T) where T = neg1c_αcfs{T}(t)
 size(α::neg1c_αcfs) = (ℵ₀,)
