@@ -336,11 +336,11 @@ massmatrix(P::SemiclassicalJacobi) = Diagonal(Fill(sum(orthogonalityweight(P)),�
     (P\A)' * massmatrix(P) * (P \ B)
 end
 
-
 function ldiv(Q::SemiclassicalJacobi, f::AbstractQuasiVector)
     if Q.a==0 && Q.b==0 && Q.c==-1
         # todo: due to a stdlib error this won't work with bigfloat as is
-        R = Legendre()[affine(Inclusion(0..1), axes(Legendre(),1)), :]
+        T = typeof(Q.t)
+        R = Legendre{T}()[affine(Inclusion(zero(T)..one(T)), axes(Legendre{T}(),1)), :]
         B = neg1c_tolegendre(Q.t)
         return B \ (R \ f)
     end
@@ -351,6 +351,13 @@ end
 function ldiv(Qn::SubQuasiArray{<:Any,2,<:SemiclassicalJacobi,<:Tuple{<:Inclusion,<:Any}}, C::AbstractQuasiArray)
     _,jr = parentindices(Qn)
     Q = parent(Qn)
+    if Q.a==0 && Q.b==0 && Q.c==-1
+        # todo: due to a stdlib error this won't work with bigfloat as is
+        T = typeof(Q.t)
+        R = Legendre{T}()[affine(Inclusion(zero(T)..one(T)), axes(Legendre{T}(),1)), :]
+        B = neg1c_tolegendre(Q.t)
+        return B[jr,jr] \ (R[:,jr] \ C)
+    end
     R = SemiclassicalJacobi(Q.t, mod(Q.a,-1), mod(Q.b,-1), mod(Q.c,-1))
     R̃ = toclassical(R)
     (Q \ R̃)[jr,jr] * (R̃[:,jr] \ C)
@@ -382,7 +389,6 @@ function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, br:
     Ps
 end
 
-
 function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, b::Number, cr::AbstractUnitRange)
     Ps = [SemiclassicalJacobi(t, a, b, first(cr))]
     for c in cr[2:end]
@@ -390,7 +396,6 @@ function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, b::
     end
     Ps
 end
-
 
 include("twoband.jl")
 
