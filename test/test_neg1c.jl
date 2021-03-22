@@ -1,4 +1,5 @@
-using SemiclassicalOrthogonalPolynomials
+using SemiclassicalOrthogonalPolynomials, Test
+using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
 import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn
 
 @testset "inital α" begin
