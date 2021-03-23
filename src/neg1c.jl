@@ -96,7 +96,7 @@ function neg1c_normconstinitial(t, N)
     backαcoeff!(α,2*t-1,BigInt.(2:N-1))
     # normalization constants
     B = [BigFloat("1")]
-    append!(B,sqrt.(BigInt.(1:N-1)./(2 .*α)))
+    append!(B,sqrt(2*acoth(2*t-1))*sqrt.(BigInt.(1:N-1)./(2 .*α)))
     return B
 end
 
@@ -107,7 +107,7 @@ function neg1c_normconstextension!(B::Vector, inds, t)
     α = zeros(BigFloat, n)
     backαcoeff!(α,2*t-1,BigInt.(m:n))
     # normalization constants
-    norm = sqrt.(BigInt.(m:n)./(2 .*α[m:n]))
+    norm = sqrt(2*acoth(2*t-1))*sqrt.(BigInt.(m:n)./(2 .*α[m:n]))
     B[m+1:n] = norm[1:end-1]
     B
 end
@@ -130,9 +130,9 @@ end
 function evalQn(n::Integer,x,t::Real)
     # this version recomputes α based on t
     t <= 1 && error("t must be greater than 1.")
-    n == 0 && return BigInt(1)/BigInt(2)
+    n == 0 && return BigInt(1)
     α = αdirect(n,2*t-1)
-    return (α*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,1-2*x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,1-2*x))*sqrt(BigInt(n)/(2*α))
+    return sqrt(2*acoth(2*t-1))*(α*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,1-2*x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,1-2*x))*sqrt(BigInt(n)/(2*α))
 end
 # Evaluate the n-th non-normalized OP wrt 1/(t-x) at point x
 function evalϕn(n::Integer,x,t::Real)
