@@ -94,7 +94,7 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
         t = BigFloat("1.1")
         # Mathematica values
         @test evalQn(0,0.99,t) ≈ 1
-        @test evalQn(1,0.5,t) ≈ 0.6623723753894052
+        @test evalQn(1,0.5,t) ≈ -0.6623723753894052
         @test evalQn(6,0.12,t) ≈ -1.965171674178137
     end
 
@@ -107,7 +107,7 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
         αcoefficients!(α,2*t-1,2:n)
         # compare versions with and without recomputing α with Mathematica results
         @test evalϕn(0,x,t) == 1
-        @test evalϕn(1,x,t) ≈ 1.165935217151491
+        @test evalϕn(1,x,t) ≈ -1.165935217151491
         @test evalϕn(2,x,t) ≈ 0.806910345733665
     end
 
