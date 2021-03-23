@@ -118,8 +118,8 @@ end
 function neg1c_tolegendre(t::T) where T
     norm = neg1c_normconstant(t)
     α = neg1c_αcfs(t)
-    supD = norm.*Vcat(zeros(T,1),α).*(-1).^(1:∞)
-    D = norm.*(-1).^(0:∞)
+    supD = norm.*Vcat(zeros(T,1),-α)
+    D = norm
     return Bidiagonal(D,supD[2:end],:U)
 end
 
@@ -132,12 +132,12 @@ function evalQn(n::Integer, x, t::T) where T
     t <= 1 && throw(ArgumentError("t must be greater than 1."))
     n == 0 && return one(T)
     α = αdirect(n,2*t-1)
-    return sqrt(2*acoth(2*t-1))*(α*jacobip(n-1,0,0,1-2*x)+jacobip(n,0,0,1-2*x))*sqrt(n/(2*α))
+    return sqrt(2*acoth(2*t-1))*(-α*jacobip(n-1,0,0,2*x-1)+jacobip(n,0,0,2*x-1))*sqrt(n/(2*α))
 end
 # Evaluate the n-th non-normalized OP wrt 1/(t-x) at point x
 function evalϕn(n::Integer, x, t::T) where T
     # this version recomputes α based on t
     t <= 1 && throw(ArgumentError("t must be greater than 1."))
     n == 0 && return one(T)
-    return αdirect(n,2*t-1)*jacobip(n-1,0,0,1-2*x)+jacobip(n,0,0,1-2*x)
+    return -αdirect(n,2*t-1)*jacobip(n-1,0,0,2*x-1)+jacobip(n,0,0,2*x-1)
 end

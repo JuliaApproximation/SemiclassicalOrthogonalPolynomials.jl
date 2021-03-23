@@ -351,7 +351,7 @@ function ldiv(Q::SemiclassicalJacobi, f::AbstractQuasiVector)
         T = typeof(Q.t)
         R = Legendre{T}()[affine(Inclusion(zero(T)..one(T)), axes(Legendre{T}(),1)), :]
         B = neg1c_tolegendre(Q.t)
-        return (-1).^(0:∞).*(B \ (R \ f))
+        return (B \ (R \ f))
     end
     R = SemiclassicalJacobi(Q.t, mod(Q.a,-1), mod(Q.b,-1), mod(Q.c,-1))
     R̃ = toclassical(R)
@@ -365,7 +365,7 @@ function ldiv(Qn::SubQuasiArray{<:Any,2,<:SemiclassicalJacobi,<:Tuple{<:Inclusio
         T = typeof(Q.t)
         R = Legendre{T}()[affine(Inclusion(zero(T)..one(T)), axes(Legendre{T}(),1)), :]
         B = neg1c_tolegendre(Q.t)
-        return (-1).^(jr.-1).*(B[jr,jr] \ (R[:,jr] \ C))
+        return (B[jr,jr] \ (R[:,jr] \ C))
     end
     R = SemiclassicalJacobi(Q.t, mod(Q.a,-1), mod(Q.b,-1), mod(Q.c,-1))
     R̃ = toclassical(R)
