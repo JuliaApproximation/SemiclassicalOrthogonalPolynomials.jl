@@ -171,6 +171,15 @@ WeightedSemiclassicalJacobi(t, a, b, c, P...) = SemiclassicalJacobiWeight(t, a, 
 
 function semiclassical_jacobimatrix(t, a, b, c)
     T = promote_type(typeof(t), typeof(a), typeof(b), typeof(c))
+    if a==0 && b==0 && c==-1
+        N = BigInt.(1:∞)
+        α = Vcat(zeros(T,1),neg1c_αcfs(t)) # cached coefficients
+        A = Vcat([(α[2]+1)/2],BigInt(1)/BigInt(2) .- N./(N.*4 .- 2).*α[2:end] .+ (N.+1)./(N.*4 .+ 2).*α[3:end])
+        C = -(N)./(N.*4 .- 2)
+        B = Vcat([(α[2]^2*3-α[2]*α[3]*2-1)/6],-(N)./(N.*4 .+ 2).*α[3:end]./α[2:end])
+        # if non-norm. J is Tridiagonal(c,a,b) then for normalized OPs it becomes SymTridiagonal(a, sqrt.( b.* c))
+        return ClassicalOrthogonalPolynomials.SymTridiagonal(T.(A),T.(sqrt.(B.*C)))
+    end
     P = jacobi(b, a, UnitInterval{T}())
     iszero(c) && return symtridiagonalize(jacobimatrix(P))
     x = axes(P,1)

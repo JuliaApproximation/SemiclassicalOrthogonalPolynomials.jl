@@ -114,7 +114,6 @@ end
     t = 1.23
     Q = SemiclassicalJacobi(t,0,0,-1)
     x = axes(Q,1)
-    J = jacobimatrix(Q)
     # test functions
     f1(x) = x^2
     f2(x) = (t-x)^2
@@ -130,10 +129,9 @@ end
 
 @testset "OPs for a=b=0, c=-1 - Expansion" begin
     # basis
-    t = 1.23
+    t = 1.00001
     Q = SemiclassicalJacobi(t,0,0,-1)
     x = axes(Q,1)
-    J = jacobimatrix(Q)
     # test functions
     f1(x) = x^2
     f2(x) = (t-x)^2
@@ -149,7 +147,7 @@ end
 
 @testset "OPs for a=b=0, c=-1 - Multiplication by x" begin
     # basis
-    t = 1.001
+    t = 1.00000001
     Q = SemiclassicalJacobi(t,0,0,-1)
     x = axes(Q,1)
     X = jacobimatrix(Q)
