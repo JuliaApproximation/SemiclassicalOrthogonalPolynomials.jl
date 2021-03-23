@@ -89,25 +89,25 @@ function resizedata!(B::neg1c_normconstant, nm)
     B
 end
 
-function neg1c_normconstinitial(t, N)
+function neg1c_normconstinitial(t::T, N) where T
     # generate α coefficients for OPs via recurrence
-    α = zeros(BigFloat,N-1)
+    α = zeros(T,N-1)
     α[1] = initialα(2*t-1)
-    backαcoeff!(α,2*t-1,BigInt.(2:N-1))
+    backαcoeff!(α,2*t-1,(2:N-1))
     # normalization constants
-    B = [BigFloat("1")]
-    append!(B,sqrt(2*acoth(2*t-1))*sqrt.(BigInt.(1:N-1)./(2 .*α)))
+    B = [one(T)]
+    append!(B,sqrt(2*acoth(2*t-1))*sqrt.((1:N-1)./(2 .*α)))
     return B
 end
 
-function neg1c_normconstextension!(B::Vector, inds, t)
-    n = BigInt(maximum(inds))
-    m = BigInt(minimum(inds))-1
+function neg1c_normconstextension!(B::Vector, inds, t::T) where T
+    n = maximum(inds)
+    m = minimum(inds)-1
     # generate missing α coefficients
-    α = zeros(BigFloat, n)
-    backαcoeff!(α,2*t-1,BigInt.(m:n))
+    α = zeros(T, n)
+    backαcoeff!(α,2*t-1,(m:n))
     # normalization constants
-    norm = sqrt(2*acoth(2*t-1))*sqrt.(BigInt.(m:n)./(2 .*α[m:n]))
+    norm = sqrt(2*acoth(2*t-1))*sqrt.((m:n)./(2 .*α[m:n]))
     B[m+1:n] = norm[1:end-1]
     B
 end
@@ -127,17 +127,17 @@ end
 #   explicit polynomial evaluations
 ###
 # Evaluate the n-th normalized OP wrt 1/(t-x) at point x
-function evalQn(n::Integer,x,t::Real)
+function evalQn(n::Integer, x, t::T) where T
     # this version recomputes α based on t
-    t <= 1 && error("t must be greater than 1.")
-    n == 0 && return BigInt(1)
+    t <= 1 && throw(ArgumentError("t must be greater than 1."))
+    n == 0 && return one(T)
     α = αdirect(n,2*t-1)
-    return sqrt(2*acoth(2*t-1))*(α*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,1-2*x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,1-2*x))*sqrt(BigInt(n)/(2*α))
+    return sqrt(2*acoth(2*t-1))*(α*jacobip(n-1,0,0,1-2*x)+jacobip(n,0,0,1-2*x))*sqrt(n/(2*α))
 end
 # Evaluate the n-th non-normalized OP wrt 1/(t-x) at point x
-function evalϕn(n::Integer,x,t::Real)
+function evalϕn(n::Integer, x, t::T) where T
     # this version recomputes α based on t
-    t <= 1 && error("t must be greater than 1.")
-    n == 0 && return 1
-    return αdirect(n,2*t-1)*ClassicalOrthogonalPolynomials.jacobip(n-1,0,0,1-2*x)+ClassicalOrthogonalPolynomials.jacobip(n,0,0,1-2*x)
+    t <= 1 && throw(ArgumentError("t must be greater than 1."))
+    n == 0 && return one(T)
+    return αdirect(n,2*t-1)*jacobip(n-1,0,0,1-2*x)+jacobip(n,0,0,1-2*x)
 end

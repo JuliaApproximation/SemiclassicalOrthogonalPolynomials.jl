@@ -171,14 +171,14 @@ WeightedSemiclassicalJacobi(t, a, b, c, P...) = SemiclassicalJacobiWeight(t, a, 
 
 function semiclassical_jacobimatrix(t, a, b, c)
     T = promote_type(typeof(t), typeof(a), typeof(b), typeof(c))
-    if a==0 && b==0 && c==-1
-        N = BigInt.(1:∞)
-        α = Vcat(zeros(T,1),neg1c_αcfs(t)) # cached coefficients
-        A = Vcat([(α[2]+1)/2],BigInt(1)/BigInt(2) .- N./(N.*4 .- 2).*α[2:end] .+ (N.+1)./(N.*4 .+ 2).*α[3:end])
+    if a == 0 && b == 0 && c == -1
+        N = (1:∞)
+        α = T.(Vcat(zero(T),neg1c_αcfs(t))) # cached coefficients
+        A = Vcat((α[2]+1)/2 , -N./(N.*4 .- 2).*α[2:end] .+ (N.+1)./(N.*4 .+ 2).*α[3:end].+1/2)
         C = -(N)./(N.*4 .- 2)
-        B = Vcat([(α[2]^2*3-α[2]*α[3]*2-1)/6],-(N)./(N.*4 .+ 2).*α[3:end]./α[2:end])
+        B = Vcat((α[2]^2*3-α[2]*α[3]*2-1)/6 , -(N)./(N.*4 .+ 2).*α[3:end]./α[2:end])
         # if non-norm. J is Tridiagonal(c,a,b) then for normalized OPs it becomes SymTridiagonal(a, sqrt.( b.* c))
-        return ClassicalOrthogonalPolynomials.SymTridiagonal(T.(A),T.(sqrt.(B.*C)))
+        return SymTridiagonal(A,sqrt.(B.*C))
     end
     P = jacobi(b, a, UnitInterval{T}())
     iszero(c) && return symtridiagonalize(jacobimatrix(P))
@@ -346,7 +346,7 @@ massmatrix(P::SemiclassicalJacobi) = Diagonal(Fill(sum(orthogonalityweight(P)),�
 end
 
 function ldiv(Q::SemiclassicalJacobi, f::AbstractQuasiVector)
-    if Q.a==0 && Q.b==0 && Q.c==-1
+    if Q.a == 0 && Q.b == 0 && Q.c == -1
         # todo: due to a stdlib error this won't work with bigfloat as is
         T = typeof(Q.t)
         R = Legendre{T}()[affine(Inclusion(zero(T)..one(T)), axes(Legendre{T}(),1)), :]
@@ -360,7 +360,7 @@ end
 function ldiv(Qn::SubQuasiArray{<:Any,2,<:SemiclassicalJacobi,<:Tuple{<:Inclusion,<:Any}}, C::AbstractQuasiArray)
     _,jr = parentindices(Qn)
     Q = parent(Qn)
-    if Q.a==0 && Q.b==0 && Q.c==-1
+    if Q.a == 0 && Q.b == 0 && Q.c == -1
         # todo: due to a stdlib error this won't work with bigfloat as is
         T = typeof(Q.t)
         R = Legendre{T}()[affine(Inclusion(zero(T)..one(T)), axes(Legendre{T}(),1)), :]
