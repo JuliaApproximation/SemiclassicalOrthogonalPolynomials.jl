@@ -91,9 +91,9 @@ end
 @testset "OPs for a=b=0, c=-1 - evaluation normalized" begin
     t = BigFloat("1.1")
     # Mathematica values
-    @test evalQn(0,0.99,t) ≈ 0.5
-    @test evalQn(1,0.5,t) ≈ 0.4277471315809677
-    @test evalQn(6,0.12,t) ≈ -1.269069450850338
+    @test evalQn(0,0.99,t) ≈ 1
+    @test evalQn(1,0.5,t) ≈ 0.6623723753894052
+    @test evalQn(6,0.12,t) ≈ -1.965171674178137
 end
 
 @testset "OPs for a=b=0, c=-1 - evaluation non-normalized" begin
@@ -109,25 +109,59 @@ end
     @test evalϕn(2,x,t) ≈ 0.806910345733665
 end
 
-@testset "OPs for a=b=0, c=-1 - adaptive evaluation consistency" begin
+@testset "OPs for a=b=0, c=-1 - Expansion (adaptive)" begin
     # basis
-    t = 1.1
-    P = Legendre()[affine(Inclusion(0..1), axes(Legendre(),1)), :]
-    x = axes(P,1)
-    # compute coefficients for basis
-    N = 20
-    # generate B operator
-    B = neg1c_tolegendre(t)
-    # some test functions
+    t = 1.23
+    Q = SemiclassicalJacobi(t,0,0,-1)
+    x = axes(Q,1)
+    J = jacobimatrix(Q)
+    # test functions
     f1(x) = x^2
     f2(x) = (t-x)^2
     f3(x) = exp(t-x)
-    # test basic expansion and evaluation via Legendre()
+    f4(x) = sinh(t*x)
+    # test expansion
     y = rand(1)[1]
-    u1 = B \ (P \ f1.(x))
-    @test (P*(B*u1))[y] ≈ f1(y)
-    u2 = B \ (P \ @.((t-x)^2))
-    @test (P*(B*u2))[y] ≈ f2(y)
-    u3 = B \ (P \ @.(exp(t-x)))
-    @test (P*(B*u3))[y] ≈ f3(y)
+    @test (Q*(Q\f1.(x)))[y] ≈ f1(y)
+    @test (Q*(Q\f2.(x)))[y] ≈ f2(y)
+    @test (Q*(Q\f3.(x)))[y] ≈ f3(y)
+    @test (Q*(Q\f4.(x)))[y] ≈ f4(y)
+end
+
+@testset "OPs for a=b=0, c=-1 - Expansion" begin
+    # basis
+    t = 1.23
+    Q = SemiclassicalJacobi(t,0,0,-1)
+    x = axes(Q,1)
+    J = jacobimatrix(Q)
+    # test functions
+    f1(x) = x^2
+    f2(x) = (t-x)^2
+    f3(x) = exp(t-x)
+    f4(x) = sinh(t*x)
+    # test expansion
+    y = rand(1)[1]
+    @test (Q[:,1:30]*(Q[:,1:30]\f1.(x)))[y] ≈ f1(y)
+    @test (Q[:,1:30]*(Q[:,1:30]\f2.(x)))[y] ≈ f2(y)
+    @test (Q[:,1:30]*(Q[:,1:30]\f3.(x)))[y] ≈ f3(y)
+    @test (Q[:,1:30]*(Q[:,1:30]\f4.(x)))[y] ≈ f4(y)
+end
+
+@testset "OPs for a=b=0, c=-1 - Multiplication by x" begin
+    # basis
+    t = 1.001
+    Q = SemiclassicalJacobi(t,0,0,-1)
+    x = axes(Q,1)
+    X = jacobimatrix(Q)
+    # test functions
+    f1(x) = x^2
+    f2(x) = (t-x)^2
+    f3(x) = exp(t-x)
+    f4(x) = sinh(t*x)
+    # test expansion
+    y = rand(1)[1]
+    @test (Q*(X*(Q\f1.(x))))[y] ≈ y*f1(y)
+    @test (Q*(X*X*(Q\f2.(x))))[y] ≈ y^2*f2(y)
+    @test (Q*(X*(Q\f3.(x))))[y] ≈ y*f3(y)
+    @test (Q*(X*(Q\f4.(x))))[y] ≈ y*f4(y)
 end
