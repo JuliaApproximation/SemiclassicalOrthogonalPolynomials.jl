@@ -26,6 +26,20 @@ function getindex(w::TwoBandWeight, x::Real)
     abs(x)^(2w.c) * (x^2- w.ρ^2)^w.b * (1-x^2)^w.a
 end
 
+function sum(w::TwoBandWeight{T}) where T
+    if 2w.a == 2w.b == -1 && 2w.c == 1
+        convert(T,π)/2
+    else
+        error("not implemented")
+#         1/2 \[Pi] (-((\[Rho]^(1 + 2 b + 2 c)
+#       Gamma[1 + b] Hypergeometric2F1Regularized[-a, 1/2 + c, 
+#       3/2 + b + c, \[Rho]^2])/Gamma[1/2 - c]) + (
+#    Gamma[1 + a] Hypergeometric2F1Regularized[-b, -(1/2) - a - b - c, 
+#      1/2 - b - c, \[Rho]^2])/
+#    Gamma[3/2 + a + b + c]) Sec[(b + c) \[Pi]]
+    end
+end
+
 """
     TwoBandJacobi(a, b)
 
@@ -81,4 +95,13 @@ function jacobimatrix(R::TwoBandJacobi{T}) where T
     ρ = R.ρ
     L = R.P \ (SemiclassicalJacobiWeight(R.P.t,0,0,1) .* R.Q)
     Tridiagonal(Interlace(L.dv/L[1,1], (1-ρ^2) * L.ev), Zeros{T}(∞), Interlace((1-ρ^2) * L.dv,L.ev/L[1,1]))
+end
+
+
+@simplify function *(H::Hilbert, w::TwoBandWeight)
+    if 2w.a == 2w.b == -1 && 2w.c == 1
+        zeros(promote_type(eltype(H),eltype(w)), axes(w,1))
+    else
+       error("Not Implemented")
+    end
 end

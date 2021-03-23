@@ -1,5 +1,5 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, Test
-import ClassicalOrthogonalPolynomials: orthogonalityweight
+import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
 
 @testset "Two Band" begin
     @testset "TwoBandWeight" begin
@@ -21,5 +21,23 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight
         @test copy(T) == T
         @test U ≠ T
         @test orthogonalityweight(T) == TwoBandWeight(ρ, -1/2, -1/2, 1/2)
+
+        # bug
+        @test !issymmetric(jacobimatrix(T)[1:10,1:10])
+    end
+
+    @testset "Hilbert" begin
+        ρ = 0.5
+        w = TwoBandWeight(ρ, -1/2, -1/2, 1/2)
+        x = axes(w,1)
+        H = inv.(x .- x')
+        @test iszero(H*w)
+        @test sum(w) == π/2
+        
+        T = TwoBandJacobi(ρ, -1/2, -1/2, 1/2)
+        associated(T) \ exp.(x)
+
+
+        H * Weighted(T)
     end
 end
