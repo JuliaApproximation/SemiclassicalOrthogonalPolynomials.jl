@@ -105,3 +105,14 @@ end
        error("Not Implemented")
     end
 end
+
+
+function grid(L::SubQuasiArray{T,2,<:Associated{<:Any,<:TwoBandJacobi},<:Tuple{Inclusion,OneTo}}) where T
+    g = grid(legendre(parent(L).P.ρ .. 1)[:,parentindices(L)[2]])
+    [-g; g]
+end
+    
+    
+
+LinearAlgebra.factorize(L::SubQuasiArray{<:Any,2,<:Associated{<:Any,<:TwoBandJacobi},<:Tuple{Inclusion,OneTo}}) =
+    ContinuumArrays._factorize(BasisLayout(), L)

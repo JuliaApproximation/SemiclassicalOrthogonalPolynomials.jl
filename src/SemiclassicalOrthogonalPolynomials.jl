@@ -2,16 +2,17 @@ module SemiclassicalOrthogonalPolynomials
 using ClassicalOrthogonalPolynomials, FillArrays, LazyArrays, ArrayLayouts, QuasiArrays, InfiniteArrays, ContinuumArrays, LinearAlgebra, BandedMatrices,
         SpecialFunctions, HypergeometricFunctions
 
-import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe_getindex, convert
+import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe_getindex, convert, OneTo
 
 import ArrayLayouts: MemoryLayout, ldiv, diagonaldata, subdiagonaldata, supdiagonaldata
 import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout, _BandedMatrix
 import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAbstractVector, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector, AccumulateAbstractVector, LazyVector
 import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedBasisLayout,
                                         Bidiagonal, Tridiagonal, SymTridiagonal, symtridiagonalize, normalizationconstant, LanczosPolynomial,
-                                        OrthogonalPolynomialRatio, Weighted, Expansion, UnionDomain, oneto, Hilbert, WeightedOrthogonalPolynomial, HalfWeighted
+                                        OrthogonalPolynomialRatio, Weighted, Expansion, UnionDomain, oneto, Hilbert, WeightedOrthogonalPolynomial, HalfWeighted,
+                                        Associated
 import InfiniteArrays: OneToInf, InfUnitRange
-import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout
+import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid
 import FillArrays: SquareEye
 
 export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio, TwoBandJacobi, TwoBandWeight

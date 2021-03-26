@@ -36,7 +36,10 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
         
         T = TwoBandJacobi(ρ, -1/2, -1/2, 1/2)
         Q = associated(T)
-        @test_broken Q \ exp.(x) # golubwelsch gives 0 quad point
+        @test (Q[0.6,1:100]' * (Q[:,Base.OneTo(100)] \ exp.(x))) ≈ exp(0.6)
+        @test (Q[-0.6,1:100]' * (Q[:,Base.OneTo(100)] \ exp.(x))) ≈ exp(-0.6)
+
+        @test (Q * (Q \ exp.(x)))[0.6] ≈ exp(0.6)
         @test_broken Q \ (H * Weighted(T)) # need to deal with Hcat
     end
 end
