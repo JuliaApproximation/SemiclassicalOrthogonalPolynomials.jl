@@ -186,11 +186,42 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
 
 
         d = AccumulateAbstractVector(*, A ./ α)
-        # v1 = AccumulateAbstractVector(+, Vcat(1,α) ./ B)
-
-        @test (HP[x+h,n]-HP[x,n])/h ≈ x^a * ((a+n)*d[n-1]*Q[x,n]+ (-(a+n)*k[n-1]*ξ[n-1]/(κ[n-2]κ[n-1]) + (a+n-1)*j[n-1]/κ[n-2])*Q[x,n-1]) atol=100h
+        v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
+        v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
 
         
+        Vcat(
+        ((a+1):∞) .* Vcat(1,d)
+        # v1 = AccumulateAbstractVector(+, Vcat(1,α) ./ B)
+        n = 4
+        @test v1[n] ≈ ξ[n-1]/κ[n-2]
+
+        k[n-1]/κ[n-1]
+        @test (HP[x+h,n]-HP[x,n])/h ≈ x^a * ((a+n)*d[n-1]*Q[x,n]+ (-(a+n)*v1[n]d[n-1] + (a+n-1)*v2[n])*Q[x,n-1]) atol=100h
+
+        j[1] == B[1]
+        n = 3
+        j[n-1]/κ[n-2]
+        n = 4
+        @test j[n-1]/κ[n-2] ≈ A[n-1]/α[n-2] *j[n-2]/κ[n-3] + B[n-1]*d[n-2]
+
+
+
+        @test ξ[n-1]/κ[n-2] ≈ α[n-1]/α[n-2]*ξ[n-2]/κ[n-3] + β[n-1]
+
+        n = 2; ξ[1] == β[1]
+        n = 3; ξ[n-1]/κ[n-2] == α[n-1]/α[n-2] * ξ[n-2] + β[n-1]
+
+        n = 4;  ξ[n-1]/κ[n-2]
+        
+        n = 4;  ξ[n-1]/κ[n-2]
+        α[n-1]/α[n-2] * μ + β[n-1]
+        n
+        
+        @test k[n-1]*ξ[n-1]/(κ[n-2]κ[n-1]) ≈ α[n-1]A[n-1]/A[n-2] * k[n-2]ξ[n-2]/(κ[n-2]κ[n-1])  + k[n-1]*β[n-1]*κ[n-2]/(κ[n-2]κ[n-1]) 
+
+        @test k[n-1]*ξ[n-1]/(κ[n-2]κ[n-1]) ≈ α[n-1]A[n-1]/A[n-2] * k[n-2]ξ[n-2]/(κ[n-2]κ[n-1])  + k[n-1]*β[n-1]*κ[n-2]/(κ[n-2]κ[n-1]) 
+
         # Bidiagonal(((P.a+1):∞) .* d, , :U)
     end
 end
