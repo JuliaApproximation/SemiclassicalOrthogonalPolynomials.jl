@@ -167,7 +167,7 @@ WeightedSemiclassicalJacobi(t, a, b, c, P...) = SemiclassicalJacobiWeight(t, a, 
 
 
 function semiclassical_jacobimatrix(t, a, b, c)
-    T = promote_type(typeof(t), typeof(a), typeof(b), typeof(c))
+    T = float(promote_type(typeof(t), typeof(a), typeof(b), typeof(c)))
     P = jacobi(b, a, UnitInterval{T}())
     iszero(c) && return symtridiagonalize(jacobimatrix(P))
     x = axes(P,1)

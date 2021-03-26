@@ -35,9 +35,8 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
         @test sum(w) == π/2
         
         T = TwoBandJacobi(ρ, -1/2, -1/2, 1/2)
-        associated(T) \ exp.(x)
-
-
-        H * Weighted(T)
+        Q = associated(T)
+        @test_broken Q \ exp.(x) # golubwelsch gives 0 quad point
+        @test_broken Q \ (H * Weighted(T)) # need to deal with Hcat
     end
 end

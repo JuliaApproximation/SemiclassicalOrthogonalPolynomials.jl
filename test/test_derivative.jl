@@ -29,12 +29,12 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
 
         for n = 3:10
             u = (D * (P̃ * [[zeros(n);1]; zeros(∞)]))
-            @test norm((Q \ u)[1:n-2]) ≤ 1000eps()
+            @test norm((Q \ u)[1:n-2]) ≤ 3E-12
         end
 
         L = Q \ (D * P̃);
         # L is bidiagonal
-        @test norm(triu(L[1:10,1:10],3)) ≤ 1000eps()
+        @test norm(triu(L[1:10,1:10],3)) ≤ 3E-12
         @test L[:,5] isa Vcat
 
         A,B,C = recurrencecoefficients(P);
@@ -149,7 +149,6 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
         Q = SemiclassicalJacobi(t,a,b+1,c+1)
         HP = HalfWeighted{:a}(P)
         HQ = HalfWeighted{:a}(Q)
-        D * HP
 
         A,B,C = recurrencecoefficients(P);
         α,β,γ = recurrencecoefficients(Q);
@@ -170,9 +169,8 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
         h = 0.00001
         n = 1
         x = 0.1
-        @test (HP[x+h,n]-HP[x,n])/h ≈ a * HQ[x,n] atol=10h
+        @test (HP[x+h,n]-HP[x,n])/h ≈ (a+1) * HQ[x,n] atol=10h
         n = 2
-
         @test P[x,n] ≈ k[1]*x + j[1]
         @test Q[x,n] ≈ κ[1]*x + ξ[1]
         @test HP[x,n] ≈ x^(a+1) * P[x,n]
@@ -193,6 +191,6 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
         @test (HP[x+h,n]-HP[x,n])/h ≈ x^a * ((a+n)*d[n-1]*Q[x,n]+ (-(a+n)*k[n-1]*ξ[n-1]/(κ[n-2]κ[n-1]) + (a+n-1)*j[n-1]/κ[n-2])*Q[x,n-1]) atol=100h
 
         
-        Bidiagonal(((P.a+1):∞) .* d, , :U)
+        # Bidiagonal(((P.a+1):∞) .* d, , :U)
     end
 end
