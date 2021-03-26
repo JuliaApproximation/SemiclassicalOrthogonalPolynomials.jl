@@ -9,6 +9,7 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
         @test_throws BoundsError w[-0.4]
         @test_throws BoundsError w[1.1]
         @test copy(w) == w
+        @test_broken sum(w)
     end
     @testset "Chebyshev case" begin
         ρ = 0.5
@@ -41,5 +42,7 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
 
         @test (Q * (Q \ exp.(x)))[0.6] ≈ exp(0.6)
         @test_broken Q \ (H * Weighted(T)) # need to deal with Hcat
+
+        @test_broken H*TwoBandWeight(ρ, 1/2, 1/2, -1/2)
     end
 end
