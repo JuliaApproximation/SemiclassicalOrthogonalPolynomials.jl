@@ -45,3 +45,19 @@ end
     P = SemiclassicalJacobi(Q.t, Q.a-1,Q.b-1,Q.c-1)
     Weighted(P) * ((-sum(orthogonalityweight(Q))/sum(orthogonalityweight(P))) * (Q \ (D * P))')
 end
+
+@simplify function *(D::Derivative, HP::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi})
+    P = HP.P
+    Q = SemiclassicalJacobi(P.t, P.a-1, P.b+1, P.c+1)
+    a = Q.a
+    A,B,C = recurrencecoefficients(P)
+    α,β,γ = recurrencecoefficients(Q)
+    d = AccumulateAbstractVector(*, A ./ α)
+    v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
+    v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
+
+    HalfWeighted{:a}(Q) * _BandedMatrix(
+        Vcat(
+        ((a:∞) .* v2 .- ((a+1):∞) .* Vcat(1,v1[2:end] .* d))',
+        (((a+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
+end
