@@ -146,86 +146,59 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
 
         t,a,b,c = 2,0.1,0.2,0.3
         P = SemiclassicalJacobi(t, a+1, b, c)
-        Q = SemiclassicalJacobi(t,a,b+1,c+1)
+        # Q = SemiclassicalJacobi(t,a,b+1,c+1)
         HP = HalfWeighted{:a}(P)
-        HQ = HalfWeighted{:a}(Q)
         h = 0.000001
         @test (D * HP)[0.1,1:10] ≈ (HP[0.1+h,1:10]-HP[0.1,1:10])/h atol=200h
 
 
-        # A,B,C = recurrencecoefficients(P);
-        # α,β,γ = recurrencecoefficients(Q);
+        P = SemiclassicalJacobi(t, a, b+1, c)
+        # Q = SemiclassicalJacobi(t,a+1,b,c+1)
+        HP = HalfWeighted{:b}(P)
+        @test (D * HP)[0.1,1:10] ≈ (HP[0.1+h,1:10]-HP[0.1,1:10])/h atol=1000h
 
-        # k = cumprod(A);
-        # κ = cumprod(α);
-        # j = Vector{Float64}(undef, 100)
-        # j[1] = B[1]
-        # for n = 1:length(j)-1
-        #     j[n+1] = A[n+1]*j[n] + B[n+1]*k[n]
-        # end
-        # ξ = Vector{Float64}(undef, 100)
-        # ξ[1] = β[1]
-        # for n = 1:length(ξ)-1
-        #     ξ[n+1] = α[n+1]*ξ[n] + β[n+1]*κ[n]
-        # end
+        # HQ = HalfWeighted{:b}(Q)
 
-        # h = 0.00001
-        # n = 1
-        # x = 0.1
-        # @test (HP[x+h,n]-HP[x,n])/h ≈ (a+1) * HQ[x,n] atol=10h
-        # n = 2
-        # @test P[x,n] ≈ k[1]*x + j[1]
-        # @test Q[x,n] ≈ κ[1]*x + ξ[1]
-        # @test HP[x,n] ≈ x^(a+1) * P[x,n]
-        # @test (HP[x+h,n]-HP[x,n])/h ≈ x^a * ((a+1)*(k[1]*x + j[1])+ x * k[1]) atol=10h
-        # @test (HP[x+h,n]-HP[x,n])/h ≈ x^a * ((a+2)*k[1]*x + (a+1)*j[1]) atol=10h
-        # @test (HP[x+h,n]-HP[x,n])/h ≈ x^a * ((a+2)*k[1]*(Q[x,n]-ξ[1])/κ[1] + (a+1)*j[1]) atol=10h
-        # @test (HP[x+h,n]-HP[x,n])/h ≈ x^a * ((a+2)*k[1]/κ[1]*Q[x,n]+ (-(a+2)*k[1]*ξ[1]/κ[1] + (a+1)*j[1])*Q[x,n-1]) atol=10h
+        A,B,C = recurrencecoefficients(P);
+        α,β,γ = recurrencecoefficients(Q);
+
+        k = cumprod(A);
+        κ = cumprod(α);
+        j = Vector{Float64}(undef, 100)
+        j[1] = B[1]
+        for n = 1:length(j)-1
+            j[n+1] = A[n+1]*j[n] + B[n+1]*k[n]
+        end
+        ξ = Vector{Float64}(undef, 100)
+        ξ[1] = β[1]
+        for n = 1:length(ξ)-1
+            ξ[n+1] = α[n+1]*ξ[n] + β[n+1]*κ[n]
+        end
+
+        n = 1
+        x = 0.1
+        @test (HP[x+h,n]-HP[x,n])/h ≈ -(b+1) * HQ[x,n] atol=10h
+        n = 2
+        @test P[x,n] ≈ k[1]*x + j[1]
+        @test Q[x,n] ≈ κ[1]*x + ξ[1]
+        @test HP[x,n] ≈ (1-x)^(b+1) * P[x,n]
+        @test (HP[x+h,n]-HP[x,n])/h ≈ (1-x)^b * (-(b+2)*k[1]*x -(b+1)*j[1]+ k[1]) atol=10h
+        @test (HP[x+h,n]-HP[x,n])/h ≈ (1-x)^b * (-(b+2)*k[1]/κ[1]*Q[x,n]+ ((b+2)*k[1]*ξ[1]/κ[1] -(b+1)*j[1]+ k[1])*Q[x,n-1]) atol=10h
         
-        # n = 3
-        # @test (HP[x+h,n]-HP[x,n])/h ≈ x^a * ((a+n)*k[n-1]/κ[n-1]*Q[x,n]+ (-(a+n)*k[n-1]*ξ[n-1]/κ[n-1] + (a+n-1)*j[n-1])/κ[n-2]*Q[x,n-1]) atol=20h
-        # n = 4
-        # @test (HP[x+h,n]-HP[x,n])/h ≈ x^a * ((a+n)*k[n-1]/κ[n-1]*Q[x,n]+ (-(a+n)*k[n-1]*ξ[n-1]/κ[n-1] + (a+n-1)*j[n-1])/κ[n-2]*Q[x,n-1]) atol=100h
+        n = 3
+        @test (HP[x+h,n]-HP[x,n])/h ≈ (1-x)^b * (-(b+n)*k[n-1]/κ[n-1]*Q[x,n]+ ((b+n)*k[n-1]*ξ[n-1]/(κ[n-1]κ[n-2]) - (b+n-1)*j[n-1]/κ[n-2] +(n-1)*k[n-1]/κ[n-2])*Q[x,n-1]) atol=100h
+        n = 4
+        @test (HP[x+h,n]-HP[x,n])/h ≈ (1-x)^b * (-(b+n)*k[n-1]/κ[n-1]*Q[x,n]+ ((b+n)*k[n-1]*ξ[n-1]/κ[n-1] - (b+n-1)*j[n-1] +k[n-1]*(n-1))/κ[n-2]*Q[x,n-1]) atol=100h
 
 
-        # d = AccumulateAbstractVector(*, A ./ α)
-        # v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
-        # v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
+        d = AccumulateAbstractVector(*, A ./ α)
+        d2 = AccumulateAbstractVector(*, A ./ Vcat(1,α))
+        v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
+        v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
 
-        # _BandedMatrix(
-        #     Vcat(
-        #     ((a:∞) .* v2 .- ((a+1):∞) .* Vcat(1,v1[2:end] .* d))',
-        #     (((a+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
-        # # v1 = AccumulateAbstractVector(+, Vcat(1,α) ./ B)
-        # n = 4
-        # @test v1[n] ≈ ξ[n-1]/κ[n-2]
-
-        # k[n-1]/κ[n-1]
-        # @test (HP[x+h,n]-HP[x,n])/h ≈ x^a * ((a+n)*d[n-1]*Q[x,n]+ (-(a+n)*v1[n]d[n-1] + (a+n-1)*v2[n])*Q[x,n-1]) atol=100h
-
-        # j[1] == B[1]
-        # n = 3
-        # j[n-1]/κ[n-2]
-        # n = 4
-        # @test j[n-1]/κ[n-2] ≈ A[n-1]/α[n-2] *j[n-2]/κ[n-3] + B[n-1]*d[n-2]
-
-
-
-        # @test ξ[n-1]/κ[n-2] ≈ α[n-1]/α[n-2]*ξ[n-2]/κ[n-3] + β[n-1]
-
-        # n = 2; ξ[1] == β[1]
-        # n = 3; ξ[n-1]/κ[n-2] == α[n-1]/α[n-2] * ξ[n-2] + β[n-1]
-
-        # n = 4;  ξ[n-1]/κ[n-2]
-        
-        # n = 4;  ξ[n-1]/κ[n-2]
-        # α[n-1]/α[n-2] * μ + β[n-1]
-        # n
-        
-        # @test k[n-1]*ξ[n-1]/(κ[n-2]κ[n-1]) ≈ α[n-1]A[n-1]/A[n-2] * k[n-2]ξ[n-2]/(κ[n-2]κ[n-1])  + k[n-1]*β[n-1]*κ[n-2]/(κ[n-2]κ[n-1]) 
-
-        # @test k[n-1]*ξ[n-1]/(κ[n-2]κ[n-1]) ≈ α[n-1]A[n-1]/A[n-2] * k[n-2]ξ[n-2]/(κ[n-2]κ[n-1])  + k[n-1]*β[n-1]*κ[n-2]/(κ[n-2]κ[n-1]) 
-
-        # Bidiagonal(((P.a+1):∞) .* d, , :U)
+        _BandedMatrix(
+            Vcat(
+            (-(b:∞) .* v2 .+ ((b+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(1:∞) .* d2))',
+            (-((b+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
     end
 end
