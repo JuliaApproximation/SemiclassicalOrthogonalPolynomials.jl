@@ -157,7 +157,13 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
         HP = HalfWeighted{:b}(P)
         @test (D * HP)[0.1,1:10] ≈ (HP[0.1+h,1:10]-HP[0.1,1:10])/h atol=1000h
 
-        # HQ = HalfWeighted{:b}(Q)
+        P = SemiclassicalJacobi(t, a, b, c+1)
+        # Q = SemiclassicalJacobi(t,a+1,b+1,c)
+        HP = HalfWeighted{:c}(P)
+        @test (D * HP)[0.1,1:10] ≈ (HP[0.1+h,1:10]-HP[0.1,1:10])/h atol=2000h
+
+
+        HQ = HalfWeighted{:c}(Q)
 
         A,B,C = recurrencecoefficients(P);
         α,β,γ = recurrencecoefficients(Q);
@@ -177,18 +183,18 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
 
         n = 1
         x = 0.1
-        @test (HP[x+h,n]-HP[x,n])/h ≈ -(b+1) * HQ[x,n] atol=10h
+        @test (HP[x+h,n]-HP[x,n])/h ≈ -(c+1) * HQ[x,n] atol=10h
         n = 2
         @test P[x,n] ≈ k[1]*x + j[1]
         @test Q[x,n] ≈ κ[1]*x + ξ[1]
-        @test HP[x,n] ≈ (1-x)^(b+1) * P[x,n]
-        @test (HP[x+h,n]-HP[x,n])/h ≈ (1-x)^b * (-(b+2)*k[1]*x -(b+1)*j[1]+ k[1]) atol=10h
-        @test (HP[x+h,n]-HP[x,n])/h ≈ (1-x)^b * (-(b+2)*k[1]/κ[1]*Q[x,n]+ ((b+2)*k[1]*ξ[1]/κ[1] -(b+1)*j[1]+ k[1])*Q[x,n-1]) atol=10h
+        @test HP[x,n] ≈ (t-x)^(c+1) * P[x,n]
+        @test (HP[x+h,n]-HP[x,n])/h ≈ (t-x)^c * (-(c+2)*k[1]*x -(c+1)*j[1]+ t*k[1]) atol=10h
+        @test (HP[x+h,n]-HP[x,n])/h ≈ (t-x)^c * (-(c+2)*k[1]/κ[1]*Q[x,n]+ ((c+2)*k[1]*ξ[1]/κ[1] -(c+1)*j[1]+ t*k[1])*Q[x,n-1]) atol=10h
         
         n = 3
-        @test (HP[x+h,n]-HP[x,n])/h ≈ (1-x)^b * (-(b+n)*k[n-1]/κ[n-1]*Q[x,n]+ ((b+n)*k[n-1]*ξ[n-1]/(κ[n-1]κ[n-2]) - (b+n-1)*j[n-1]/κ[n-2] +(n-1)*k[n-1]/κ[n-2])*Q[x,n-1]) atol=100h
+        @test (HP[x+h,n]-HP[x,n])/h ≈ (t-x)^c * (-(c+n)*k[n-1]/κ[n-1]*Q[x,n]+ ((c+n)*k[n-1]*ξ[n-1]/(κ[n-1]κ[n-2]) - (c+n-1)*j[n-1]/κ[n-2] +t*(n-1)*k[n-1]/κ[n-2])*Q[x,n-1]) atol=100h
         n = 4
-        @test (HP[x+h,n]-HP[x,n])/h ≈ (1-x)^b * (-(b+n)*k[n-1]/κ[n-1]*Q[x,n]+ ((b+n)*k[n-1]*ξ[n-1]/κ[n-1] - (b+n-1)*j[n-1] +k[n-1]*(n-1))/κ[n-2]*Q[x,n-1]) atol=100h
+        @test (HP[x+h,n]-HP[x,n])/h ≈ (t-x)^c * (-(c+n)*k[n-1]/κ[n-1]*Q[x,n]+ ((c+n)*k[n-1]*ξ[n-1]/(κ[n-1]κ[n-2]) - (c+n-1)*j[n-1]/κ[n-2] +t*(n-1)*k[n-1]/κ[n-2])*Q[x,n-1]) atol=200h
 
 
         d = AccumulateAbstractVector(*, A ./ α)
@@ -198,7 +204,7 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
 
         _BandedMatrix(
             Vcat(
-            (-(b:∞) .* v2 .+ ((b+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(1:∞) .* d2))',
-            (-((b+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
+            (-(c:∞) .* v2 .+ ((c+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(t .* (1:∞)) .* d2))',
+            (-((c+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
     end
 end
