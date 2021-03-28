@@ -13,6 +13,7 @@ import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficie
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout
 import FillArrays: SquareEye
+import HypergeometricFunctions: _₂F₁general2
 
 export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio, TwoBandJacobi, TwoBandWeight
 
@@ -407,5 +408,6 @@ function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, b::
 end
 
 include("twoband.jl")
+include("genericJacobilowering.jl")
 
 end
