@@ -260,7 +260,7 @@ end
 
             @testset "T and W" begin
                 W̃ = (x,n) -> -X[n,n+1]*(T[x,n]*T[0,n+1] - T[x,n+1]*T[0,n])/x
-                @test norm(diff(W̃.([0.1,0.2,0.3],5) ./ W[[0.1,0.2,0.3],5])) ≤ 10E-14
+                @test norm(diff(W̃.([0.1,0.2,0.3],5) ./ W[[0.1,0.2,0.3],5])) ≤ 5E-13
 
                 L = _BandedMatrix(Vcat((-X.ev .* T[0,2:end])', (X.ev .* T[0,1:end])'), ∞, 1, 0)
                 x = 0.1
@@ -277,7 +277,8 @@ end
         P̃ = Normalized(legendre(0..1))
         @test P̃[0.1,1:10] ≈ P[0.1,1:10]
         Q = SemiclassicalJacobi(2.0,0,0,1)
-        Q \ P
+        R = Q \ P
+        @test Q[0.1,1:10]' * R[1:10,1:10] ≈ P[0.1,1:10]'
         x = axes(Q,1)
         X = Q \ (x .* Q)
         @time X[1:1000,1:1000];

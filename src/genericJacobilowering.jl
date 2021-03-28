@@ -87,7 +87,7 @@ function lowercjacobimatrix(P::SemiclassicalJacobi)
     C,A,B = subdiagonaldata(P.X), diagonaldata(P.X), supdiagonaldata(P.X)
     # compute moment-based coefficients
     α = αforlower(P)
-    # compute bands. the n=1 case has to be computed with extra care to fit with our normalization convention
+    # compute bands. the first case has to be computed with extra care to fit with our normalization convention
     offD = Vcat(C[1]/(sqrt(sum(SemiclassicalJacobiWeight(t,a,b,c-1)))/sqrt((((α[1]^2-2*α[1]*A[1]/C[1]+A[1]^2/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a, b, c-1))+(2*α[1]/C[1]-2*A[1]/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a+1, b, c-1))))+(1/C[1]^2)*(sum(SemiclassicalJacobiWeight(t, a+2, b, c-1))))), sqrt.(B[1:end].*C[2:end].*α[2:end]./α[1:end]))
     D = Vcat(A[1]-C[1]*α[1], C[1:end].*α[1:end]-C[2:end].*α[2:end]+A[2:end])
     return SymTridiagonal(D,offD)
