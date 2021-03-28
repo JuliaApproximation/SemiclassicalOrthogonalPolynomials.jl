@@ -21,6 +21,9 @@ import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweig
 
     t = 2
     P̃ = SemiclassicalJacobi(t, 0, 0, 0)
+    @test P̃ isa SemiclassicalJacobi{Float64}
+    @test P̃ == SemiclassicalJacobi{Float64}(t,0,0,0)
+
     @test P̃[0.1,1:10] ≈ P[2*0.1-1,1:10]/P[0.1,1]
 end
 
@@ -30,6 +33,7 @@ end
     @test w[0.1] ≈ 0.1^a * (1-0.1)^b * (2-0.1)^c
     @test sum(w) ≈ 0.8387185832077594 #Mathematica
     @test Expansion(w)[0.1] ≈ w[0.1]
+    @test copy(w) == w
     @test Expansion(w) == w
     @test w == Expansion(w)
 end
@@ -261,6 +265,7 @@ end
             @testset "T and W" begin
                 W̃ = (x,n) -> -X[n,n+1]*(T[x,n]*T[0,n+1] - T[x,n+1]*T[0,n])/x
                 @test norm(diff(W̃.([0.1,0.2,0.3],5) ./ W[[0.1,0.2,0.3],5])) ≤ 10E-14
+                @test norm(diff(W̃.([0.1,0.2,0.3],5) ./ W[[0.1,0.2,0.3],5])) ≤ 5E-13
 
                 L = _BandedMatrix(Vcat((-X.ev .* T[0,2:end])', (X.ev .* T[0,1:end])'), ∞, 1, 0)
                 x = 0.1
@@ -277,7 +282,8 @@ end
         P̃ = Normalized(legendre(0..1))
         @test P̃[0.1,1:10] ≈ P[0.1,1:10]
         Q = SemiclassicalJacobi(2.0,0,0,1)
-        Q \ P
+        R = Q \ P
+        @test Q[0.1,1:10]' * R[1:10,1:10] ≈ P[0.1,1:10]'
         x = axes(Q,1)
         X = Q \ (x .* Q)
         @time X[1:1000,1:1000];
@@ -322,6 +328,8 @@ end
     m = 5
     x = Inclusion(0..1)
     @test jacobimatrix(LanczosPolynomial(@. (2-x)^m))[1:10,1:10] ≈ jacobimatrix(Ps[m+1])[1:10,1:10]
+
+    @test SemiclassicalJacobi(2,0,0,2)[0.1,1:5] ≈ SemiclassicalJacobi(2,0,0,2,Ps[1])[0.1,1:5] ≈ Ps[3][0.1,1:5]
 end
 
 @testset "Semiclassical operator asymptotics" begin
