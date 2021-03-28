@@ -21,6 +21,9 @@ import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweig
 
     t = 2
     P̃ = SemiclassicalJacobi(t, 0, 0, 0)
+    @test P̃ isa SemiclassicalJacobi{Float64}
+    @test P̃ == SemiclassicalJacobi{Float64}(t,0,0,0)
+
     @test P̃[0.1,1:10] ≈ P[2*0.1-1,1:10]/P[0.1,1]
 end
 
@@ -30,6 +33,7 @@ end
     @test w[0.1] ≈ 0.1^a * (1-0.1)^b * (2-0.1)^c
     @test sum(w) ≈ 0.8387185832077594 #Mathematica
     @test Expansion(w)[0.1] ≈ w[0.1]
+    @test copy(w) == w
     @test Expansion(w) == w
     @test w == Expansion(w)
 end
@@ -323,6 +327,8 @@ end
     m = 5
     x = Inclusion(0..1)
     @test jacobimatrix(LanczosPolynomial(@. (2-x)^m))[1:10,1:10] ≈ jacobimatrix(Ps[m+1])[1:10,1:10]
+
+    @test SemiclassicalJacobi(2,0,0,2)[0.1,1:5] ≈ SemiclassicalJacobi(2,0,0,2,Ps[1])[0.1,1:5] ≈ Ps[3][0.1,1:5]
 end
 
 @testset "Semiclassical operator asymptotics" begin

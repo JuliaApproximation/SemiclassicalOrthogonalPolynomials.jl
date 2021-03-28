@@ -1,5 +1,5 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, Test
-import ClassicalOrthogonalPolynomials: orthogonalityweight
+import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
 
 @testset "Two Band" begin
     @testset "TwoBandWeight" begin
@@ -9,6 +9,7 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight
         @test_throws BoundsError w[-0.4]
         @test_throws BoundsError w[1.1]
         @test copy(w) == w
+        @test_broken sum(w)
     end
     @testset "Chebyshev case" begin
         ρ = 0.5
@@ -21,5 +22,27 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight
         @test copy(T) == T
         @test U ≠ T
         @test orthogonalityweight(T) == TwoBandWeight(ρ, -1/2, -1/2, 1/2)
+
+        # bug
+        @test !issymmetric(jacobimatrix(T)[1:10,1:10])
+    end
+
+    @testset "Hilbert" begin
+        ρ = 0.5
+        w = TwoBandWeight(ρ, -1/2, -1/2, 1/2)
+        x = axes(w,1)
+        H = inv.(x .- x')
+        @test iszero(H*w)
+        @test sum(w) == π/2
+        
+        T = TwoBandJacobi(ρ, -1/2, -1/2, 1/2)
+        Q = associated(T)
+        @test (Q[0.6,1:100]' * (Q[:,Base.OneTo(100)] \ exp.(x))) ≈ exp(0.6)
+        @test (Q[-0.6,1:100]' * (Q[:,Base.OneTo(100)] \ exp.(x))) ≈ exp(-0.6)
+
+        @test (Q * (Q \ exp.(x)))[0.6] ≈ exp(0.6)
+        @test_broken Q \ (H * Weighted(T)) # need to deal with Hcat
+
+        @test_broken H*TwoBandWeight(ρ, 1/2, 1/2, -1/2)
     end
 end
