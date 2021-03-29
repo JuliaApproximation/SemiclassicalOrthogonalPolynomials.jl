@@ -161,50 +161,5 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
         # Q = SemiclassicalJacobi(t,a+1,b+1,c)
         HP = HalfWeighted{:c}(P)
         @test (D * HP)[0.1,1:10] ≈ (HP[0.1+h,1:10]-HP[0.1,1:10])/h atol=2000h
-
-
-        HQ = HalfWeighted{:c}(Q)
-
-        A,B,C = recurrencecoefficients(P);
-        α,β,γ = recurrencecoefficients(Q);
-
-        k = cumprod(A);
-        κ = cumprod(α);
-        j = Vector{Float64}(undef, 100)
-        j[1] = B[1]
-        for n = 1:length(j)-1
-            j[n+1] = A[n+1]*j[n] + B[n+1]*k[n]
-        end
-        ξ = Vector{Float64}(undef, 100)
-        ξ[1] = β[1]
-        for n = 1:length(ξ)-1
-            ξ[n+1] = α[n+1]*ξ[n] + β[n+1]*κ[n]
-        end
-
-        n = 1
-        x = 0.1
-        @test (HP[x+h,n]-HP[x,n])/h ≈ -(c+1) * HQ[x,n] atol=10h
-        n = 2
-        @test P[x,n] ≈ k[1]*x + j[1]
-        @test Q[x,n] ≈ κ[1]*x + ξ[1]
-        @test HP[x,n] ≈ (t-x)^(c+1) * P[x,n]
-        @test (HP[x+h,n]-HP[x,n])/h ≈ (t-x)^c * (-(c+2)*k[1]*x -(c+1)*j[1]+ t*k[1]) atol=10h
-        @test (HP[x+h,n]-HP[x,n])/h ≈ (t-x)^c * (-(c+2)*k[1]/κ[1]*Q[x,n]+ ((c+2)*k[1]*ξ[1]/κ[1] -(c+1)*j[1]+ t*k[1])*Q[x,n-1]) atol=10h
-        
-        n = 3
-        @test (HP[x+h,n]-HP[x,n])/h ≈ (t-x)^c * (-(c+n)*k[n-1]/κ[n-1]*Q[x,n]+ ((c+n)*k[n-1]*ξ[n-1]/(κ[n-1]κ[n-2]) - (c+n-1)*j[n-1]/κ[n-2] +t*(n-1)*k[n-1]/κ[n-2])*Q[x,n-1]) atol=100h
-        n = 4
-        @test (HP[x+h,n]-HP[x,n])/h ≈ (t-x)^c * (-(c+n)*k[n-1]/κ[n-1]*Q[x,n]+ ((c+n)*k[n-1]*ξ[n-1]/(κ[n-1]κ[n-2]) - (c+n-1)*j[n-1]/κ[n-2] +t*(n-1)*k[n-1]/κ[n-2])*Q[x,n-1]) atol=200h
-
-
-        d = AccumulateAbstractVector(*, A ./ α)
-        d2 = AccumulateAbstractVector(*, A ./ Vcat(1,α))
-        v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
-        v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
-
-        _BandedMatrix(
-            Vcat(
-            (-(c:∞) .* v2 .+ ((c+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(t .* (1:∞)) .* d2))',
-            (-((c+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
     end
 end
