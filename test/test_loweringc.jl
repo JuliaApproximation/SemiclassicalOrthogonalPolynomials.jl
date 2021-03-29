@@ -1,9 +1,67 @@
 using SemiclassicalOrthogonalPolynomials, Test
-using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
-import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn
+using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra, InfiniteArrays
+import LazyArrays: AbstractCachedVector
+import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn, αfillerbackwards!, initialαc_alt, initialαc_gen, αmillerbackwards, αfillerbackwards!, lowercjacobimatrix, αforward!, αforlower
+
+@testset "Jacobi operator for c-1 from c" begin
+    @testset "α[1] consistency" begin
+        t=1.1; a=0; b=0; c=0;
+        scale = 20;
+        P = SemiclassicalJacobi(t,a,b,c)
+        v = zeros(10)
+        v[1] = initialαc_gen(t,a,b,c)
+        αfillerbackwards!(v,10,P,1:10)
+        @test initialαc_gen(t,a,b,c) ≈ initialαc_alt(t,a,b,c) ≈ αmillerbackwards(20, scale, t, a, b, c)[1] ≈ αmillerbackwards(20, scale, P)[1] ≈ v[1]
+        
+        t=1.001; a=0; b=0; c=1;
+        P = SemiclassicalJacobi(t,a,b,c)
+        v[1] = initialαc_gen(t,a,b,c)
+        αfillerbackwards!(v,10,P,1:10)
+        @test initialαc_gen(t,a,b,c) ≈ initialαc_alt(t,a,b,c) ≈ αmillerbackwards(20, scale, t, a, b, c)[1] ≈ αmillerbackwards(20, scale, P)[1] ≈ v[1]
+        
+        t=1.71; a=3; b=2; c=4;
+        P = SemiclassicalJacobi(t,a,b,c)
+        v[1] = initialαc_gen(t,a,b,c)
+        αfillerbackwards!(v,10,P,1:10)
+        @test initialαc_gen(t,a,b,c) ≈ initialαc_alt(t,a,b,c) ≈ αmillerbackwards(20, scale, t, a, b, c)[1] ≈ αmillerbackwards(20, scale, P)[1] ≈ v[1]
+    end
+
+    @testset "forward recurrence consistency" begin
+        # forward recurrence is unstable for high orders
+        # but can be used for value comparison at low orders
+        t=1.001; a=0; b=0; c=1;
+        P = SemiclassicalJacobi(t,a,b,c)
+        v = zeros(10)
+        w = zeros(10)
+        v[1] = initialαc_gen(t,a,b,c)
+        αfillerbackwards!(v, 200, P, 1:10)
+        w[1] = initialαc_gen(t,a,b,c)
+        αforward!(w, t, a, b, c, 1:10)
+        @test v ≈ w
+    end
+
+    @testset "cached α" begin
+        t = 1.1; a = 2; b = 1; c = 3;
+        P = SemiclassicalJacobi(t,a,b,c)
+        α = αforlower(P)
+        @test α isa AbstractCachedVector
+        @test size(α) == (ℵ₀,)
+    end
+
+    @testset "compare lowered Jacobi operators" begin
+        t = 1.1; a = 2; b = 1; c = 3;
+        P = SemiclassicalJacobi(t,a,b,c)
+        @test jacobimatrix(SemiclassicalJacobi(t,a,b,c-1))[1:50,1:50] ≈ lowercjacobimatrix(P)[1:50,1:50]
+        t = 1.001; a = 0; b = 0; c = 0;
+        P = SemiclassicalJacobi(t,a,b,c)
+        @test jacobimatrix(SemiclassicalJacobi(t,a,b,c-1))[1:50,1:50] ≈ lowercjacobimatrix(P)[1:50,1:50]
+        t = 1.8; a = 4; b = 0; c = 20;
+        P = SemiclassicalJacobi(t,a,b,c)
+        @test jacobimatrix(SemiclassicalJacobi(t,a,b,c-1))[1:50,1:50] ≈ lowercjacobimatrix(P)[1:50,1:50]
+    end
+end
 
 @testset "Special case: SemiclassicalJacobi(t,0,0,-1) " begin
-
     @testset "inital α" begin
         t1 = 1.1
         t2 = 1.841
@@ -36,7 +94,7 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
         @test αdirect.((1:N),t4) ≈ α4
     end
 
-    @testset "OPs for a=b=0, c=-1 - basic forward and back recurrence" begin
+    @testset "basic forward and back recurrence" begin
         # set parameters
         N = 30
         t1 = BigFloat("1.841")
@@ -66,7 +124,7 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
         @test α2b[20] ≈ 0.99774034482793111 ≈ α2f[20] 
     end
 
-    @testset "OPs for a=b=0, c=-1 - high n, high and low t back recurrence" begin
+    @testset "high n, high and low t back recurrence" begin
         # set parameters
         N = 10000
         t0 = BigFloat("2.0")
@@ -90,7 +148,7 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
         @test α3[1] ≈ Float64(initialα(t3))
     end
 
-    @testset "OPs for a=b=0, c=-1 - evaluation normalized" begin
+    @testset "evaluation normalized" begin
         t = BigFloat("1.1")
         # Mathematica values
         @test evalQn(0,0.99,t) ≈ 1
@@ -98,7 +156,7 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
         @test evalQn(6,0.12,t) ≈ -1.965171674178137
     end
 
-    @testset "OPs for a=b=0, c=-1 - evaluation non-normalized" begin
+    @testset "evaluation non-normalized" begin
         t = 1.1
         x = 0.1
         n = 5
@@ -111,25 +169,7 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
         @test evalϕn(2,x,t) ≈ 0.806910345733665
     end
 
-    @testset "OPs for a=b=0, c=-1 - Expansion (adaptive)" begin
-        # basis
-        t = 1.23
-        Q = SemiclassicalJacobi(t,0,0,-1)
-        x = axes(Q,1)
-        # test functions
-        f1(x) = x^2
-        f2(x) = (t-x)^2
-        f3(x) = exp(t-x)
-        f4(x) = sinh(t*x)
-        # test expansion
-        y = rand(1)[1]
-        @test (Q*(Q\f1.(x)))[y] ≈ f1(y)
-        @test (Q*(Q\f2.(x)))[y] ≈ f2(y)
-        @test (Q*(Q\f3.(x)))[y] ≈ f3(y)
-        @test (Q*(Q\f4.(x)))[y] ≈ f4(y)
-    end
-
-    @testset "OPs for a=b=0, c=-1 - Expansion" begin
+    @testset "Expansion" begin
         # basis
         t = 1.00001
         Q = SemiclassicalJacobi(t,0,0,-1)
@@ -147,7 +187,25 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
         @test (Q[:,1:30]*(Q[:,1:30]\f4.(x)))[y] ≈ f4(y)
     end
 
-    @testset "OPs for a=b=0, c=-1 - Multiplication by x" begin
+    @testset "Expansion (adaptive)" begin
+        # basis
+        t = 1.23
+        Q = SemiclassicalJacobi(t,0,0,-1)
+        x = axes(Q,1)
+        # test functions
+        f1(x) = x^2
+        f2(x) = (t-x)^2
+        f3(x) = exp(t-x)
+        f4(x) = sinh(t*x)
+        # test expansion
+        y = rand(1)[1]
+        @test (Q*(Q\f1.(x)))[y] ≈ f1(y)
+        @test (Q*(Q\f2.(x)))[y] ≈ f2(y)
+        @test (Q*(Q\f3.(x)))[y] ≈ f3(y)
+        @test (Q*(Q\f4.(x)))[y] ≈ f4(y)
+    end
+
+    @testset "Multiplication by x" begin
         # basis
         t = 1.000001
         Q = SemiclassicalJacobi(t,0,0,-1)

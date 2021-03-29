@@ -1,7 +1,7 @@
 using SemiclassicalOrthogonalPolynomials
 using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
 import BandedMatrices: _BandedMatrix
-import SemiclassicalOrthogonalPolynomials: op_lowering, RaisedOP, αfillerbackwards!, initialαc_alt, initialαc_gen, αmillerbackwards, αfillerbackwards!
+import SemiclassicalOrthogonalPolynomials: op_lowering, RaisedOP
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight, symtridiagonalize, Expansion
 
 @testset "Jacobi" begin
@@ -426,28 +426,6 @@ end
     end
 end
 
-@testset "Jacobi operator for c-1 from c - α[1] consistency" begin
-    t=1.1; a=0; b=0; c=0;
-    scale = 20;
-    P = SemiclassicalJacobi(t,a,b,c)
-    v = zeros(10)
-    v[1] = initialαc_gen(t,a,b,c)
-    αfillerbackwards!(v,10,P,1:10)
-    @test initialαc_gen(t,a,b,c) ≈ initialαc_alt(t,a,b,c) ≈ αmillerbackwards(20, scale, t, a, b, c)[1] ≈ αmillerbackwards(20, scale, P)[1] ≈ v[1]
-    
-    t=1.001; a=0; b=0; c=1;
-    P = SemiclassicalJacobi(t,a,b,c)
-    v[1] = initialαc_gen(t,a,b,c)
-    αfillerbackwards!(v,10,P,1:10)
-    @test initialαc_gen(t,a,b,c) ≈ initialαc_alt(t,a,b,c) ≈ αmillerbackwards(20, scale, t, a, b, c)[1] ≈ αmillerbackwards(20, scale, P)[1] ≈ v[1]
-    
-    t=1.71; a=3; b=2; c=4;
-    P = SemiclassicalJacobi(t,a,b,c)
-    v[1] = initialαc_gen(t,a,b,c)
-    αfillerbackwards!(v,10,P,1:10)
-    @test initialαc_gen(t,a,b,c) ≈ initialαc_alt(t,a,b,c) ≈ αmillerbackwards(20, scale, t, a, b, c)[1] ≈ αmillerbackwards(20, scale, P)[1] ≈ v[1]
-end
-
 include("test_derivative.jl")
 include("test_twoband.jl")
-include("test_neg1c.jl")
+include("test_loweringc.jl")

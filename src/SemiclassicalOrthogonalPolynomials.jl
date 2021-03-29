@@ -18,10 +18,6 @@ import HypergeometricFunctions: _₂F₁general2
 
 export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio, TwoBandJacobi, TwoBandWeight
 
-
-include("neg1c.jl")
-
-
 """"
     SemiclassicalJacobiWeight(t, a, b, c)
 
@@ -175,12 +171,13 @@ WeightedSemiclassicalJacobi(t, a, b, c, P...) = SemiclassicalJacobiWeight(t, a, 
 function semiclassical_jacobimatrix(t, a, b, c)
     T = float(promote_type(typeof(t), typeof(a), typeof(b), typeof(c)))
     if a == 0 && b == 0 && c == -1
+        # for this special case we can generate the Jacobi operator explicitly
         N = (1:∞)
-        α = T.(Vcat(zero(T),neg1c_αcfs(t))) # cached coefficients
-        A = Vcat((α[2]+1)/2 , -N./(N.*4 .- 2).*α[2:end] .+ (N.+1)./(N.*4 .+ 2).*α[3:end].+1/2)
+        α = T.(neg1c_αcfs(t)) # cached coefficients
+        A = Vcat((α[1]+1)/2 , -N./(N.*4 .- 2).*α .+ (N.+1)./(N.*4 .+ 2).*α[2:end].+1/2)
         C = -(N)./(N.*4 .- 2)
-        B = Vcat((α[2]^2*3-α[2]*α[3]*2-1)/6 , -(N)./(N.*4 .+ 2).*α[3:end]./α[2:end])
-        # if non-norm. J is Tridiagonal(c,a,b) then for normalized OPs it becomes SymTridiagonal(a, sqrt.( b.* c))
+        B = Vcat((α[1]^2*3-α[1]*α[2]*2-1)/6 , -(N)./(N.*4 .+ 2).*α[2:end]./α)
+        # if J is Tridiagonal(c,a,b) then for norm. OPs it becomes SymTridiagonal(a, sqrt.( b.* c))
         return SymTridiagonal(A,sqrt.(B.*C))
     end
     P = jacobi(b, a, UnitInterval{T}())
@@ -198,12 +195,16 @@ function symraised_jacobimatrix(Q, y)
 end
 
 function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
-    if a == Q.a+1 && b == Q.b && c == Q.c
+    if  a == 0 && b == 0 && c == -1
+        semiclassical_jacobimatrix(Q.t, a, b, c)
+    elseif a == Q.a+1 && b == Q.b && c == Q.c
         symraised_jacobimatrix(Q, 0)
     elseif a == Q.a && b == Q.b+1 && c == Q.c
         symraised_jacobimatrix(Q, 1)
     elseif a == Q.a && b == Q.b && c == Q.c+1
         symraised_jacobimatrix(Q, Q.t)
+    elseif a == Q.a && b == Q.b && c == Q.c-1
+        lowercjacobimatrix(Q)
     elseif a > Q.a
         semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a+1, Q.b, Q.c, Q), a, b,c)
     elseif b > Q.b
@@ -414,6 +415,6 @@ function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, b::
 end
 
 include("twoband.jl")
-include("genericJacobilowering.jl")
+include("loweringc.jl")
 
 end
