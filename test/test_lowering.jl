@@ -216,8 +216,8 @@ end
 
     @testset "Jacobi operator consistency - lowering a" begin
         @test lowerajacobimatrix(SemiclassicalJacobi(1.1,2,3,1))[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.1,1,3,1))[1:50,1:50]
-        @test lowerajacobimatrix(SemiclassicalJacobi(1.4,5,1,1))[1:100,1:100] ≈ jacobimatrix(SemiclassicalJacobi(1.4,4,1,1))[1:100,1:100]
-        @test lowerajacobimatrix(SemiclassicalJacobi(1.01,10,10,5))[1:100,1:100] ≈ jacobimatrix(SemiclassicalJacobi(1.01,9,10,5))[1:100,1:100]
+        @test lowerajacobimatrix(SemiclassicalJacobi(1.4,5,1,1))[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.4,4,1,1))[1:50,1:50]
+        @test lowerajacobimatrix(SemiclassicalJacobi(1.01,10,10,5))[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.01,9,10,5))[1:50,1:50]
     end
 
     @testset "Jacobi operator consistency - lowering b" begin
@@ -226,6 +226,7 @@ end
         @test lowerbjacobimatrix(SemiclassicalJacobi(1.01,10,10,5))[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.01,10,9,5))[1:50,1:50]
     end    
 end
+
 
 
 
