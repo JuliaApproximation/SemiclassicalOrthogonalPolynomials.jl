@@ -1,7 +1,7 @@
 using SemiclassicalOrthogonalPolynomials, Test
 using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra, InfiniteArrays
 import LazyArrays: AbstractCachedVector
-import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn, αfillerbackwards!, initialαc_alt, initialαc_gen, αmillerbackwards, αfillerbackwards!, lowercjacobimatrix, αforward!, αforlower
+import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn, initialαc_gen, αcmillerbackwards, αcfillerbackwards!, lowercjacobimatrix, αcforward!, CLoweringCoefficients, BLoweringCoefficients, ALoweringCoefficients, lowerajacobimatrix, lowerbjacobimatrix, initialαa_gen, initialαb_gen, αaforward!, αbforward!, αbfillerbackwards!, αafillerbackwards!
 
 @testset "Jacobi operator for c-1 from c" begin
     @testset "α[1] consistency" begin
@@ -10,20 +10,20 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
         P = SemiclassicalJacobi(t,a,b,c)
         v = zeros(10)
         v[1] = initialαc_gen(t,a,b,c)
-        αfillerbackwards!(v,10,P,1:10)
-        @test initialαc_gen(t,a,b,c) ≈ initialαc_alt(t,a,b,c) ≈ αmillerbackwards(20, scale, t, a, b, c)[1] ≈ αmillerbackwards(20, scale, P)[1] ≈ v[1]
+        αcfillerbackwards!(v,10,10,P,1:10)
+        @test initialαc_gen(t,a,b,c) ≈ initialαc_gen(P) ≈ αcmillerbackwards(20, scale, t, a, b, c)[1] ≈ αcmillerbackwards(20, scale, P)[1] ≈ v[1]
         
         t=1.001; a=0; b=0; c=1;
         P = SemiclassicalJacobi(t,a,b,c)
         v[1] = initialαc_gen(t,a,b,c)
-        αfillerbackwards!(v,10,P,1:10)
-        @test initialαc_gen(t,a,b,c) ≈ initialαc_alt(t,a,b,c) ≈ αmillerbackwards(20, scale, t, a, b, c)[1] ≈ αmillerbackwards(20, scale, P)[1] ≈ v[1]
+        αcfillerbackwards!(v,10,10,P,1:10)
+        @test initialαc_gen(t,a,b,c) ≈ initialαc_gen(P) ≈ αcmillerbackwards(20, scale, t, a, b, c)[1] ≈ αcmillerbackwards(20, scale, P)[1] ≈ v[1]
         
         t=1.71; a=3; b=2; c=4;
         P = SemiclassicalJacobi(t,a,b,c)
         v[1] = initialαc_gen(t,a,b,c)
-        αfillerbackwards!(v,10,P,1:10)
-        @test initialαc_gen(t,a,b,c) ≈ initialαc_alt(t,a,b,c) ≈ αmillerbackwards(20, scale, t, a, b, c)[1] ≈ αmillerbackwards(20, scale, P)[1] ≈ v[1]
+        αcfillerbackwards!(v,10,10,P,1:10)
+        @test initialαc_gen(t,a,b,c) ≈ initialαc_gen(P) ≈ αcmillerbackwards(20, scale, t, a, b, c)[1] ≈ αcmillerbackwards(20, scale, P)[1] ≈ v[1]
     end
 
     @testset "forward recurrence consistency" begin
@@ -34,16 +34,16 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
         v = zeros(10)
         w = zeros(10)
         v[1] = initialαc_gen(t,a,b,c)
-        αfillerbackwards!(v, 200, P, 1:10)
+        αcfillerbackwards!(v, 200, 10, P, 1:10)
         w[1] = initialαc_gen(t,a,b,c)
-        αforward!(w, t, a, b, c, 1:10)
+        αcforward!(w, t, a, b, c, 1:10)
         @test v ≈ w
     end
-
+    
     @testset "cached α" begin
         t = 1.1; a = 2; b = 1; c = 3;
         P = SemiclassicalJacobi(t,a,b,c)
-        α = αforlower(P)
+        α = CLoweringCoefficients(P)
         @test α isa AbstractCachedVector
         @test size(α) == (ℵ₀,)
     end
@@ -124,30 +124,6 @@ end
         @test α2b[20] ≈ 0.99774034482793111 ≈ α2f[20] 
     end
 
-    @testset "high n, high and low t back recurrence" begin
-        # set parameters
-        N = 10000
-        t0 = BigFloat("2.0")
-        t1 = BigFloat("371.138")
-        t2 = BigFloat("1.0000000000000000000001")
-        t3 = BigFloat("500")
-        # initialize α
-        α0 = zeros(eltype(float(t0)), N)
-        α1 = zeros(eltype(float(t1)), N)
-        α2 = zeros(eltype(float(t2)), N)
-        α3 = zeros(eltype(float(t3)), N)
-        # compute coefficients via back recurrence
-        backαcoeff!(α0,t0,BigInt.(1:N))
-        backαcoeff!(α1,t1,BigInt.(1:N))
-        backαcoeff!(α2,t2,BigInt.(1:N))
-        backαcoeff!(α3,t3,BigInt.(1:N))
-        # Mathematica α1
-        @test α0[1] ≈ Float64(initialα(t0))
-        @test α1[1] ≈ Float64(initialα(t1))
-        @test α2[1] ≈ Float64(initialα(t2))
-        @test α3[1] ≈ Float64(initialα(t3))
-    end
-
     @testset "evaluation normalized" begin
         t = BigFloat("1.1")
         # Mathematica values
@@ -224,3 +200,34 @@ end
         @test (Q*(X*(Q\f4.(x))))[y] ≈ y*f4(y)
     end
 end
+
+@testset "Lowering a and b" begin
+    @testset "Jacobi special case" begin
+        α = zeros(20)
+        P = SemiclassicalJacobi(1.1,1,1,0)
+        α[1] = initialαb_gen(P)
+        αbforward!(α,P,1:20)
+        # Mathematica
+        @test α[1] ≈ -0.7453559924999
+        @test α[2] ≈ -0.8366600265340
+        @test α[13] ≈ -0.9648130376041
+        @test α[20] ≈ -0.976440887660561
+    end
+
+    @testset "Jacobi operator consistency - lowering a" begin
+        @test lowerajacobimatrix(SemiclassicalJacobi(1.1,2,3,1))[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.1,1,3,1))[1:50,1:50]
+        @test lowerajacobimatrix(SemiclassicalJacobi(1.4,5,1,1))[1:100,1:100] ≈ jacobimatrix(SemiclassicalJacobi(1.4,4,1,1))[1:100,1:100]
+        @test lowerajacobimatrix(SemiclassicalJacobi(1.01,10,10,5))[1:100,1:100] ≈ jacobimatrix(SemiclassicalJacobi(1.01,9,10,5))[1:100,1:100]
+    end
+
+    @testset "Jacobi operator consistency - lowering b" begin
+        @test lowerbjacobimatrix(SemiclassicalJacobi(1.1,2,3,1))[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.1,2,2,1))[1:50,1:50]
+        @test lowerbjacobimatrix(SemiclassicalJacobi(1.4,5,2,1))[1:100,1:100] ≈ jacobimatrix(SemiclassicalJacobi(1.4,5,1,1))[1:100,1:100]
+        @test lowerbjacobimatrix(SemiclassicalJacobi(1.01,10,10,5))[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.01,10,9,5))[1:50,1:50]
+    end    
+end
+
+
+
+
+

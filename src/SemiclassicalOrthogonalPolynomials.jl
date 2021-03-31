@@ -415,6 +415,6 @@ function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, b::
 end
 
 include("twoband.jl")
-include("loweringc.jl")
+include("lowering.jl")
 
 end

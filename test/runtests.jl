@@ -428,4 +428,4 @@ end
 
 include("test_derivative.jl")
 include("test_twoband.jl")
-include("test_loweringc.jl")
+include("test_lowering.jl")
