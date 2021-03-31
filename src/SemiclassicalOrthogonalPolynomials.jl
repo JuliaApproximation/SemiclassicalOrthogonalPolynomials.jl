@@ -14,6 +14,7 @@ import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficie
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid
 import FillArrays: SquareEye
+import HypergeometricFunctions: _₂F₁general2
 
 export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio, TwoBandJacobi, TwoBandWeight
 
@@ -177,7 +178,7 @@ function semiclassical_jacobimatrix(t, a, b, c)
         C = -(N)./(N.*4 .- 2)
         B = Vcat((α[1]^2*3-α[1]*α[2]*2-1)/6 , -(N)./(N.*4 .+ 2).*α[2:end]./α)
         # if J is Tridiagonal(c,a,b) then for norm. OPs it becomes SymTridiagonal(a, sqrt.( b.* c))
-        return SymTridiagonal(A,sqrt.(B.*C))
+        return SymTridiagonal(A, sqrt.(B.*C))
     end
     P = jacobi(b, a, UnitInterval{T}())
     iszero(c) && return symtridiagonalize(jacobimatrix(P))
@@ -202,8 +203,6 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
         symraised_jacobimatrix(Q, 1)
     elseif a == Q.a && b == Q.b && c == Q.c+1
         symraised_jacobimatrix(Q, Q.t)
-    elseif a == Q.a && b == Q.b && c == Q.c-1
-        lowercjacobimatrix(Q)
     elseif a > Q.a
         semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a+1, Q.b, Q.c, Q), a, b,c)
     elseif b > Q.b

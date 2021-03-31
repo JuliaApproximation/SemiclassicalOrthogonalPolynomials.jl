@@ -1,7 +1,7 @@
 using SemiclassicalOrthogonalPolynomials, Test
 using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra, InfiniteArrays
 import LazyArrays: AbstractCachedVector
-import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn, initialαc_gen, αcmillerbackwards, αcfillerbackwards!, lowercjacobimatrix, αcforward!, CLoweringCoefficients, BLoweringCoefficients, ALoweringCoefficients, lowerajacobimatrix, lowerbjacobimatrix, initialαa_gen, initialαb_gen, αaforward!, αbforward!, αbfillerbackwards!, αafillerbackwards!
+import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn, initialαc_gen, αcmillerbackwards, αcfillerbackwards!, lowercjacobimatrix, αcforward!, CLoweringCoefficients, BLoweringCoefficients, ALoweringCoefficients, lowerajacobimatrix, lowerbjacobimatrix, initialαa_gen, initialαb_gen, αaforward!, αbforward!, αbfillerbackwards!, αafillerbackwards!, getindex
 
 @testset "Jacobi operator for c-1 from c" begin
     @testset "α[1] consistency" begin
@@ -226,9 +226,3 @@ end
         @test lowerbjacobimatrix(SemiclassicalJacobi(1.01,10,10,5))[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.01,10,9,5))[1:50,1:50]
     end    
 end
-
-
-
-
-
-
