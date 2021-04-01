@@ -1,7 +1,7 @@
 using SemiclassicalOrthogonalPolynomials
 using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra, InfiniteArrays
 import LazyArrays: AbstractCachedVector
-import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn, getindex, initialα_gen, LoweredJacobiMatrix, αgenfillerbackwards!
+import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn, getindex, initialα_gen, LoweredJacobiMatrix, αgenfillerbackwards!, MemoryLayout
 
 @testset "Special case: SemiclassicalJacobi(t,0,0,-1) " begin
     @testset "inital α" begin
@@ -145,6 +145,7 @@ end
 
 @testset "Jacobi operator via lowering of a, b and c" begin
     @testset "Jacobi operator consistency - lowering a" begin
+        @test MemoryLayout(LoweredJacobiMatrix(SemiclassicalJacobi(1.1,2,3,2),:a)) == MemoryLayout(SemiclassicalJacobi(1.1,2,3,2).X)
         @test size(LoweredJacobiMatrix(SemiclassicalJacobi(1.1,2,3,2),:a)) == (ℵ₀,ℵ₀)
         @test LoweredJacobiMatrix(SemiclassicalJacobi(1.1,2,3,1),:a)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.1,1,3,1))[1:50,1:50]
         @test LoweredJacobiMatrix(SemiclassicalJacobi(1.4,5,1,1),:a)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.4,4,1,1))[1:50,1:50]
