@@ -136,10 +136,10 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
         f4(x) = sinh(t*x)
         # test expansion
         y = rand(1)[1]
-        @test (Q*(X*(Q\f1.(x))))[y] ≈ y*f1(y)
-        @test (Q*(X*X*(Q\f2.(x))))[y] ≈ y^2*f2(y)
-        @test (Q*(X*(Q\f3.(x))))[y] ≈ y*f3(y)
-        @test (Q*(X*(Q\f4.(x))))[y] ≈ y*f4(y)
+        @test (Q*(X*(Q\x.^2)))[y] ≈ y*f1(y)
+        @test (Q*(X*X*(Q\(t.-x).^2)))[y] ≈ y^2*f2(y)
+        @test (Q*(X*(Q\exp.(t.-x))))[y] ≈ y*f3(y)
+        @test (Q*(X*(Q\sinh.(t.*x))))[y] ≈ y*f4(y)
     end
 end
 
