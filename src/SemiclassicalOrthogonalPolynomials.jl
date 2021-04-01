@@ -195,7 +195,7 @@ function symraised_jacobimatrix(Q, y)
 end
 
 function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
-    if  a == 0 && b == 0 && c == -1
+    if  iszero(a) && iszero(b) && c == -1
         semiclassical_jacobimatrix(Q.t, a, b, c)
     elseif a == Q.a+1 && b == Q.b && c == Q.c
         symraised_jacobimatrix(Q, 0)
@@ -348,7 +348,7 @@ massmatrix(P::SemiclassicalJacobi) = Diagonal(Fill(sum(orthogonalityweight(P)),â
 end
 
 function ldiv(Q::SemiclassicalJacobi, f::AbstractQuasiVector)
-    if Q.a == 0 && Q.b == 0 && Q.c == -1
+    if iszero(Q.a) && iszero(Q.b) && Q.c == -1
         # todo: due to a stdlib error this won't work with bigfloat as is
         T = typeof(Q.t)
         R = Legendre{T}()[affine(Inclusion(zero(T)..one(T)), axes(Legendre{T}(),1)), :]
@@ -362,7 +362,7 @@ end
 function ldiv(Qn::SubQuasiArray{<:Any,2,<:SemiclassicalJacobi,<:Tuple{<:Inclusion,<:Any}}, C::AbstractQuasiArray)
     _,jr = parentindices(Qn)
     Q = parent(Qn)
-    if Q.a == 0 && Q.b == 0 && Q.c == -1
+    if iszero(Q.a) && iszero(Q.b) && Q.c == -1
         # todo: due to a stdlib error this won't work with bigfloat as is
         T = typeof(Q.t)
         R = Legendre{T}()[affine(Inclusion(zero(T)..one(T)), axes(Legendre{T}(),1)), :]

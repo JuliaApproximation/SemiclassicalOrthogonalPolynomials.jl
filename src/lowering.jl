@@ -25,40 +25,40 @@ mutable struct LoweredJacobiMatrix{T} <: AbstractCachedMatrix{T}
 end
 LoweredJacobiMatrix(P::SemiclassicalJacobi{T}, lowindex::Symbol) where T = LoweredJacobiMatrix{T}(P, lowindex)
 size(::LoweredJacobiMatrix) = (ℵ₀,ℵ₀)
-cache_filldata!(J::LoweredJacobiMatrix, inds) =  αgenfillerbackwards!(J.data, 2000, 1, J.P, J.lowindex, inds)
+cache_filldata!(J::LoweredJacobiMatrix, inds) =  αgenfillerbackwards!(J.data, 2000, 2, J.P, J.lowindex, inds)
 
-function αgenfillerbackwards!(α::Vector, addscale::Integer, mulscale::Integer, P::SemiclassicalJacobi, lowindex::Symbol , inds)
-    maxI = maximum(inds)
-    minI = minimum(inds)
-    # oldval = α[minI];
+function αgenfillerbackwards!(α::Vector{T}, addscale::Int, mulscale::Int, P::SemiclassicalJacobi{T}, lowindex::Symbol, inds::UnitRange{Int64}) where T
+    maxI::Int = maximum(inds)
+    minI::Int = minimum(inds)
+    oldval = α[minI];
     n = addscale+mulscale*maxI; # for now just an arbitrary sufficiently high value >m
-    k = 1.;
+    k = one(T);
     if lowindex == :a
         @inbounds for j = n:-1:maxI
-            k = -P.X[j,j+1]/P.X[j+2,j+1]/(k-P.X[j+2,j+1]\P.X[j+1,j+1]);
+            k = -P.X[j+2,j+1]\P.X[j,j+1]/(k-P.X[j+2,j+1]\P.X[j+1,j+1]);
         end
         α[maxI] = k
         @inbounds for j = maxI:-1:minI+1
-            α[j-1] = -P.X[j-1,j]/P.X[j+1,j]/(α[j]-P.X[j+1,j]\P.X[j,j]);
+            α[j-1] = -P.X[j+1,j]\P.X[j-1,j]/(α[j]-P.X[j+1,j]\P.X[j,j]);
         end
     elseif lowindex == :b
         @inbounds for j = n:-1:maxI
-            k = -P.X[j,j+1]/P.X[j+2,j+1]/(k+1/P.X[j+2,j+1]-P.X[j+2,j+1]\P.X[j+1,j+1]);
+            k = -P.X[j+2,j+1]\P.X[j,j+1]/(k+1/P.X[j+2,j+1]-P.X[j+2,j+1]\P.X[j+1,j+1]);
         end
         α[maxI] = k
         @inbounds for j = maxI:-1:minI+1
-            α[j-1] = -P.X[j-1,j]/P.X[j+1,j]/(α[j]+1/P.X[j+1,j]-P.X[j+1,j]\P.X[j,j]);
+            α[j-1] = -P.X[j+1,j]\P.X[j-1,j]/(α[j]+1/P.X[j+1,j]-P.X[j+1,j]\P.X[j,j]);
         end
     else # lowindex == :c
         @inbounds for j = n:-1:maxI
-            k = -P.X[j,j+1]/P.X[j+2,j+1]/(k+P.t/P.X[j+2,j+1]-P.X[j+2,j+1]\P.X[j+1,j+1]);
+            k = -P.X[j+2,j+1]\P.X[j,j+1]/(k+P.t/P.X[j+2,j+1]-P.X[j+2,j+1]\P.X[j+1,j+1]);
         end
         α[maxI] = k
         @inbounds for j = maxI:-1:minI+1
-            α[j-1] = -P.X[j-1,j]/P.X[j+1,j]/(α[j]+P.t/P.X[j+1,j]-P.X[j+1,j]\P.X[j,j]);
+            α[j-1] = -P.X[j+1,j]\P.X[j-1,j]/(α[j]+P.t/P.X[j+1,j]-P.X[j+1,j]\P.X[j,j]);
         end
     end
-    # α[minI:maxI] = ((oldval)/α[inds[1]]).*α[minI:maxI]
+    α[minI:maxI] = ((oldval)/α[inds[1]]).*α[minI:maxI]
     α
 end
 
@@ -109,7 +109,7 @@ function resizedata!(J::LoweredJacobiMatrix, nm)
         olddata = copy(J.data)
         J.data = similar(olddata,maximum(nm))
         J.data[1:νμ] = olddata[1:νμ]
-        inds = Array(νμ:maximum(nm))
+        inds = νμ:maximum(nm)
         cache_filldata!(J, inds)
         J.datasize = (nm,nm)
     end
@@ -202,7 +202,6 @@ function resizedata!(B::neg1c_normconstant, nm)
     end
     B
 end
-
 
 function neg1c_normconstinitial(t::T, N) where T
     # generate α coefficients for OPs via recurrence

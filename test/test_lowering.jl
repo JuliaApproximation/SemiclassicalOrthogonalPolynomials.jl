@@ -145,18 +145,21 @@ end
 
 @testset "Jacobi operator via lowering of a, b and c" begin
     @testset "Jacobi operator consistency - lowering a" begin
+        @test size(LoweredJacobiMatrix(SemiclassicalJacobi(1.1,2,3,2),:a)) == (ℵ₀,ℵ₀)
         @test LoweredJacobiMatrix(SemiclassicalJacobi(1.1,2,3,1),:a)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.1,1,3,1))[1:50,1:50]
         @test LoweredJacobiMatrix(SemiclassicalJacobi(1.4,5,1,1),:a)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.4,4,1,1))[1:50,1:50]
         @test LoweredJacobiMatrix(SemiclassicalJacobi(1.01,10,10,5),:a)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.01,9,10,5))[1:50,1:50]
     end
 
     @testset "Jacobi operator consistency - lowering b" begin
+        @test size(LoweredJacobiMatrix(SemiclassicalJacobi(1.1,2,3,2),:b)) == (ℵ₀,ℵ₀)
         @test LoweredJacobiMatrix(SemiclassicalJacobi(1.1,2,3,1),:b)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.1,2,2,1))[1:50,1:50]
         @test LoweredJacobiMatrix(SemiclassicalJacobi(1.4,5,7,1),:b)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.4,5,6,1))[1:50,1:50]
         @test LoweredJacobiMatrix(SemiclassicalJacobi(1.01,10,10,5),:b)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.01,10,9,5))[1:50,1:50]
     end   
     
     @testset "Jacobi operator consistency - lowering c" begin
+        @test size(LoweredJacobiMatrix(SemiclassicalJacobi(1.1,2,3,2),:c)) == (ℵ₀,ℵ₀)
         @test LoweredJacobiMatrix(SemiclassicalJacobi(1.1,2,3,2),:c)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.1,2,3,1))[1:50,1:50]
         @test LoweredJacobiMatrix(SemiclassicalJacobi(1.4,5,1,5),:c)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.4,5,1,4))[1:50,1:50]
         @test LoweredJacobiMatrix(SemiclassicalJacobi(1.01,10,10,5),:c)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.01,10,10,4))[1:50,1:50]
