@@ -1,65 +1,7 @@
-using SemiclassicalOrthogonalPolynomials, Test
+using SemiclassicalOrthogonalPolynomials
 using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra, InfiniteArrays
 import LazyArrays: AbstractCachedVector
-import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn, initialαc_gen, αcmillerbackwards, αcfillerbackwards!, lowercjacobimatrix, αcforward!, CLoweringCoefficients, BLoweringCoefficients, ALoweringCoefficients, lowerajacobimatrix, lowerbjacobimatrix, initialαa_gen, initialαb_gen, αaforward!, αbforward!, αbfillerbackwards!, αafillerbackwards!, getindex
-
-@testset "Jacobi operator for c-1 from c" begin
-    @testset "α[1] consistency" begin
-        t=1.1; a=0; b=0; c=0;
-        scale = 20;
-        P = SemiclassicalJacobi(t,a,b,c)
-        v = zeros(10)
-        v[1] = initialαc_gen(t,a,b,c)
-        αcfillerbackwards!(v,10,10,P,1:10)
-        @test initialαc_gen(t,a,b,c) ≈ initialαc_gen(P) ≈ αcmillerbackwards(20, scale, t, a, b, c)[1] ≈ αcmillerbackwards(20, scale, P)[1] ≈ v[1]
-        
-        t=1.001; a=0; b=0; c=1;
-        P = SemiclassicalJacobi(t,a,b,c)
-        v[1] = initialαc_gen(t,a,b,c)
-        αcfillerbackwards!(v,10,10,P,1:10)
-        @test initialαc_gen(t,a,b,c) ≈ initialαc_gen(P) ≈ αcmillerbackwards(20, scale, t, a, b, c)[1] ≈ αcmillerbackwards(20, scale, P)[1] ≈ v[1]
-        
-        t=1.71; a=3; b=2; c=4;
-        P = SemiclassicalJacobi(t,a,b,c)
-        v[1] = initialαc_gen(t,a,b,c)
-        αcfillerbackwards!(v,10,10,P,1:10)
-        @test initialαc_gen(t,a,b,c) ≈ initialαc_gen(P) ≈ αcmillerbackwards(20, scale, t, a, b, c)[1] ≈ αcmillerbackwards(20, scale, P)[1] ≈ v[1]
-    end
-
-    @testset "forward recurrence consistency" begin
-        # forward recurrence is unstable for high orders
-        # but can be used for value comparison at low orders
-        t=1.001; a=0; b=0; c=1;
-        P = SemiclassicalJacobi(t,a,b,c)
-        v = zeros(10)
-        w = zeros(10)
-        v[1] = initialαc_gen(t,a,b,c)
-        αcfillerbackwards!(v, 200, 10, P, 1:10)
-        w[1] = initialαc_gen(t,a,b,c)
-        αcforward!(w, t, a, b, c, 1:10)
-        @test v ≈ w
-    end
-    
-    @testset "cached α" begin
-        t = 1.1; a = 2; b = 1; c = 3;
-        P = SemiclassicalJacobi(t,a,b,c)
-        α = CLoweringCoefficients(P)
-        @test α isa AbstractCachedVector
-        @test size(α) == (ℵ₀,)
-    end
-
-    @testset "compare lowered Jacobi operators" begin
-        t = 1.1; a = 2; b = 1; c = 3;
-        P = SemiclassicalJacobi(t,a,b,c)
-        @test jacobimatrix(SemiclassicalJacobi(t,a,b,c-1))[1:50,1:50] ≈ lowercjacobimatrix(P)[1:50,1:50]
-        t = 1.001; a = 0; b = 0; c = 0;
-        P = SemiclassicalJacobi(t,a,b,c)
-        @test jacobimatrix(SemiclassicalJacobi(t,a,b,c-1))[1:50,1:50] ≈ lowercjacobimatrix(P)[1:50,1:50]
-        t = 1.8; a = 4; b = 0; c = 20;
-        P = SemiclassicalJacobi(t,a,b,c)
-        @test jacobimatrix(SemiclassicalJacobi(t,a,b,c-1))[1:50,1:50] ≈ lowercjacobimatrix(P)[1:50,1:50]
-    end
-end
+import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn, getindex, initialα_gen, LoweredJacobiMatrix, αgenfillerbackwards!
 
 @testset "Special case: SemiclassicalJacobi(t,0,0,-1) " begin
     @testset "inital α" begin
@@ -201,28 +143,22 @@ end
     end
 end
 
-@testset "Lowering a and b" begin
-    @testset "Jacobi special case" begin
-        α = zeros(20)
-        P = SemiclassicalJacobi(1.1,1,1,0)
-        α[1] = initialαb_gen(P)
-        αbforward!(α,P,1:20)
-        # Mathematica
-        @test α[1] ≈ -0.7453559924999
-        @test α[2] ≈ -0.8366600265340
-        @test α[13] ≈ -0.9648130376041
-        @test α[20] ≈ -0.976440887660561
-    end
-
+@testset "Jacobi operator via lowering of a, b and c" begin
     @testset "Jacobi operator consistency - lowering a" begin
-        @test lowerajacobimatrix(SemiclassicalJacobi(1.1,2,3,1))[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.1,1,3,1))[1:50,1:50]
-        @test lowerajacobimatrix(SemiclassicalJacobi(1.4,5,1,1))[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.4,4,1,1))[1:50,1:50]
-        @test lowerajacobimatrix(SemiclassicalJacobi(1.01,10,10,5))[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.01,9,10,5))[1:50,1:50]
+        @test LoweredJacobiMatrix(SemiclassicalJacobi(1.1,2,3,1),:a)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.1,1,3,1))[1:50,1:50]
+        @test LoweredJacobiMatrix(SemiclassicalJacobi(1.4,5,1,1),:a)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.4,4,1,1))[1:50,1:50]
+        @test LoweredJacobiMatrix(SemiclassicalJacobi(1.01,10,10,5),:a)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.01,9,10,5))[1:50,1:50]
     end
 
     @testset "Jacobi operator consistency - lowering b" begin
-        @test lowerbjacobimatrix(SemiclassicalJacobi(1.1,2,3,1))[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.1,2,2,1))[1:50,1:50]
-        @test lowerbjacobimatrix(SemiclassicalJacobi(1.4,5,2,1))[1:100,1:100] ≈ jacobimatrix(SemiclassicalJacobi(1.4,5,1,1))[1:100,1:100]
-        @test lowerbjacobimatrix(SemiclassicalJacobi(1.01,10,10,5))[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.01,10,9,5))[1:50,1:50]
+        @test LoweredJacobiMatrix(SemiclassicalJacobi(1.1,2,3,1),:b)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.1,2,2,1))[1:50,1:50]
+        @test LoweredJacobiMatrix(SemiclassicalJacobi(1.4,5,7,1),:b)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.4,5,6,1))[1:50,1:50]
+        @test LoweredJacobiMatrix(SemiclassicalJacobi(1.01,10,10,5),:b)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.01,10,9,5))[1:50,1:50]
+    end   
+    
+    @testset "Jacobi operator consistency - lowering c" begin
+        @test LoweredJacobiMatrix(SemiclassicalJacobi(1.1,2,3,2),:c)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.1,2,3,1))[1:50,1:50]
+        @test LoweredJacobiMatrix(SemiclassicalJacobi(1.4,5,1,5),:c)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.4,5,1,4))[1:50,1:50]
+        @test LoweredJacobiMatrix(SemiclassicalJacobi(1.01,10,10,5),:c)[1:50,1:50] ≈ jacobimatrix(SemiclassicalJacobi(1.01,10,10,4))[1:50,1:50]
     end    
 end
