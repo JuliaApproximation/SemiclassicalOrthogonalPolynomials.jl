@@ -25,7 +25,7 @@ mutable struct LoweredJacobiMatrix{T} <: AbstractCachedMatrix{T}
 end
 LoweredJacobiMatrix(P::SemiclassicalJacobi{T}, lowindex::Symbol) where T = LoweredJacobiMatrix{T}(P, lowindex)
 size(::LoweredJacobiMatrix) = (ℵ₀,ℵ₀)
-cache_filldata!(J::LoweredJacobiMatrix, inds) =  αgenfillerbackwards!(J.data, 2000, 2, J.P, J.lowindex, inds)
+cache_filldata!(J::LoweredJacobiMatrix, inds) =  αgenfillerbackwards!(J.data, 1000, 2, J.P, J.lowindex, inds)
 MemoryLayout(J::LoweredJacobiMatrix) = MemoryLayout(J.P.X)
 
 function αgenfillerbackwards!(α::Vector{T}, addscale::Int, mulscale::Int, P::SemiclassicalJacobi{T}, lowindex::Symbol, inds::UnitRange{Int64}) where T
@@ -34,29 +34,30 @@ function αgenfillerbackwards!(α::Vector{T}, addscale::Int, mulscale::Int, P::S
     oldval = α[minI];
     n = addscale+mulscale*maxI; # for now just an arbitrary sufficiently high value >m
     k = one(T);
+    A,B,C = recurrencecoefficients(P)
     if lowindex == :a
         @inbounds for j = n:-1:maxI
-            k = -P.X[j+2,j+1]\P.X[j,j+1]/(k-P.X[j+2,j+1]\P.X[j+1,j+1]);
+            k = -C[j+1]/(k+B[j+1]);
         end
         α[maxI] = k
         @inbounds for j = maxI:-1:minI+1
-            α[j-1] = -P.X[j+1,j]\P.X[j-1,j]/(α[j]-P.X[j+1,j]\P.X[j,j]);
+            α[j-1] = -C[j]/(α[j]+B[j]);
         end
     elseif lowindex == :b
         @inbounds for j = n:-1:maxI
-            k = -P.X[j+2,j+1]\P.X[j,j+1]/(k+1/P.X[j+2,j+1]-P.X[j+2,j+1]\P.X[j+1,j+1]);
+            k = -C[j+1]/(k+A[j+1]+B[j+1]);
         end
         α[maxI] = k
         @inbounds for j = maxI:-1:minI+1
-            α[j-1] = -P.X[j+1,j]\P.X[j-1,j]/(α[j]+1/P.X[j+1,j]-P.X[j+1,j]\P.X[j,j]);
+            α[j-1] = -C[j]/(α[j]+A[j]+B[j]);
         end
     else # lowindex == :c
         @inbounds for j = n:-1:maxI
-            k = -P.X[j+2,j+1]\P.X[j,j+1]/(k+P.t/P.X[j+2,j+1]-P.X[j+2,j+1]\P.X[j+1,j+1]);
+            k = -C[j+1]/(k+A[j+1]*P.t+B[j+1]);
         end
         α[maxI] = k
         @inbounds for j = maxI:-1:minI+1
-            α[j-1] = -P.X[j+1,j]\P.X[j-1,j]/(α[j]+P.t/P.X[j+1,j]-P.X[j+1,j]\P.X[j,j]);
+            α[j-1] = -C[j]/(α[j]+A[j]*P.t+B[j]);
         end
     end
     α[minI:maxI] = ((oldval)/α[inds[1]]).*α[minI:maxI]
