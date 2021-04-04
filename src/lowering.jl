@@ -25,7 +25,7 @@ mutable struct LoweredJacobiMatrix{T} <: AbstractCachedMatrix{T}
 end
 LoweredJacobiMatrix(P::SemiclassicalJacobi{T}, lowindex::Symbol) where T = LoweredJacobiMatrix{T}(P, lowindex)
 size(::LoweredJacobiMatrix) = (ℵ₀,ℵ₀)
-cache_filldata!(J::LoweredJacobiMatrix, inds) =  αgenfillerbackwards!(J.data, 1000, 2, J.P, J.lowindex, inds)
+cache_filldata!(J::LoweredJacobiMatrix, inds) =  αgenfillerbackwards!(J.data, 500, 5, J.P, J.lowindex, inds)
 MemoryLayout(J::LoweredJacobiMatrix) = MemoryLayout(J.P.X)
 
 function αgenfillerbackwards!(α::Vector{T}, addscale::Int, mulscale::Int, P::SemiclassicalJacobi{T}, lowindex::Symbol, inds::UnitRange{Int64}) where T
@@ -130,11 +130,11 @@ end
 initialα(t) = t-2/(log1p(t)-log(t-1))
 
 # compute n-th coefficient from direct evaluation formula
-αdirect(n, t) = gamma((2*n+1)/BigInt(2))*gamma(n+1)*HypergeometricFunctions._₂F₁general2((1+n)/BigInt(2),(2+n)/BigInt(2),(2*n+3)/BigInt(2),BigInt(1)/t^2)/(t*2*gamma(BigInt(n))*gamma((2*n+3)/BigInt(2))*HypergeometricFunctions._₂F₁general2(n/BigInt(2),(n+1)/BigInt(2),(2*n+1)/BigInt(2),BigInt(1)/t^2))
+αdirect(n, t) = gamma((2*n+1)/2)*gamma(n+1)*_₂F₁general2((1+n)/2,(n+2)/2,(2*n+3)/2,1/t^2)/(t*2*gamma(n)*gamma((2*n+3)/2)*_₂F₁general2(n/2,(n+1)/2,(2*n+1)/2,1/t^2))
 # this version takes a pre-existing vector v and fills in the missing data guided by indices in inds using explicit formula
 function αdirect!(α, t, inds) 
     @inbounds for n in inds
-        α[n] = gamma((2*n+1)/BigInt(2))*gamma(1+n)*HypergeometricFunctions._₂F₁general2((1+n)/BigInt(2),(2+n)/BigInt(2),(2*n+3)/BigInt(2),1/t^2)/(t*2*gamma(n)*gamma((2*n+3)/BigInt(2))*HypergeometricFunctions._₂F₁general2(n/BigInt(2),(n+1)/BigInt(2),(2*n+1)/BigInt(2),1/t^2))
+        α[n] = gamma((2*n+1)/2)*gamma(1+n)*_₂F₁general2((1+n)/2,(2+n)/2,(2*n+3)/2,1/t^2)/(t*2*gamma(n)*gamma((2*n+3)/2)*_₂F₁general2(n/2,(n+1)/2,(2*n+1)/2,1/t^2))
     end
 end
 
@@ -205,7 +205,7 @@ function resizedata!(B::neg1c_normconstant, nm)
     B
 end
 
-function neg1c_normconstinitial(t::T, N) where T
+function neg1c_normconstinitial(t::T, N::Integer) where T
     # generate α coefficients for OPs via recurrence
     α = zeros(T,N-1)
     α[1] = initialα(2*t-1)
