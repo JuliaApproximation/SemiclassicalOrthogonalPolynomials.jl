@@ -130,11 +130,11 @@ end
 initialα(t) = t-2/(log1p(t)-log(t-1))
 
 # compute n-th coefficient from direct evaluation formula
-αdirect(n, t) = gamma((2*n+1)/2)*gamma(n+1)*_₂F₁general2((1+n)/2,(n+2)/2,(2*n+3)/2,1/t^2)/(t*2*gamma(n)*gamma((2*n+3)/2)*_₂F₁general2(n/2,(n+1)/2,(2*n+1)/2,1/t^2))
+αdirect(n, t) = 2*n*_₂F₁general2((1+n)/2,(n+2)/2,(2*n+3)/2,1/t^2)/(t*2*(1+2*n)*_₂F₁general2(n/2,(n+1)/2,(2*n+1)/2,1/t^2))
 # this version takes a pre-existing vector v and fills in the missing data guided by indices in inds using explicit formula
 function αdirect!(α, t, inds) 
     @inbounds for n in inds
-        α[n] = gamma((2*n+1)/2)*gamma(1+n)*_₂F₁general2((1+n)/2,(2+n)/2,(2*n+3)/2,1/t^2)/(t*2*gamma(n)*gamma((2*n+3)/2)*_₂F₁general2(n/2,(n+1)/2,(2*n+1)/2,1/t^2))
+        α[n] = 2*n*_₂F₁general2((1+n)/2,(2+n)/2,(2*n+3)/2,1/t^2)/(t*2*(1+2*n)*_₂F₁general2(n/2,(n+1)/2,(2*n+1)/2,1/t^2))
     end
 end
 
