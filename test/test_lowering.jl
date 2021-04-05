@@ -125,7 +125,7 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
 
     @testset "Multiplication by x" begin
         # basis
-        t = 1.000001
+        t = 1.00001
         Q = SemiclassicalJacobi(t,0,0,-1)
         x = axes(Q,1)
         X = jacobimatrix(Q)
