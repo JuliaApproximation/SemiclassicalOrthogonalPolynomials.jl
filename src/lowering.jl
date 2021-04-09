@@ -25,7 +25,7 @@ mutable struct LoweredJacobiMatrix{T} <: AbstractCachedMatrix{T}
 end
 LoweredJacobiMatrix(P::SemiclassicalJacobi{T}, lowindex::Symbol) where T = LoweredJacobiMatrix{T}(P, lowindex)
 size(::LoweredJacobiMatrix) = (ℵ₀,ℵ₀)
-cache_filldata!(J::LoweredJacobiMatrix, inds) =  αgenfillerbackwards!(J.data, 500, 5, J.P, J.lowindex, inds)
+cache_filldata!(J::LoweredJacobiMatrix, inds) =  αgenfillerbackwards!(J.data, 200, 10, J.P, J.lowindex, inds)
 MemoryLayout(J::LoweredJacobiMatrix) = MemoryLayout(J.P.X)
 
 function αgenfillerbackwards!(α::Vector{T}, addscale::Int, mulscale::Int, P::SemiclassicalJacobi{T}, lowindex::Symbol, inds::UnitRange{Int64}) where T
