@@ -1,7 +1,7 @@
 using SemiclassicalOrthogonalPolynomials
 using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra, InfiniteArrays
 import LazyArrays: AbstractCachedVector
-import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn, getindex, initialα_gen, LoweredJacobiMatrix, αgenfillerbackwards!, MemoryLayout
+import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn, getindex, initialα_gen, symlowered_jacobimatrix, αgenfillerbackwards!, symlowered_jacobimatrix, LoweringCoefficients
 
 @testset "Special case: SemiclassicalJacobi(t,0,0,-1) " begin
     @testset "inital α" begin
@@ -145,14 +145,14 @@ end
 
 @testset "Compare lowering of a, b and c with raised OPs" begin
     @testset "lowering a" begin
-        @test LoweredJacobiMatrix(SemiclassicalJacobi(1.0001,10,10,5,SemiclassicalJacobi(1.0001,0,0,0)),:a)[1:500,1:500] ≈ jacobimatrix(SemiclassicalJacobi(1.0001,9,10,5,SemiclassicalJacobi(1.0001,0,0,0)))[1:500,1:500]
+        @test symlowered_jacobimatrix(SemiclassicalJacobi(1.0001,10,10,5,SemiclassicalJacobi(1.0001,0,0,0)),:a)[1:500,1:500] ≈ jacobimatrix(SemiclassicalJacobi(1.0001,9,10,5,SemiclassicalJacobi(1.0001,0,0,0)))[1:500,1:500]
     end
     @testset "lowering b" begin
-        @test LoweredJacobiMatrix(SemiclassicalJacobi(3.1,6,6,6,SemiclassicalJacobi(3.1,0,0,0)),:b)[1:500,1:500]≈ jacobimatrix(SemiclassicalJacobi(3.1,6,5,6,SemiclassicalJacobi(3.1,0,0,0)))[1:500,1:500]
-        @test LoweredJacobiMatrix(SemiclassicalJacobi(1.11,5,7,4,SemiclassicalJacobi(1.11,0,0,0)),:b)[1200,1200]≈ jacobimatrix(SemiclassicalJacobi(1.11,5,6,4,SemiclassicalJacobi(1.11,0,0,0)))[1200,1200]
+        @test symlowered_jacobimatrix(SemiclassicalJacobi(3.1,6,6,6,SemiclassicalJacobi(3.1,0,0,0)),:b)[1:500,1:500]≈ jacobimatrix(SemiclassicalJacobi(3.1,6,5,6,SemiclassicalJacobi(3.1,0,0,0)))[1:500,1:500]
+        @test symlowered_jacobimatrix(SemiclassicalJacobi(1.11,5,7,4,SemiclassicalJacobi(1.11,0,0,0)),:b)[1200,1200]≈ jacobimatrix(SemiclassicalJacobi(1.11,5,6,4,SemiclassicalJacobi(1.11,0,0,0)))[1200,1200]
     end
     @testset "lowering c" begin
-        @test LoweredJacobiMatrix(SemiclassicalJacobi(1.1,2,3,4,SemiclassicalJacobi(1.1,0,0,0)),:c)[1:500,1:500]≈ jacobimatrix(SemiclassicalJacobi(1.1,2,3,3,SemiclassicalJacobi(1.1,0,0,0)))[1:500,1:500]
-        @test LoweredJacobiMatrix(SemiclassicalJacobi(1.00001,12,4,7,SemiclassicalJacobi(1.00001,0,0,0)),:c)[1:500,1:500] ≈ jacobimatrix(SemiclassicalJacobi(1.00001,12,4,6,SemiclassicalJacobi(1.00001,0,0,0)))[1:500,1:500]
+        @test symlowered_jacobimatrix(SemiclassicalJacobi(1.1,2,3,4,SemiclassicalJacobi(1.1,0,0,0)),:c)[1:500,1:500]≈ jacobimatrix(SemiclassicalJacobi(1.1,2,3,3,SemiclassicalJacobi(1.1,0,0,0)))[1:500,1:500]
+        @test symlowered_jacobimatrix(SemiclassicalJacobi(1.00001,12,4,7,SemiclassicalJacobi(1.00001,0,0,0)),:c)[1:500,1:500] ≈ jacobimatrix(SemiclassicalJacobi(1.00001,12,4,6,SemiclassicalJacobi(1.00001,0,0,0)))[1:500,1:500]
     end
 end

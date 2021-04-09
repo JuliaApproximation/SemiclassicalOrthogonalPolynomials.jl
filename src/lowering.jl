@@ -15,45 +15,77 @@ function initialα_gen(P::SemiclassicalJacobi, lowindex::Symbol)
     end
 end
 
-mutable struct LoweredJacobiMatrix{T} <: AbstractCachedMatrix{T}
+mutable struct LoweringCoefficients{T} <: AbstractCachedVector{T}
     P::SemiclassicalJacobi{T}
-    lowindex::Symbol # options for lowering are :a, :b and :c
+    lowind::Symbol # options for lowering are :a, :b and :c
     data::Vector{T}
-    datasize::Tuple{Int,Int}
+    datasize::Tuple{Int}
     array
-    LoweredJacobiMatrix{T}(P::SemiclassicalJacobi{T}, lowindex::Symbol) where T = new{T}(P, lowindex, [initialα_gen(P, lowindex)], (1,1))
+    LoweringCoefficients{T}(P::SemiclassicalJacobi{T}, lowindex::Symbol) where T = new{T}(P, lowindex, [initialα_gen(P, lowindex)], (1,))
 end
-LoweredJacobiMatrix(P::SemiclassicalJacobi{T}, lowindex::Symbol) where T = LoweredJacobiMatrix{T}(P, lowindex)
-size(::LoweredJacobiMatrix) = (ℵ₀,ℵ₀)
-cache_filldata!(J::LoweredJacobiMatrix, inds) =  αgenfillerbackwards!(J.data, 200, 10, J.P, J.lowindex, inds)
-MemoryLayout(J::LoweredJacobiMatrix) = MemoryLayout(J.P.X)
+LoweringCoefficients(P::SemiclassicalJacobi{T}, lowindex::Symbol) where T = LoweringCoefficients{T}(P, lowindex)
+size(::LoweringCoefficients) = (ℵ₀,)
 
-function αgenfillerbackwards!(α::Vector{T}, addscale::Int, mulscale::Int, P::SemiclassicalJacobi{T}, lowindex::Symbol, inds::UnitRange{Int64}) where T
+function getindex(α::LoweringCoefficients, I::UnitRange{Int64})
+    nm = maximum(I)
+    resizedata!(α, nm+1)
+    return getindex(α,I)
+end
+
+function resizedata!(α::LoweringCoefficients, nm) 
+    νμ = length(α.data)
+    if nm > νμ
+        olddata = copy(α.data)
+        α.data = similar(olddata,maximum(nm))
+        α.data[1:νμ] = olddata[1:νμ]
+        inds = νμ:maximum(nm)
+        cache_filldata!(α, inds)
+        α.datasize = (nm,)
+    end
+    return α
+end
+cache_filldata!(α::LoweringCoefficients, inds) =  αgenfillerbackwards!(α.data, 1000, α.P, α.lowind, inds)
+
+# fill in coefficients via Miller recurrence
+function αgenfillerbackwards!(α::Vector{T}, addscale::Int, P::SemiclassicalJacobi{T}, lowindex::Symbol, inds::UnitRange{Int64}) where T
     maxI::Int = maximum(inds)
     minI::Int = minimum(inds)
     oldval = α[minI];
-    n = addscale+mulscale*maxI; # for now just an arbitrary sufficiently high value >m
+    n = maxI; # for now just an arbitrary sufficiently high value >m
     k = one(T);
+    k2 = 2;
     A,B,C = recurrencecoefficients(P)
     if lowindex == :a
-        @inbounds for j = n:-1:maxI
-            k = -C[j+1]/(k+B[j+1]);
+        while abs(k2-k) > 1e-12
+            k2, k = k, one(T)
+            n += addscale
+            @inbounds for j = n:-1:maxI
+                k = -C[j+1]/(k+B[j+1]);
+            end
         end
         α[maxI] = k
         @inbounds for j = maxI:-1:minI+1
             α[j-1] = -C[j]/(α[j]+B[j]);
         end
     elseif lowindex == :b
-        @inbounds for j = n:-1:maxI
-            k = -C[j+1]/(k+A[j+1]+B[j+1]);
+        while abs(k2-k) > 1e-12
+            k2, k = k, one(T)
+            @inbounds for j = n:-1:maxI
+                k = -C[j+1]/(k+A[j+1]+B[j+1]);
+            end
+            n += addscale
         end
         α[maxI] = k
         @inbounds for j = maxI:-1:minI+1
             α[j-1] = -C[j]/(α[j]+A[j]+B[j]);
         end
     else # lowindex == :c
-        @inbounds for j = n:-1:maxI
-            k = -C[j+1]/(k+A[j+1]*P.t+B[j+1]);
+        while abs(k2-k) > 1e-12
+            k2, k = k, one(T)
+            @inbounds for j = n:-1:maxI
+                k = -C[j+1]/(k+A[j+1]*P.t+B[j+1]);
+            end
+            n += addscale
         end
         α[maxI] = k
         @inbounds for j = maxI:-1:minI+1
@@ -64,58 +96,33 @@ function αgenfillerbackwards!(α::Vector{T}, addscale::Int, mulscale::Int, P::S
     α
 end
 
-function getindex(J::LoweredJacobiMatrix, I::Vararg{Int,2})
-    # check if resize is necessary
-    nm = maximum(I)
-    resizedata!(J, nm+1)
-    # prepare data
-    a = J.P.a; b = J.P.b; c = J.P.c; t = J.P.t;
-    C,A,B = subdiagonaldata(J.P.X), diagonaldata(J.P.X), supdiagonaldata(J.P.X)
-    # generate off-diagonal bands
-    if J.lowindex == :a
-        offD = Vcat(C[1]/(sqrt(sum(SemiclassicalJacobiWeight(t,a-1,b,c)))/sqrt((((J.data[1]^2-2*J.data[1]*A[1]/C[1]+A[1]^2/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a-1, b, c))+(2*J.data[1]/C[1]-2*A[1]/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a, b, c))))+(1/C[1]^2)*(sum(SemiclassicalJacobiWeight(t, a+1, b, c))))), sqrt.(B[1:nm].*C[2:nm+1].*J.data[2:nm+1]./J.data[1:nm]))
-    elseif J.lowindex == :b
-        offD = Vcat(C[1]/(sqrt(sum(SemiclassicalJacobiWeight(t,a,b-1,c)))/sqrt((((J.data[1]^2-2*J.data[1]*A[1]/C[1]+A[1]^2/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a, b-1, c))+(2*J.data[1]/C[1]-2*A[1]/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a+1, b-1, c))))+(1/C[1]^2)*(sum(SemiclassicalJacobiWeight(t, a+2, b-1, c))))), sqrt.(B[1:nm].*C[2:nm+1].*J.data[2:nm+1]./J.data[1:nm]))
-    else # J.lowindex == :c
-        offD = Vcat(C[1]/(sqrt(sum(SemiclassicalJacobiWeight(t,a,b,c-1)))/sqrt((((J.data[1]^2-2*J.data[1]*A[1]/C[1]+A[1]^2/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a, b, c-1))+(2*J.data[1]/C[1]-2*A[1]/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a+1, b, c-1))))+(1/C[1]^2)*(sum(SemiclassicalJacobiWeight(t, a+2, b, c-1))))), sqrt.(B[1:nm].*C[2:nm+1].*J.data[2:nm+1]./J.data[1:nm]))
-    end
-    # generate diagonal
-    D = Vcat(A[1]-C[1]*J.data[1], C[1:nm].*J.data[1:nm]-C[2:nm+1].*J.data[2:nm+1]+A[2:nm+1])
-    # return operator
-    return SymTridiagonal(D,offD)[I[1],I[2]]
+function symlowered_jacobimatrix(Q::SemiclassicalJacobi, lowindex::Symbol)
+    C,A,B = subdiagonaldata(Q.X), diagonaldata(Q.X), supdiagonaldata(Q.X)
+    αcfs = LoweringCoefficients(Q, lowindex)
+    return SymTridiagonal(SemiclassicalLowJacobiBand{:dv}(αcfs,C,A,B),SemiclassicalLowJacobiBand{:ev}(αcfs,C,A,B,Q.a,Q.b,Q.c,Q.t))
 end
 
-function getindex(J::LoweredJacobiMatrix, I::Vararg{UnitRange,2})
-    # check if resize is necessary
-    nm = maximum(maximum.(I))
-    resizedata!(J, nm+1)
-    # prepare data
-    a = J.P.a; b = J.P.b; c = J.P.c; t = J.P.t;
-    C,A,B = subdiagonaldata(J.P.X), diagonaldata(J.P.X), supdiagonaldata(J.P.X)
-    # generate off-diagonal bands
-    if J.lowindex == :a
-        offD = Vcat(C[1]/(sqrt(sum(SemiclassicalJacobiWeight(t,a-1,b,c)))/sqrt((((J.data[1]^2-2*J.data[1]*A[1]/C[1]+A[1]^2/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a-1, b, c))+(2*J.data[1]/C[1]-2*A[1]/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a, b, c))))+(1/C[1]^2)*(sum(SemiclassicalJacobiWeight(t, a+1, b, c))))), sqrt.(B[1:nm].*C[2:nm+1].*J.data[2:nm+1]./J.data[1:nm]))
-    elseif J.lowindex == :b
-        offD = Vcat(C[1]/(sqrt(sum(SemiclassicalJacobiWeight(t,a,b-1,c)))/sqrt((((J.data[1]^2-2*J.data[1]*A[1]/C[1]+A[1]^2/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a, b-1, c))+(2*J.data[1]/C[1]-2*A[1]/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a+1, b-1, c))))+(1/C[1]^2)*(sum(SemiclassicalJacobiWeight(t, a+2, b-1, c))))), sqrt.(B[1:nm].*C[2:nm+1].*J.data[2:nm+1]./J.data[1:nm]))
-    else # J.lowindex == :c
-        offD = Vcat(C[1]/(sqrt(sum(SemiclassicalJacobiWeight(t,a,b,c-1)))/sqrt((((J.data[1]^2-2*J.data[1]*A[1]/C[1]+A[1]^2/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a, b, c-1))+(2*J.data[1]/C[1]-2*A[1]/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a+1, b, c-1))))+(1/C[1]^2)*(sum(SemiclassicalJacobiWeight(t, a+2, b, c-1))))), sqrt.(B[1:nm].*C[2:nm+1].*J.data[2:nm+1]./J.data[1:nm]))
-    end
-    # generate diagonal
-    D = Vcat(A[1]-C[1]*J.data[1], C[1:nm].*J.data[1:nm]-C[2:nm+1].*J.data[2:nm+1]+A[2:nm+1])
-    return SymTridiagonal(D,offD)[I[1],I[2]]
+###
+# collect Jacobi operator into bands to reduce verbose typing
+mutable struct SemiclassicalLowJacobiBand{dv,T} <: AbstractVector{T}
+    data::AbstractVector{T}
 end
-
-function resizedata!(J::LoweredJacobiMatrix, nm) 
-    νμ = length(J.data)
-    if nm > νμ
-        olddata = copy(J.data)
-        J.data = similar(olddata,maximum(nm))
-        J.data[1:νμ] = olddata[1:νμ]
-        inds = νμ:maximum(nm)
-        cache_filldata!(J, inds)
-        J.datasize = (nm,nm)
+getindex(r::SemiclassicalLowJacobiBand, I) = getindex(r.data, I)
+size(r::SemiclassicalLowJacobiBand) = size(r.data)
+# off-diagonal values
+function SemiclassicalLowJacobiBand{:ev}(αcfs::AbstractVector{T}, C::AbstractVector{T}, A::AbstractVector{T}, B::AbstractVector{T}, a::Real, b::Real, c::Real, t::Real) where T
+    if αcfs.lowind == :a
+        offD = Vcat(C[1]/(sqrt(sum(SemiclassicalJacobiWeight(t,a-1,b,c)))/sqrt((((αcfs[1]^2-2*αcfs[1]*A[1]/C[1]+A[1]^2/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a-1, b, c))+(2*αcfs[1]/C[1]-2*A[1]/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a, b, c))))+(1/C[1]^2)*(sum(SemiclassicalJacobiWeight(t, a+1, b, c))))), sqrt.(B.*C[2:end].*αcfs[2:end]./αcfs))
+    elseif αcfs.lowind == :b
+        offD = Vcat(C[1]/(sqrt(sum(SemiclassicalJacobiWeight(t,a,b-1,c)))/sqrt((((αcfs[1]^2-2*αcfs[1]*A[1]/C[1]+A[1]^2/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a, b-1, c))+(2*αcfs[1]/C[1]-2*A[1]/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a+1, b-1, c))))+(1/C[1]^2)*(sum(SemiclassicalJacobiWeight(t, a+2, b-1, c))))), sqrt.(B.*C[2:end].*αcfs[2:end]./αcfs))
+    else # assumed αcfs.lowind == :c
+        offD = Vcat(C[1]/(sqrt(sum(SemiclassicalJacobiWeight(t,a,b,c-1)))/sqrt((((αcfs[1]^2-2*αcfs[1]*A[1]/C[1]+A[1]^2/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a, b, c-1))+(2*αcfs[1]/C[1]-2*A[1]/C[1]^2)*sum(SemiclassicalJacobiWeight(t, a+1, b, c-1))))+(1/C[1]^2)*(sum(SemiclassicalJacobiWeight(t, a+2, b, c-1))))), sqrt.(B.*C[2:end].*αcfs[2:end]./αcfs))
     end
-    J
+    return SemiclassicalLowJacobiBand{:ev,T}(offD)
+end
+# diagonal values
+function SemiclassicalLowJacobiBand{:dv}(αcfs::AbstractVector{T},C::AbstractVector{T},A::AbstractVector{T},B::AbstractVector{T}) where T
+    return SemiclassicalLowJacobiBand{:dv,T}(Vcat(A[1]-C[1]*αcfs[1], C.*αcfs-C[2:end].*αcfs[2:end]+A[2:end]))
 end
 
 ###########

@@ -195,20 +195,32 @@ function symraised_jacobimatrix(Q, y)
 end
 
 function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
-    if  iszero(a) && iszero(b) && c == -1
+    if  iszero(a) && iszero(b) && c == -1 # (a,b,c) = (0,0,-1) special case
         semiclassical_jacobimatrix(Q.t, a, b, c)
-    elseif a == Q.a+1 && b == Q.b && c == Q.c
+    elseif a == Q.a+1 && b == Q.b && c == Q.c  # raising by 1
         symraised_jacobimatrix(Q, 0)
     elseif a == Q.a && b == Q.b+1 && c == Q.c
         symraised_jacobimatrix(Q, 1)
     elseif a == Q.a && b == Q.b && c == Q.c+1
         symraised_jacobimatrix(Q, Q.t)
-    elseif a > Q.a
-        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a+1, Q.b, Q.c, Q), a, b,c)
+    elseif a == Q.a && b == Q.b && c == Q.c-1 # lowering by 1
+        symlowered_jacobimatrix(Q, :c)
+    elseif a == Q.a-1 && b == Q.b && c == Q.c
+        symlowered_jacobimatrix(Q, :a)
+    elseif a == Q.a && b == Q.b-1 && c == Q.c
+        symlowered_jacobimatrix(Q, :b)
+    elseif a > Q.a  # iterative raising
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a+1, Q.b, Q.c, Q), a, b, c)
     elseif b > Q.b
-        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b+1, Q.c, Q), a, b,c)
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b+1, Q.c, Q), a, b, c)
     elseif c > Q.c
-        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c+1, Q), a, b,c)
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c+1, Q), a, b, c)
+    elseif c < Q.c # iterative lowering
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c-1, Q), a, b, c)
+    elseif a < Q.a 
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a-1, Q.b, Q.c, Q), a, b, c)
+    elseif b < Q.b
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b-1, Q.c, Q), a, b, c)
     else
         error("Not Implement")
     end
