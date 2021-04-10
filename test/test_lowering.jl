@@ -205,8 +205,8 @@ end
         t = 1.1
         PLegendre = SemiclassicalJacobi(t,0,0,0)
         RaisetoLower = SemiclassicalJacobi(t,5,18,8,PLegendre)
-        RaisetoCompare = SemiclassicalJacobi(t,3,17,8,PLegendre)
-        LoweredPoly = SemiclassicalJacobi(t,3,17,8,RaisetoLower)
+        RaisetoCompare = SemiclassicalJacobi(t,4,17,8,PLegendre)
+        LoweredPoly = SemiclassicalJacobi(t,4,17,8,RaisetoLower)
         @test LoweredPoly.X[1:100,1:100] ≈ RaisetoCompare.X[1:100,1:100]
     end
 

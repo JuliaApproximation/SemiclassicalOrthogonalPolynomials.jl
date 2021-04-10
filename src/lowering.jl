@@ -117,11 +117,9 @@ size(r::SemiclassicalLoweredJacobiBands) = (2,ℵ₀)
 
 function SemiclassicalLoweredJacobiBands(P::SemiclassicalJacobi{T}, lowindex::Symbol) where T
     a,b,c,t = P.a, P.b, P.c, P.t
-    C, A = P.X[2,1], P.X[1,1]
-    # compute initial values
-    αcfs = initialα_gen(P, lowindex)
     cachedα = LoweringCoefficients(P,lowindex)
-    cachedα[1:100] # initial caching
+    αcfs = cachedα[1]
+    C, A = P.X[2,1], P.X[1,1]
     if lowindex == :a
         SemiclassicalLoweredJacobiBands{T}(P, [A-C*αcfs, C/(sqrt(sum(SemiclassicalJacobiWeight(t,a-1,b,c)))/sqrt((((αcfs^2-2*αcfs*A/C+A^2/C^2)*sum(SemiclassicalJacobiWeight(t, a-1, b, c))+(2*αcfs/C-2*A/C^2)*sum(SemiclassicalJacobiWeight(t, a, b, c))))+(1/C^2)*(sum(SemiclassicalJacobiWeight(t, a+1, b, c)))))], cachedα, (2,1))
     elseif lowindex == :b
