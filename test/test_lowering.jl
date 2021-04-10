@@ -1,7 +1,7 @@
 using SemiclassicalOrthogonalPolynomials
 using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra, InfiniteArrays
 import LazyArrays: AbstractCachedVector
-import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn, getindex, initialα_gen, symlowered_jacobimatrix, αgenfillerbackwards!, symlowered_jacobimatrix, LoweringCoefficients
+import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn, getindex, initialα_gen, symlowered_jacobimatrix, αgenfillerbackwards!, symlowered_jacobimatrix
 
 @testset "Special case: SemiclassicalJacobi(t,0,0,-1) " begin
     @testset "inital α" begin
@@ -143,16 +143,89 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
     end
 end
 
-@testset "Compare lowering of a, b and c with raised OPs" begin
-    @testset "lowering a" begin
-        @test symlowered_jacobimatrix(SemiclassicalJacobi(1.0001,10,10,5,SemiclassicalJacobi(1.0001,0,0,0)),:a)[1:500,1:500] ≈ jacobimatrix(SemiclassicalJacobi(1.0001,9,10,5,SemiclassicalJacobi(1.0001,0,0,0)))[1:500,1:500]
+@testset "Generic lowering operators" begin
+    @testset "Iterative lowering" begin
+        # lowering a iteratively
+        t = 1.812
+        PLegendre = SemiclassicalJacobi(t,0,0,0)
+        RaisetoLower = SemiclassicalJacobi(t,15,3,6,PLegendre)
+        RaisetoCompare = SemiclassicalJacobi(t,12,3,6,PLegendre)
+        LoweredPoly = SemiclassicalJacobi(t,12,3,6,RaisetoLower)
+        @test LoweredPoly.X[1:100,1:100] ≈ RaisetoCompare.X[1:100,1:100]
+        # lowering b iteratively
+        t = 1.1
+        PLegendre = SemiclassicalJacobi(t,0,0,0)
+        RaisetoLower = SemiclassicalJacobi(t,7,6,8,PLegendre)
+        RaisetoCompare = SemiclassicalJacobi(t,7,4,8,PLegendre)
+        LoweredPoly = SemiclassicalJacobi(t,7,4,8,RaisetoLower)
+        @test LoweredPoly.X[1:100,1:100] ≈ RaisetoCompare.X[1:100,1:100]
+        # lowering c iteratively
+        t = 1.001
+        PLegendre = SemiclassicalJacobi(t,0,0,0)
+        RaisetoLower = SemiclassicalJacobi(t,5,8,8,PLegendre)
+        RaisetoCompare = SemiclassicalJacobi(t,5,8,5,PLegendre)
+        LoweredPoly = SemiclassicalJacobi(t,5,8,5,RaisetoLower)
+        @test LoweredPoly.X[1:100,1:100] ≈ RaisetoCompare.X[1:100,1:100]
     end
-    @testset "lowering b" begin
-        @test symlowered_jacobimatrix(SemiclassicalJacobi(3.1,6,6,6,SemiclassicalJacobi(3.1,0,0,0)),:b)[1:500,1:500]≈ jacobimatrix(SemiclassicalJacobi(3.1,6,5,6,SemiclassicalJacobi(3.1,0,0,0)))[1:500,1:500]
-        @test symlowered_jacobimatrix(SemiclassicalJacobi(1.11,5,7,4,SemiclassicalJacobi(1.11,0,0,0)),:b)[1200,1200]≈ jacobimatrix(SemiclassicalJacobi(1.11,5,6,4,SemiclassicalJacobi(1.11,0,0,0)))[1200,1200]
+
+    @testset "Lower all by 1" begin
+        t = 1.13
+        PLegendre = SemiclassicalJacobi(t,0,0,0)
+        RaisetoLower = SemiclassicalJacobi(t,15,13,16,PLegendre)
+        RaisetoCompare = SemiclassicalJacobi(t,14,13,15,PLegendre)
+        LoweredPoly = SemiclassicalJacobi(t,14,13,15,RaisetoLower)
+        @test LoweredPoly.X[1:200,1:200] ≈ RaisetoCompare.X[1:200,1:200]
+    end 
+
+    @testset "Lower all by 2" begin
+        t = 1.102
+        PLegendre = SemiclassicalJacobi(t,0,0,0)
+        RaisetoLower = SemiclassicalJacobi(t,15,13,16,PLegendre)
+        RaisetoCompare = SemiclassicalJacobi(t,13,12,14,PLegendre)
+        LoweredPoly = SemiclassicalJacobi(t,13,12,14,RaisetoLower)
+        @test LoweredPoly.X[1:200,1:200] ≈ RaisetoCompare.X[1:200,1:200]
+    end 
+
+    @testset "Mixed lowering" begin
+        # mixed a and c lowering
+        t = 1.212
+        PLegendre = SemiclassicalJacobi(t,0,0,0)
+        RaisetoLower = SemiclassicalJacobi(t,15,3,6,PLegendre)
+        RaisetoCompare = SemiclassicalJacobi(t,12,3,4,PLegendre)
+        LoweredPoly = SemiclassicalJacobi(t,12,3,4,RaisetoLower)
+        @test LoweredPoly.X[1:100,1:100] ≈ RaisetoCompare.X[1:100,1:100]
+        # mixed b and c lowering
+        t = 1.11
+        PLegendre = SemiclassicalJacobi(t,0,0,0)
+        RaisetoLower = SemiclassicalJacobi(t,7,16,8,PLegendre)
+        RaisetoCompare = SemiclassicalJacobi(t,7,15,5,PLegendre)
+        LoweredPoly = SemiclassicalJacobi(t,7,15,5,RaisetoLower)
+        @test LoweredPoly.X[1:100,1:100] ≈ RaisetoCompare.X[1:100,1:100]
+        # mixed a and b lowering
+        t = 1.1
+        PLegendre = SemiclassicalJacobi(t,0,0,0)
+        RaisetoLower = SemiclassicalJacobi(t,5,18,8,PLegendre)
+        RaisetoCompare = SemiclassicalJacobi(t,3,17,8,PLegendre)
+        LoweredPoly = SemiclassicalJacobi(t,3,17,8,RaisetoLower)
+        @test LoweredPoly.X[1:100,1:100] ≈ RaisetoCompare.X[1:100,1:100]
     end
-    @testset "lowering c" begin
-        @test symlowered_jacobimatrix(SemiclassicalJacobi(1.1,2,3,4,SemiclassicalJacobi(1.1,0,0,0)),:c)[1:500,1:500]≈ jacobimatrix(SemiclassicalJacobi(1.1,2,3,3,SemiclassicalJacobi(1.1,0,0,0)))[1:500,1:500]
-        @test symlowered_jacobimatrix(SemiclassicalJacobi(1.00001,12,4,7,SemiclassicalJacobi(1.00001,0,0,0)),:c)[1:500,1:500] ≈ jacobimatrix(SemiclassicalJacobi(1.00001,12,4,6,SemiclassicalJacobi(1.00001,0,0,0)))[1:500,1:500]
+
+    @testset "Higher order stress tests" begin
+        @testset "lowering a" begin
+            t = 1.0001
+            @test symlowered_jacobimatrix(SemiclassicalJacobi(t,10,10,5,SemiclassicalJacobi(t,0,0,0)),:a)[1:500,1:500] ≈ jacobimatrix(SemiclassicalJacobi(t,9,10,5,SemiclassicalJacobi(t,0,0,0)))[1:500,1:500]
+        end
+        @testset "lowering b" begin
+            t = 3.1
+            @test symlowered_jacobimatrix(SemiclassicalJacobi(t,6,6,6,SemiclassicalJacobi(t,0,0,0)),:b)[1:500,1:500]≈ jacobimatrix(SemiclassicalJacobi(t,6,5,6,SemiclassicalJacobi(t,0,0,0)))[1:500,1:500]
+            t = 1.11
+            @test symlowered_jacobimatrix(SemiclassicalJacobi(t,5,7,4,SemiclassicalJacobi(t,0,0,0)),:b)[1200,1200]≈ jacobimatrix(SemiclassicalJacobi(t,5,6,4,SemiclassicalJacobi(t,0,0,0)))[1200,1200]
+        end
+        @testset "lowering c" begin
+            t = 1.1
+            @test symlowered_jacobimatrix(SemiclassicalJacobi(t,2,3,4,SemiclassicalJacobi(t,0,0,0)),:c)[1:500,1:500]≈ jacobimatrix(SemiclassicalJacobi(t,2,3,3,SemiclassicalJacobi(t,0,0,0)))[1:500,1:500]
+            t = 1.00001
+            @test symlowered_jacobimatrix(SemiclassicalJacobi(t,12,4,7,SemiclassicalJacobi(t,0,0,0)),:c)[1:500,1:500] ≈ jacobimatrix(SemiclassicalJacobi(t,12,4,6,SemiclassicalJacobi(t,0,0,0)))[1:500,1:500]
+        end
     end
 end
