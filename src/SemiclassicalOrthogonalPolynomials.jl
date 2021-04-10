@@ -44,9 +44,9 @@ function getindex(P::SemiclassicalJacobiWeight, x::Real)
     x^a * (1-x)^b * (t-x)^c
 end
 
-function sum(P::SemiclassicalJacobiWeight)
-    t,a,b,c = P.t,P.a,P.b,P.c
-    t^c * gamma(1+a)gamma(1+b)/gamma(2+a+b) * _₂F₁(1+a,-c,2+a+b,1/t)
+function sum(P::SemiclassicalJacobiWeight{T}) where T
+    (t,a,b,c) = BigFloat.((P.t,P.a,P.b,P.c))
+    return convert(T, t^c * beta(1+a,1+b) * _₂F₁general2(1+a,-c,2+a+b,1/t))
 end
 
 function summary(io::IO, P::SemiclassicalJacobiWeight)
