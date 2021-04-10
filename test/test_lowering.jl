@@ -135,7 +135,7 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
         f3(x) = exp(t-x)
         f4(x) = sinh(t*x)
         # test expansion
-        y = rand(1)[1]
+        y = 0.4781
         @test (Q*(X*(Q\x.^2)))[y] ≈ y*f1(y)
         @test (Q*(X*X*(Q\(t.-x).^2)))[y] ≈ y^2*f2(y)
         @test (Q*(X*(Q\exp.(t.-x))))[y] ≈ y*f3(y)
@@ -172,8 +172,8 @@ end
         t = 1.13
         PLegendre = SemiclassicalJacobi(t,0,0,0)
         RaisetoLower = SemiclassicalJacobi(t,15,13,16,PLegendre)
-        RaisetoCompare = SemiclassicalJacobi(t,14,13,15,PLegendre)
-        LoweredPoly = SemiclassicalJacobi(t,14,13,15,RaisetoLower)
+        RaisetoCompare = SemiclassicalJacobi(t,14,12,15,PLegendre)
+        LoweredPoly = SemiclassicalJacobi(t,14,12,15,RaisetoLower)
         @test LoweredPoly.X[1:200,1:200] ≈ RaisetoCompare.X[1:200,1:200]
     end 
 
@@ -181,8 +181,8 @@ end
         t = 1.102
         PLegendre = SemiclassicalJacobi(t,0,0,0)
         RaisetoLower = SemiclassicalJacobi(t,15,13,16,PLegendre)
-        RaisetoCompare = SemiclassicalJacobi(t,13,12,14,PLegendre)
-        LoweredPoly = SemiclassicalJacobi(t,13,12,14,RaisetoLower)
+        RaisetoCompare = SemiclassicalJacobi(t,13,11,14,PLegendre)
+        LoweredPoly = SemiclassicalJacobi(t,13,11,14,RaisetoLower)
         @test LoweredPoly.X[1:200,1:200] ≈ RaisetoCompare.X[1:200,1:200]
     end 
 
