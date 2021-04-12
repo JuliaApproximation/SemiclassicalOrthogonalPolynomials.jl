@@ -221,8 +221,10 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
         semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c-1, Q), a, b, c)
     elseif a < Q.a 
         semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a-1, Q.b, Q.c, Q), a, b, c)
+    elseif a == Q.a && b == Q.b && c == Q.c # same basis
+        jacobimatrix(Q)
     else
-        error("Not Implement")
+        error("Not Implemented")
     end
 end
 
