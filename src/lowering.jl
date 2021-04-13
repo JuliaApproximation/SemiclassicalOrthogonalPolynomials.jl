@@ -20,24 +20,22 @@ mutable struct LoweringCoefficients{T} <: AbstractCachedVector{T}
     lowind::Symbol # options for lowering are :a, :b and :c
     data::Vector{T}
     datasize::Tuple{Int}
-    array
     LoweringCoefficients{T}(P::SemiclassicalJacobi{T}, lowindex::Symbol) where T = new{T}(P, lowindex, [initialα_gen(P, lowindex)], (1,))
 end
 LoweringCoefficients(P::SemiclassicalJacobi{T}, lowindex::Symbol) where T = LoweringCoefficients{T}(P, lowindex)
 size(::LoweringCoefficients) = (ℵ₀,)
 
-function getindex(α::LoweringCoefficients, I::UnitRange{Int64})
-    nm = maximum(I)
-    resizedata!(α, nm)
+function getindex(α::LoweringCoefficients, I::UnitRange{Int})
+    resizedata!(α, maximum(I))
     return getindex(α.data,I)
 end
 
-function getindex(α::LoweringCoefficients, I::Int64)
+function getindex(α::LoweringCoefficients, I::Int)
     resizedata!(α, I)
     return getindex(α.data,I)
 end
 
-function resizedata!(α::LoweringCoefficients, nm) 
+function resizedata!(α::LoweringCoefficients, nm::Int) 
     νμ = length(α.data)
     if nm > νμ
         olddata = copy(α.data)
@@ -50,7 +48,7 @@ function resizedata!(α::LoweringCoefficients, nm)
     end
     return α
 end
-cache_filldata!(α::LoweringCoefficients, inds) =  αgenfillerbackwards!(α.data, 100, α.P, α.lowind, inds)
+cache_filldata!(α::LoweringCoefficients, inds::UnitRange{Int}) =  αgenfillerbackwards!(α.data, 100, α.P, α.lowind, inds)
 
 # fill in coefficients via Miller recurrence
 function αgenfillerbackwards!(α::Vector{T}, addscale::Int, P::SemiclassicalJacobi{T}, lowindex::Symbol, inds::UnitRange{Int}) where T
@@ -60,8 +58,8 @@ function αgenfillerbackwards!(α::Vector{T}, addscale::Int, P::SemiclassicalJac
     n = maxI
     k = one(T)
     k2 = zero(T)
-    A,B,C = recurrencecoefficients(P)
     if lowindex == :a
+        _,B,C = recurrencecoefficients(P)
         while abs(k2-k) > 1e-10
             k2, k = k, one(T)
             n += addscale
@@ -74,6 +72,7 @@ function αgenfillerbackwards!(α::Vector{T}, addscale::Int, P::SemiclassicalJac
             α[j-1] = -C[j]/(α[j]+B[j])
         end
     elseif lowindex == :b
+        A,B,C = recurrencecoefficients(P)
         while abs(k2-k) > 1e-10
             k2, k = k, one(T)
             n += addscale
@@ -86,6 +85,7 @@ function αgenfillerbackwards!(α::Vector{T}, addscale::Int, P::SemiclassicalJac
             α[j-1] = -C[j]/(α[j]+A[j]+B[j])
         end
     else # lowindex == :c
+        A,B,C = recurrencecoefficients(P)
         while abs(k2-k) > 1e-10
             k2, k = k, one(T)
             n += addscale
@@ -110,15 +110,14 @@ end
 mutable struct SemiclassicalLoweredJacobiBands{T} <: AbstractCachedMatrix{T}
     P::SemiclassicalJacobi{T}
     data::Array{T} # to avoid redundant re-computations, the bands are stored as a (∞,2)-array
-    αcfs::AbstractCachedVector{T}
+    αcfs::LoweringCoefficients{T}
     datasize::Tuple{Int,Int}
 end
 size(r::SemiclassicalLoweredJacobiBands) = (2,ℵ₀)
 
 function SemiclassicalLoweredJacobiBands(P::SemiclassicalJacobi{T}, lowindex::Symbol) where T
-    a,b,c,t = P.a, P.b, P.c, P.t
     cachedα = LoweringCoefficients(P,lowindex)
-    αcfs = cachedα[1]
+    a, b, c, t, αcfs = P.a, P.b, P.c, P.t, cachedα[1]
     C, A = P.X[2,1], P.X[1,1]
     if lowindex == :a
         SemiclassicalLoweredJacobiBands{T}(P, [A-C*αcfs, C/(sqrt(sum(SemiclassicalJacobiWeight(t,a-1,b,c)))/sqrt((((αcfs^2-2*αcfs*A/C+A^2/C^2)*sum(SemiclassicalJacobiWeight(t, a-1, b, c))+(2*αcfs/C-2*A/C^2)*sum(SemiclassicalJacobiWeight(t, a, b, c))))+(1/C^2)*(sum(SemiclassicalJacobiWeight(t, a+1, b, c)))))], cachedα, (2,1))
@@ -131,30 +130,29 @@ end
 
 function getindex(r::SemiclassicalLoweredJacobiBands, I::Vararg{Int,2})
     r.αcfs[maximum(I)+1] # expanding the cache of coefficients here prevents redundant recomputation later
-    resizedata!(r,I)
+    resizedata!(r,maximum(I))
     getindex(r.data,I[1],I[2])
 end
 function getindex(r::SemiclassicalLoweredJacobiBands, I::Int, J::UnitRange{Int})
     r.αcfs[maximum(J)+1] # expanding the cache of coefficients here prevents redundant recomputation later
-    resizedata!(r,J)
+    resizedata!(r,maximum(J))
     getindex(r.data,I,J)
 end
-function resizedata!(r::SemiclassicalLoweredJacobiBands, nm) 
+function resizedata!(r::SemiclassicalLoweredJacobiBands, nm::Int) 
     νμ = length(r.data[1,:])
-    nmax = maximum(nm)
-    if nmax > νμ
+    if nm > νμ
         olddata = copy(r.data)
-        r.data = similar(olddata,2,nmax)
+        r.data = similar(olddata,2,nm)
         r.data[1:2,1:νμ] = olddata
-        inds = νμ:nmax
+        inds = νμ:nm
         cache_filldata!(r, inds)
-        r.datasize = (2,nmax)
+        r.datasize = (2,nm)
     end
     return r
 end
-cache_filldata!(r::SemiclassicalLoweredJacobiBands, inds) =  loweringjacobibandfill!(r.data, r.αcfs, r.P, inds)
+cache_filldata!(r::SemiclassicalLoweredJacobiBands, inds::UnitRange{Int}) =  loweringjacobibandfill!(r.data, r.αcfs, r.P, inds)
 
-function loweringjacobibandfill!(data, αcfs, P::SemiclassicalJacobi, inds)
+function loweringjacobibandfill!(data::Array, αcfs::LoweringCoefficients, P::SemiclassicalJacobi, inds::UnitRange{Int})
     lowI = minimum(inds):maximum(inds)-1
     shiftI = minimum(inds)+1:maximum(inds)
     C,A = subdiagonaldata(P.X), diagonaldata(P.X)
@@ -203,7 +201,6 @@ mutable struct neg1c_αcfs{T} <: AbstractCachedVector{T}
     t::T
     data::Vector{T}
     datasize::Tuple{Int}
-    array
     neg1c_αcfs{T}(t::T) where T = new{T}(t, [initialα(2*t-1),αdirect(2,2*t-1)], (2,))
 end
 neg1c_αcfs(t::T) where T = neg1c_αcfs{T}(t)
@@ -230,7 +227,6 @@ mutable struct neg1c_normconstant{T} <: AbstractCachedVector{T}
     t::T
     data::Vector{T}
     datasize::Tuple{Int}
-    array
     neg1c_normconstant{T}(t::T) where T = new{T}(t, neg1c_normconstinitial(t, 10), (10,))
 end
 neg1c_normconstant(t::T) where T = neg1c_normconstant{T}(t)
