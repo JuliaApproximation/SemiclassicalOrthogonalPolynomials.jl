@@ -1,4 +1,5 @@
-using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
+using SemiclassicalOrthogonalPolynomials
+using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
 import BandedMatrices: _BandedMatrix
 import SemiclassicalOrthogonalPolynomials: op_lowering, RaisedOP
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight, symtridiagonalize, Expansion
@@ -45,7 +46,7 @@ end
         w_W = orthogonalityweight(W)
 
         @test copy(T) == T
-        @test W ≠ T
+        @test W ≠ T
 
         X = jacobimatrix(T)
         A, B, C = recurrencecoefficients(T)
@@ -254,7 +255,7 @@ end
             β = X[n,n+1]
             @test (x-y) * T[x,1:n]'*T[y,1:n] ≈ T[x,n:n+1]' * [0 -β; β 0] * T[y,n:n+1]
 
-            # y = 0.0
+            # y = 0.0
             @test x * T[x,1:n]'T[0,1:n] ≈ -X[n,n+1]*(T[x,n]*T[0,n+1] - T[x,n+1]*T[0,n])
 
             # y = 2.0
@@ -263,7 +264,7 @@ end
 
             @testset "T and W" begin
                 W̃ = (x,n) -> -X[n,n+1]*(T[x,n]*T[0,n+1] - T[x,n+1]*T[0,n])/x
-                @test norm(diff(W̃.([0.1,0.2,0.3],5) ./ W[[0.1,0.2,0.3],5])) ≤ 5E-13
+                @test norm(diff(W̃.([0.1,0.2,0.3],5) ./ W[[0.1,0.2,0.3],5])) ≤ 5E-13
 
                 L = _BandedMatrix(Vcat((-X.ev .* T[0,2:end])', (X.ev .* T[0,1:end])'), ∞, 1, 0)
                 x = 0.1
@@ -427,3 +428,4 @@ end
 
 include("test_derivative.jl")
 include("test_twoband.jl")
+include("test_lowering.jl")

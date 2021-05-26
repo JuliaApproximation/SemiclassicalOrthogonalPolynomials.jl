@@ -6,7 +6,7 @@ import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe
 
 import ArrayLayouts: MemoryLayout, ldiv, diagonaldata, subdiagonaldata, supdiagonaldata
 import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout, _BandedMatrix
-import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAbstractVector, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector, AccumulateAbstractVector, LazyVector
+import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAbstractVector, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector, AccumulateAbstractVector, LazyVector, AbstractCachedMatrix
 import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedBasisLayout,
                                         Bidiagonal, Tridiagonal, SymTridiagonal, symtridiagonalize, normalizationconstant, LanczosPolynomial,
                                         OrthogonalPolynomialRatio, Weighted, Expansion, UnionDomain, oneto, Hilbert, WeightedOrthogonalPolynomial, HalfWeighted,
@@ -14,9 +14,9 @@ import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficie
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid
 import FillArrays: SquareEye
+import HypergeometricFunctions: _₂F₁general2
 
 export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio, TwoBandJacobi, TwoBandWeight
-
 
 """"
     SemiclassicalJacobiWeight(t, a, b, c)
@@ -44,9 +44,9 @@ function getindex(P::SemiclassicalJacobiWeight, x::Real)
     x^a * (1-x)^b * (t-x)^c
 end
 
-function sum(P::SemiclassicalJacobiWeight)
-    t,a,b,c = P.t,P.a,P.b,P.c
-    t^c * gamma(1+a)gamma(1+b)/gamma(2+a+b) * _₂F₁(1+a,-c,2+a+b,1/t)
+function sum(P::SemiclassicalJacobiWeight{T}) where T
+    (t,a,b,c) = BigFloat.((P.t,P.a,P.b,P.c))
+    return convert(T, t^c * beta(1+a,1+b) * _₂F₁general2(1+a,-c,2+a+b,1/t))
 end
 
 function summary(io::IO, P::SemiclassicalJacobiWeight)
@@ -167,8 +167,19 @@ SemiclassicalJacobi{T}(t, a, b, c) where T = SemiclassicalJacobi(convert(T,t), c
 WeightedSemiclassicalJacobi(t, a, b, c, P...) = SemiclassicalJacobiWeight(t, a, b, c) .* SemiclassicalJacobi(t, a, b, c, P...)
 
 
+
 function semiclassical_jacobimatrix(t, a, b, c)
     T = float(promote_type(typeof(t), typeof(a), typeof(b), typeof(c)))
+    if a == 0 && b == 0 && c == -1
+        # for this special case we can generate the Jacobi operator explicitly
+        N = (1:∞)
+        α = T.(neg1c_αcfs(t)) # cached coefficients
+        A = Vcat((α[1]+1)/2 , -N./(N.*4 .- 2).*α .+ (N.+1)./(N.*4 .+ 2).*α[2:end].+1/2)
+        C = -(N)./(N.*4 .- 2)
+        B = Vcat((α[1]^2*3-α[1]*α[2]*2-1)/6 , -(N)./(N.*4 .+ 2).*α[2:end]./α)
+        # if J is Tridiagonal(c,a,b) then for norm. OPs it becomes SymTridiagonal(a, sqrt.( b.* c))
+        return SymTridiagonal(A, sqrt.(B.*C))
+    end
     P = jacobi(b, a, UnitInterval{T}())
     iszero(c) && return symtridiagonalize(jacobimatrix(P))
     x = axes(P,1)
@@ -184,20 +195,36 @@ function symraised_jacobimatrix(Q, y)
 end
 
 function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
-    if a == Q.a+1 && b == Q.b && c == Q.c
+    if  iszero(a) && iszero(b) && c == -1 # (a,b,c) = (0,0,-1) special case
+        semiclassical_jacobimatrix(Q.t, a, b, c)
+    elseif a == Q.a+1 && b == Q.b && c == Q.c  # raising by 1
         symraised_jacobimatrix(Q, 0)
     elseif a == Q.a && b == Q.b+1 && c == Q.c
         symraised_jacobimatrix(Q, 1)
     elseif a == Q.a && b == Q.b && c == Q.c+1
         symraised_jacobimatrix(Q, Q.t)
-    elseif a > Q.a
-        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a+1, Q.b, Q.c, Q), a, b,c)
+    elseif a == Q.a && b == Q.b && c == Q.c-1 # lowering by 1
+        symlowered_jacobimatrix(Q, :c)
+    elseif a == Q.a-1 && b == Q.b && c == Q.c
+        symlowered_jacobimatrix(Q, :a)
+    elseif a == Q.a && b == Q.b-1 && c == Q.c
+        symlowered_jacobimatrix(Q, :b)
+    elseif a > Q.a  # iterative raising
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a+1, Q.b, Q.c, Q), a, b, c)
     elseif b > Q.b
-        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b+1, Q.c, Q), a, b,c)
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b+1, Q.c, Q), a, b, c)
     elseif c > Q.c
-        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c+1, Q), a, b,c)
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c+1, Q), a, b, c)
+    elseif b < Q.b  # iterative lowering
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b-1, Q.c, Q), a, b, c)
+    elseif c < Q.c
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c-1, Q), a, b, c)
+    elseif a < Q.a 
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a-1, Q.b, Q.c, Q), a, b, c)
+    elseif a == Q.a && b == Q.b && c == Q.c # same basis
+        jacobimatrix(Q)
     else
-        error("Not Implement")
+        error("Not Implemented")
     end
 end
 
@@ -334,15 +361,28 @@ massmatrix(P::SemiclassicalJacobi) = Diagonal(Fill(sum(orthogonalityweight(P)),�
     (P\A)' * massmatrix(P) * (P \ B)
 end
 
-
 function ldiv(Q::SemiclassicalJacobi, f::AbstractQuasiVector)
+    if iszero(Q.a) && iszero(Q.b) && Q.c == -1
+        # todo: due to a stdlib error this won't work with bigfloat as is
+        T = typeof(Q.t)
+        R = Legendre{T}()[affine(Inclusion(zero(T)..one(T)), axes(Legendre{T}(),1)), :]
+        B = neg1c_tolegendre(Q.t)
+        return (B \ (R \ f))
+    end
     R = SemiclassicalJacobi(Q.t, mod(Q.a,-1), mod(Q.b,-1), mod(Q.c,-1))
     R̃ = toclassical(R)
-    (Q \ R̃) * (R̃ \ f)
+    return (Q \ R̃) * (R̃ \ f)
 end
 function ldiv(Qn::SubQuasiArray{<:Any,2,<:SemiclassicalJacobi,<:Tuple{<:Inclusion,<:Any}}, C::AbstractQuasiArray)
     _,jr = parentindices(Qn)
     Q = parent(Qn)
+    if iszero(Q.a) && iszero(Q.b) && Q.c == -1
+        # todo: due to a stdlib error this won't work with bigfloat as is
+        T = typeof(Q.t)
+        R = Legendre{T}()[affine(Inclusion(zero(T)..one(T)), axes(Legendre{T}(),1)), :]
+        B = neg1c_tolegendre(Q.t)
+        return (B[jr,jr] \ (R[:,jr] \ C))
+    end
     R = SemiclassicalJacobi(Q.t, mod(Q.a,-1), mod(Q.b,-1), mod(Q.c,-1))
     R̃ = toclassical(R)
     (Q \ R̃)[jr,jr] * (R̃[:,jr] \ C)
@@ -378,7 +418,6 @@ function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, br:
     Ps
 end
 
-
 function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, b::Number, cr::AbstractUnitRange)
     Ps = [SemiclassicalJacobi(t, a, b, first(cr))]
     for c in cr[2:end]
@@ -387,7 +426,7 @@ function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, b::
     Ps
 end
 
-
 include("twoband.jl")
+include("lowering.jl")
 
 end
