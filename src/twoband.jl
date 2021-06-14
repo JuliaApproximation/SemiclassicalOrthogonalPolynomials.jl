@@ -2,9 +2,9 @@ twoband(ρ) = UnionDomain(-1..(-ρ), ρ..1)
 
 
 """
-    TwoBandWeight(a, b)
+    TwoBandWeight(ρ, a, b, c)
 
-is a quasi-vector representing `|x|^(2c) * (x^2-ρ)^b * (1-x^2)^a`
+is a quasi-vector representing `|x|^(2c) * (x^2-ρ)^b * (1-x^2)^a`  for `ρ ≤ |x| ≤ 1`
 """
 struct TwoBandWeight{T} <: Weight{T}
     ρ::T
@@ -41,9 +41,9 @@ function sum(w::TwoBandWeight{T}) where T
 end
 
 """
-    TwoBandJacobi(a, b)
+    TwoBandJacobi(ρ, a, b, c)
 
-is a quasi-matrix orthogonal `|x|^(2c) * (x^2 - ρ^2)^b * (1-x^2)^a`.
+is a quasi-matrix orthogonal `|x|^(2c) * (x^2 - ρ^2)^b * (1-x^2)^a` for `ρ ≤ |x| ≤ 1`.
 """
 struct TwoBandJacobi{T} <: OrthogonalPolynomial{T}
     ρ::T
