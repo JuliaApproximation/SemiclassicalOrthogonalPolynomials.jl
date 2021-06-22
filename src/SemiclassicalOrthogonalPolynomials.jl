@@ -1,4 +1,5 @@
 module SemiclassicalOrthogonalPolynomials
+using ClassicalOrthogonalPolynomials: WeightedOPLayout
 using ClassicalOrthogonalPolynomials, FillArrays, LazyArrays, ArrayLayouts, QuasiArrays, InfiniteArrays, ContinuumArrays, LinearAlgebra, BandedMatrices,
         SpecialFunctions, HypergeometricFunctions
 
@@ -12,7 +13,7 @@ import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficie
                                         OrthogonalPolynomialRatio, Weighted, Expansion, UnionDomain, oneto, Hilbert, WeightedOrthogonalPolynomial, HalfWeighted,
                                         Associated
 import InfiniteArrays: OneToInf, InfUnitRange
-import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid
+import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid, plotgrid
 import FillArrays: SquareEye
 import HypergeometricFunctions: _₂F₁general2
 
@@ -45,7 +46,7 @@ function getindex(P::SemiclassicalJacobiWeight, x::Real)
 end
 
 function sum(P::SemiclassicalJacobiWeight{T}) where T
-    (t,a,b,c) = BigFloat.((P.t,P.a,P.b,P.c))
+    (t,a,b,c) = (P.t,P.a,P.b,P.c)
     return convert(T, t^c * beta(1+a,1+b) * _₂F₁general2(1+a,-c,2+a+b,1/t))
 end
 
@@ -297,9 +298,11 @@ copy(L::Ldiv{SemiclassicalJacobiLayout,<:NormalizedBasisLayout}) = copy(Ldiv{Sem
 copy(L::Ldiv{ApplyLayout{typeof(*)},SemiclassicalJacobiLayout}) = copy(Ldiv{ApplyLayout{typeof(*)},BasisLayout}(L.A, L.B))
 copy(L::Ldiv{SemiclassicalJacobiLayout,ApplyLayout{typeof(*)}}) = copy(Ldiv{BasisLayout,ApplyLayout{typeof(*)}}(L.A, L.B))
 
-
 copy(L::Ldiv{MappedBasisLayout,SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
 copy(L::Ldiv{SemiclassicalJacobiLayout,MappedBasisLayout}) = semijacobi_ldiv(L.A, L.B)
+
+copy(L::Ldiv{WeightedOPLayout,SemiclassicalJacobiLayout}) = copy(Ldiv{WeightedOPLayout,BasisLayout}(L.A, L.B))
+copy(L::Ldiv{SemiclassicalJacobiLayout,WeightedOPLayout}) = copy(Ldiv{BasisLayout,WeightedOPLayout}(L.A, L.B))
 
 
 copy(L::Ldiv{SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
