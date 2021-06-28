@@ -33,7 +33,7 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
         x = axes(w,1)
         H = inv.(x .- x')
         @test iszero(H*w)
-        @test sum(w) == π/2
+        @test sum(w) ≈ π
         
         T = TwoBandJacobi(ρ, -1/2, -1/2, 1/2)
         Q = associated(T)
