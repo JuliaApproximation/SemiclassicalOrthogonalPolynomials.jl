@@ -307,6 +307,7 @@ copy(L::Ldiv{SemiclassicalJacobiLayout,WeightedOPLayout}) = copy(Ldiv{BasisLayou
 
 copy(L::Ldiv{SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
 copy(L::Ldiv{<:Any,SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
+copy(L::Ldiv{<:AbstractBasisLayout,SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
 function copy(L::Ldiv{SemiclassicalJacobiLayout,SemiclassicalJacobiLayout})
     Q,P = L.A,L.B
     @assert Q.t == P.t
