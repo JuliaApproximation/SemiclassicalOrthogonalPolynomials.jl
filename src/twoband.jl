@@ -4,7 +4,7 @@ twoband(ρ) = UnionDomain(-1..(-ρ), ρ..1)
 """
     TwoBandWeight(ρ, a, b, c)
 
-is a quasi-vector representing `|x|^(2c) * (x^2-ρ)^b * (1-x^2)^a`  for `ρ ≤ |x| ≤ 1`
+is a quasi-vector representing `|x|^(2c) * (x^2-ρ^2)^b * (1-x^2)^a`  for `ρ ≤ |x| ≤ 1`
 """
 struct TwoBandWeight{T} <: Weight{T}
     ρ::T
@@ -28,7 +28,7 @@ end
 
 function sum(w::TwoBandWeight{T}) where T
     if 2w.a == 2w.b == -1 && 2w.c == 1
-        convert(T,π)/2
+        convert(T,π)
     else
         error("not implemented")
 #         1/2 \[Pi] (-((\[Rho]^(1 + 2 b + 2 c)
@@ -112,7 +112,10 @@ function grid(L::SubQuasiArray{T,2,<:Associated{<:Any,<:TwoBandJacobi},<:Tuple{I
     [-g; g]
 end
     
-    
+function plotgrid(L::SubQuasiArray{T,2,<:TwoBandJacobi,<:Tuple{Inclusion,AbstractUnitRange}}) where T
+    g = plotgrid(legendre(parent(L).ρ .. 1)[:,parentindices(L)[2]])
+    [-g; g]
+end
 
 LinearAlgebra.factorize(L::SubQuasiArray{<:Any,2,<:Associated{<:Any,<:TwoBandJacobi},<:Tuple{Inclusion,OneTo}}) =
     ContinuumArrays._factorize(BasisLayout(), L)

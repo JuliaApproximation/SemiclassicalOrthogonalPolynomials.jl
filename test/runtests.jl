@@ -1,5 +1,5 @@
 using SemiclassicalOrthogonalPolynomials
-using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra
+using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, FillArrays, LinearAlgebra
 import BandedMatrices: _BandedMatrix
 import SemiclassicalOrthogonalPolynomials: op_lowering, RaisedOP
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight, symtridiagonalize, Expansion
@@ -309,6 +309,12 @@ end
         @test (P * (P \ exp.(x)))[0.1] ≈ exp(0.1)
         @test (Q * (Q \ exp.(x)))[0.1] ≈ exp(0.1)
         @test (R * (R \ exp.(x)))[0.1] ≈ exp(0.1)
+    end
+
+    @testset "conversion" begin
+        D = legendre(0..1) \ P
+        @test (P \ legendre(0..1))[1:10,1:10] == inv(Matrix(D[1:10,1:10]))
+        @test_broken (P \ Weighted(P)) == (Weighted(P) \ P) == Eye(∞)
     end
 end
 

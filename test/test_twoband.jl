@@ -1,5 +1,5 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, Test
-import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
+import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated, plotgrid
 
 @testset "Two Band" begin
     @testset "TwoBandWeight" begin
@@ -33,7 +33,7 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
         x = axes(w,1)
         H = inv.(x .- x')
         @test iszero(H*w)
-        @test sum(w) == π/2
+        @test sum(w) ≈ π
         
         T = TwoBandJacobi(ρ, -1/2, -1/2, 1/2)
         Q = associated(T)
@@ -44,5 +44,11 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
         @test_broken Q \ (H * Weighted(T)) # need to deal with Hcat
 
         @test_broken H*TwoBandWeight(ρ, 1/2, 1/2, -1/2)
+    end
+
+    @testset "plotgrid" begin
+        ρ = 0.5
+        P = TwoBandJacobi(ρ, -1/2, -1/2, 1/2)
+        @test all(x -> ρ ≤ abs(x) ≤ 1, plotgrid(P[:,1:5]))
     end
 end
