@@ -404,30 +404,51 @@ include("derivatives.jl")
 
 ###
 # Hierarchy
+#
+# here we build the operators lazily
 ###
 
-function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, ar::AbstractUnitRange, b::Number, c::Number)
-    Ps = [SemiclassicalJacobi(t, first(ar), b, c)]
-    for a in ar[2:end]
-        push!(Ps, SemiclassicalJacobi(t, a, b, c, Ps[end]))
-    end
-    Ps
+mutable struct SemiclassicalJacobiFamily{T, A, B, C} <: AbstractCachedVector{SemiclassicalJacobi{T}}
+    data::Vector{SemiclassicalJacobi{T}}
+    t::T
+    a::A
+    b::B
+    c::C
+    datasize::Tuple{Int}
 end
 
-function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, br::AbstractUnitRange, c::Number)
-    Ps = [SemiclassicalJacobi(t, a, first(br), c)]
-    for b in br[2:end]
-        push!(Ps, SemiclassicalJacobi(t, a, b, c, Ps[end]))
-    end
-    Ps
+size(P::SemiclassicalJacobiFamily) = (max(length(P.a), length(P.b), length(P.c)),)
+
+_checkrangesizes() = ()
+_checkrangesizes(a::Number, b...) = _checkrangesizes(b...)
+_checkrangesizes(a, b...) = (length(a), _checkrangesizes(b...)...)
+
+_isequal() = true
+_isequal(a) = true
+_isequal(a,b,c...) = a == b && _isequal(b,c...)
+
+checkrangesizes(a...) = _isequal(_checkrangesizes(a...)...) || throw(DimensionMismatch())
+
+function SemiclassicalJacobiFamily(data::Vector, t, a, b, c)
+    checkrangesizes(a, b, c)
+    SemiclassicalJacobiFamily(data, t, a, b, c, (length(data),))
 end
 
-function Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, b::Number, cr::AbstractUnitRange)
-    Ps = [SemiclassicalJacobi(t, a, b, first(cr))]
-    for c in cr[2:end]
-        push!(Ps, SemiclassicalJacobi(t, a, b, c, Ps[end]))
+SemiclassicalJacobiFamily(t, a, b, c) = SemiclassicalJacobiFamily([SemiclassicalJacobi(t, first(a), first(b), first(c))], t, a, b, c)
+
+Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, b::Number, c::Number) = SemiclassicalJacobi(t, a, b, c)
+Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Union{AbstractUnitRange,Number}, b::Union{AbstractUnitRange,Number}, c::Union{AbstractUnitRange,Number}) = 
+    SemiclassicalJacobiFamily(t, a, b, c)
+
+_broadcast_getindex(a,k) = a[k]
+_broadcast_getindex(a::Number,k) = a
+
+function LazyArrays.cache_filldata!(P::SemiclassicalJacobiFamily, inds::AbstractUnitRange)
+    t,a,b,c = P.t,P.a,P.b,P.c
+    for k in inds
+        P.data[k] = SemiclassicalJacobi(t, _broadcast_getindex(a,k), _broadcast_getindex(b,k), _broadcast_getindex(c,k), P.data[k-1])
     end
-    Ps
+    P
 end
 
 include("twoband.jl")
