@@ -429,16 +429,21 @@ _isequal(a,b,c...) = a == b && _isequal(b,c...)
 
 checkrangesizes(a...) = _isequal(_checkrangesizes(a...)...) || throw(DimensionMismatch())
 
-function SemiclassicalJacobiFamily(data::Vector, t, a, b, c)
+function SemiclassicalJacobiFamily{T}(data::Vector, t, a, b, c) where T
     checkrangesizes(a, b, c)
-    SemiclassicalJacobiFamily(data, t, a, b, c, (length(data),))
+    SemiclassicalJacobiFamily{T,typeof(a),typeof(b),typeof(c)}(data, t, a, b, c, (length(data),))
 end
 
-SemiclassicalJacobiFamily(t, a, b, c) = SemiclassicalJacobiFamily([SemiclassicalJacobi(t, first(a), first(b), first(c))], t, a, b, c)
+SemiclassicalJacobiFamily(t, a, b, c) = SemiclassicalJacobiFamily{float(promote_type(typeof(t),eltype(a),eltype(b),eltype(c)))}(t, a, b, c)
+SemiclassicalJacobiFamily{T}(t, a, b, c) where T = SemiclassicalJacobiFamily{T}([SemiclassicalJacobi{T}(t, first(a), first(b), first(c))], t, a, b, c)
 
 Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, b::Number, c::Number) = SemiclassicalJacobi(t, a, b, c)
+Base.broadcasted(::Type{SemiclassicalJacobi{T}}, t::Number, a::Number, b::Number, c::Number) where T = SemiclassicalJacobi{T}(t, a, b, c)
 Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Union{AbstractUnitRange,Number}, b::Union{AbstractUnitRange,Number}, c::Union{AbstractUnitRange,Number}) = 
     SemiclassicalJacobiFamily(t, a, b, c)
+Base.broadcasted(::Type{SemiclassicalJacobi{T}}, t::Number, a::Union{AbstractUnitRange,Number}, b::Union{AbstractUnitRange,Number}, c::Union{AbstractUnitRange,Number}) where T = 
+    SemiclassicalJacobiFamily{T}(t, a, b, c)
+
 
 _broadcast_getindex(a,k) = a[k]
 _broadcast_getindex(a::Number,k) = a
