@@ -162,4 +162,57 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
         HP = HalfWeighted{:c}(P)
         @test (D * HP)[0.1,1:10] ≈ (HP[0.1+h,1:10]-HP[0.1,1:10])/h atol=2000h
     end
+
+    @testset "Double-HalfWeighted" begin
+        t = 2
+        P = SemiclassicalJacobi(t, 1, 1, 1)
+        x = axes(P,1)
+        D = Derivative(x)
+
+        @test HalfWeighted{:ab}(P)[0.1,1:10] ≈ 0.1*(1-0.1)*P[0.1,1:10]
+        @test HalfWeighted{:bc}(P)[0.1,1:10] ≈ (1-0.1)*(t-0.1)*P[0.1,1:10]
+        @test HalfWeighted{:ac}(P)[0.1,1:10] ≈ 0.1*(t-0.1)*P[0.1,1:10]
+
+
+        @testset "derivation" begin
+            t,a,b,c = 2,0.1,0.2,0.3
+            P = SemiclassicalJacobi(t, a+1, b+1, c)
+            Q = SemiclassicalJacobi(t, a, b, c+1)
+            
+            HP = HalfWeighted{:ab}(P)
+            HQ = HalfWeighted{:ab}(Q)
+
+
+            A,B,C = recurrencecoefficients(P);
+            α,β,γ = recurrencecoefficients(Q);
+
+            k = cumprod(A);
+            κ = cumprod(α);
+            j = Vector{Float64}(undef, 100)
+            j[1] = B[1]
+            for n = 1:length(j)-1
+                j[n+1] = A[n+1]*j[n] + B[n+1]*k[n]
+            end
+            ξ = Vector{Float64}(undef, 100)
+            ξ[1] = β[1]
+            for n = 1:length(ξ)-1
+                ξ[n+1] = α[n+1]*ξ[n] + β[n+1]*κ[n]
+            end
+
+            (Base.unsafe_getindex(P,1000,n+1)- (k[n]*1000^n + j[n]*1000^(n-1))) 
+            (Base.unsafe_getindex(Q,1000,n+1)- (κ[n]*1000^n + ξ[n]*1000^(n-1))) 
+
+            h = 0.000001
+            n = 5
+            x = 0.1
+            der = -(a+b+n+2) * k[n]/κ[n+1] * HQ[x,n+2] +  ((n+a+1)*k[n]/κ[n] - (b+a+n+1)*j[n]/κ[n] + ((a+b+n+2)*k[n]*ξ[n+1]/(κ[n]κ[n+1])))* HQ[x,n+1]
+            @test (HP[x+h,n+1]-HP[x,n+1])/h ≈ der atol=200h
+            
+            d = AccumulateAbstractVector(*, Vcat(1,A) ./ α)
+            e = AccumulateAbstractVector(*, A ./ α)
+            @test -(a+b+n+2) * k[n]/κ[n+1] ≈ (-((a+b+2):∞)  .* d)[n+1]
+            @test (n+a+1) * k[n]/κ[n] ≈ (((a+2):∞) .* e)[n]
+            
+        end
+    end
 end

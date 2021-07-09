@@ -96,3 +96,17 @@ end
         (-(c:∞) .* v2 .+ ((c+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(t:t:∞) .* d2))',
         (-((c+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
 end
+
+@simplify function *(D::Derivative, HP::HalfWeighted{:ab,<:Any,<:SemiclassicalJacobi})
+    P = HP.P
+    t = P.t
+    Q = SemiclassicalJacobi(t, P.a,P.b,P.c-1,P)
+    A,B,_ = recurrencecoefficients(P)
+    α,β,_ = recurrencecoefficients(Q)
+
+    d = AccumulateAbstractVector(*, A ./ Vcat(1,α))
+    v1 = AccumulateAbstractVector(+, B ./ A)
+    v2 = MulAddAccumulate(Vcat(0,0,α[2:∞]) ./ α, Vcat(0,β ./ α) ./ α);
+    v3 = AccumulateAbstractVector(*, Vcat(A[1]A[2], A[3:∞] ./ α))
+    # HalfWeighted{:ab}(Q) * _BandedMatrix(Vcat((((1:∞) .* (v1 .+ B[2:end]./A[2:end]) .- (2:∞) .* (α .* v2 .+ β ./ α)) .* v3)', ((P.b-P.a):∞) ./ d)'), ∞, 2,-1)
+end

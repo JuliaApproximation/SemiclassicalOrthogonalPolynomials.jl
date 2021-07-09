@@ -399,6 +399,11 @@ convert(::Type{WeightedOrthogonalPolynomial}, Q::HalfWeighted{:a,T,<:Semiclassic
 convert(::Type{WeightedOrthogonalPolynomial}, Q::HalfWeighted{:b,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, zero(T),Q.P.b,zero(T)) .* Q.P
 convert(::Type{WeightedOrthogonalPolynomial}, Q::HalfWeighted{:c,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, zero(T),zero(T),Q.P.c) .* Q.P
 
+convert(::Type{WeightedOrthogonalPolynomial}, Q::HalfWeighted{:ab,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, Q.P.a,Q.P.b,zero(T)) .* Q.P
+convert(::Type{WeightedOrthogonalPolynomial}, Q::HalfWeighted{:bc,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, zero(T),Q.P.b,Q.P.c) .* Q.P
+convert(::Type{WeightedOrthogonalPolynomial}, Q::HalfWeighted{:ac,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, Q.P.a,zero(T),Q.P.c) .* Q.P
+
+
 include("derivatives.jl")
 
 
