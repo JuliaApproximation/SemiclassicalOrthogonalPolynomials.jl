@@ -100,13 +100,16 @@ end
 @simplify function *(D::Derivative, HP::HalfWeighted{:ab,<:Any,<:SemiclassicalJacobi})
     P = HP.P
     t = P.t
-    Q = SemiclassicalJacobi(t, P.a,P.b,P.c-1,P)
+    Q = SemiclassicalJacobi(t, P.a-1,P.b-1,P.c+1)
     A,B,_ = recurrencecoefficients(P)
     α,β,_ = recurrencecoefficients(Q)
+    a,b = Q.a,Q.b
 
-    d = AccumulateAbstractVector(*, A ./ Vcat(1,α))
-    v1 = AccumulateAbstractVector(+, B ./ A)
-    v2 = MulAddAccumulate(Vcat(0,0,α[2:∞]) ./ α, Vcat(0,β ./ α) ./ α);
-    v3 = AccumulateAbstractVector(*, Vcat(A[1]A[2], A[3:∞] ./ α))
-    # HalfWeighted{:ab}(Q) * _BandedMatrix(Vcat((((1:∞) .* (v1 .+ B[2:end]./A[2:end]) .- (2:∞) .* (α .* v2 .+ β ./ α)) .* v3)', ((P.b-P.a):∞) ./ d)'), ∞, 2,-1)
+    d = AccumulateAbstractVector(*, Vcat(1,A) ./ α)
+    e = AccumulateAbstractVector(*, Vcat(1,A ./ α))
+    f = MulAddAccumulate(Vcat(0,0,A[2:end] ./ α[2:end]), Vcat(0, (B./ α) .* e))
+    g = cumsum(β ./ α)
+    L = _BandedMatrix(Vcat((((a+1):∞) .* e .- ((b+a+1):∞).*f .+ ((a+b+2):∞) .* e .* g )',
+                           (-((a+b+2):∞)  .* d)'),ℵ₀,1,0)
+    HalfWeighted{:ab}(Q) *  L
 end
