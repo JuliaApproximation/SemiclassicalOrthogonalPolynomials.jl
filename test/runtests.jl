@@ -319,32 +319,36 @@ end
 end
 
 @testset "Hierarchy" begin
-    @test SemiclassicalJacobi.(2,0,0,0) == SemiclassicalJacobi(2,0,0,0)
+    @test SemiclassicalJacobi.(2,0,0,0) == SemiclassicalJacobi{Float64}.(2,0,0,0) == SemiclassicalJacobi(2,0,0,0)
 
 
-    Ps = SemiclassicalJacobi.(2, 0:100,0,0)
-    for m = 0:100
-        @test jacobimatrix(Ps[m+1])[1:10,1:10] ≈ jacobimatrix(Normalized(jacobi(0,m,0..1)))[1:10,1:10]
+    for Ps in (SemiclassicalJacobi.(2, 0:100,0,0), SemiclassicalJacobi{Float64}.(2, 0:100,0,0))
+        for m = 0:100
+            @test jacobimatrix(Ps[m+1])[1:10,1:10] ≈ jacobimatrix(Normalized(jacobi(0,m,0..1)))[1:10,1:10]
+        end
     end
 
-    Ps = SemiclassicalJacobi.(2, 0,0:100,0)
-    for m = 0:100
-        @test jacobimatrix(Ps[m+1])[1:10,1:10] ≈ jacobimatrix(Normalized(jacobi(m,0,0..1)))[1:10,1:10]
+    for Ps in (SemiclassicalJacobi.(2, 0,0:100,0), SemiclassicalJacobi{Float64}.(2, 0,0:100,0))
+        for m = 0:100
+            @test jacobimatrix(Ps[m+1])[1:10,1:10] ≈ jacobimatrix(Normalized(jacobi(m,0,0..1)))[1:10,1:10]
+        end
     end
 
-    Ps = SemiclassicalJacobi.(2, 0,0,0:100)
-    m = 5
-    x = Inclusion(0..1)
-    @test jacobimatrix(LanczosPolynomial(@. (2-x)^m))[1:10,1:10] ≈ jacobimatrix(Ps[m+1])[1:10,1:10]
+    for Ps in (SemiclassicalJacobi.(2, 0,0,0:100), SemiclassicalJacobi{Float64}.(2, 0,0,0:100))
+        m = 5
+        x = Inclusion(0..1)
+        @test jacobimatrix(LanczosPolynomial(@. (2-x)^m))[1:10,1:10] ≈ jacobimatrix(Ps[m+1])[1:10,1:10]
+        @test SemiclassicalJacobi(2,0,0,2)[0.1,1:5] ≈ SemiclassicalJacobi(2,0,0,2,Ps[1])[0.1,1:5] ≈ Ps[3][0.1,1:5]
+    end
 
-    @test SemiclassicalJacobi(2,0,0,2)[0.1,1:5] ≈ SemiclassicalJacobi(2,0,0,2,Ps[1])[0.1,1:5] ≈ Ps[3][0.1,1:5]
 
+    for Ps in (SemiclassicalJacobi.(2, 0:100,0,0:100), SemiclassicalJacobi{Float64}.(2, 0:100,0,0:100))
+        @test jacobimatrix(LanczosPolynomial(@. x^m*(2-x)^m))[1:10,1:10] ≈ jacobimatrix(Ps[m+1])[1:10,1:10]
+    end
 
-    Ps = SemiclassicalJacobi.(2, 0:100,0,0:100)
-    @test jacobimatrix(LanczosPolynomial(@. x^m*(2-x)^m))[1:10,1:10] ≈ jacobimatrix(Ps[m+1])[1:10,1:10]
-
-    Ps = SemiclassicalJacobi.(2, 0:100,0:100,0:100)
-    @test jacobimatrix(SemiclassicalJacobi(2, m,m,m))[1:10,1:10] ≈ jacobimatrix(Ps[m+1])[1:10,1:10]
+    for Ps in (SemiclassicalJacobi.(2, 0:100,0:100,0:100), SemiclassicalJacobi{Float64}.(2, 0:100,0:100,0:100))
+        @test jacobimatrix(SemiclassicalJacobi(2, m,m,m))[1:10,1:10] ≈ jacobimatrix(Ps[m+1])[1:10,1:10]
+    end
 end
 
 @testset "Semiclassical operator asymptotics" begin

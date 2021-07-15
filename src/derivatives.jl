@@ -79,10 +79,10 @@ end
         (-((b+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
 end
 
-@simplify function *(D::Derivative, HP::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi})
+function divmul(HQ::HalfWeighted{:c}, D::Derivative, HP::HalfWeighted{:c})
+    Q = HQ.P
     P = HP.P
     t = P.t
-    Q = SemiclassicalJacobi(t, P.a+1, P.b+1, P.c-1)
     c = Q.c
     A,B,C = recurrencecoefficients(P)
     α,β,γ = recurrencecoefficients(Q)
@@ -90,17 +90,22 @@ end
     d2 = AccumulateAbstractVector(*, A ./ Vcat(1,α))
     v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
     v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
-
-    HalfWeighted{:c}(Q) * _BandedMatrix(
+    _BandedMatrix(
         Vcat(
         (-(c:∞) .* v2 .+ ((c+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(t:t:∞) .* d2))',
         (-((c+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
 end
 
-@simplify function *(D::Derivative, HP::HalfWeighted{:ab,<:Any,<:SemiclassicalJacobi})
+@simplify function *(D::Derivative, HP::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi})
     P = HP.P
     t = P.t
-    Q = SemiclassicalJacobi(t, P.a-1,P.b-1,P.c+1)
+    HQ = HalfWeighted{:c}(SemiclassicalJacobi(t, P.a+1, P.b+1, P.c-1))
+    HQ * divmul(HQ, D, HP)
+end
+
+function divmul(HQ::HalfWeighted{:ab}, D::Derivative, HP::HalfWeighted{:ab})
+    Q = HQ.P
+    P = HP.P
     A,B,_ = recurrencecoefficients(P)
     α,β,_ = recurrencecoefficients(Q)
     a,b = Q.a,Q.b
@@ -109,9 +114,16 @@ end
     e = AccumulateAbstractVector(*, Vcat(1,A ./ α))
     f = MulAddAccumulate(Vcat(0,0,A[2:end] ./ α[2:end]), Vcat(0, (B./ α) .* e))
     g = cumsum(β ./ α)
-    L = _BandedMatrix(Vcat((((a+1):∞) .* e .- ((b+a+1):∞).*f .+ ((a+b+2):∞) .* e .* g )',
+    _BandedMatrix(Vcat((((a+1):∞) .* e .- ((b+a+1):∞).*f .+ ((a+b+2):∞) .* e .* g )',
                            (-((a+b+2):∞)  .* d)'),ℵ₀,1,0)
-    HalfWeighted{:ab}(Q) *  L
+end
+
+
+@simplify function *(D::Derivative, HP::HalfWeighted{:ab,<:Any,<:SemiclassicalJacobi})
+    P = HP.P
+    t = P.t
+    HQ = HalfWeighted{:ab}(SemiclassicalJacobi(t, P.a-1,P.b-1,P.c+1))
+    HQ * divmul(HQ, D, HP)
 end
 
 @simplify function *(D::Derivative, HP::HalfWeighted{:bc,<:Any,<:SemiclassicalJacobi})
