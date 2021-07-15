@@ -28,8 +28,12 @@ function LazyArrays.cache_filldata!(K::MulAddAccumulate, inds)
     end
 end
 
-@simplify function *(D::Derivative, P::SemiclassicalJacobi)
-    Q = SemiclassicalJacobi(P.t, P.a+1,P.b+1,P.c+1,P)
+"""
+    divmul(A, B, C)
+
+is equivalent to A \\ (B*C)
+"""
+function divmul(Q::SemiclassicalJacobi, D::Derivative, P::SemiclassicalJacobi)
     A,B,_ = recurrencecoefficients(P)
     α,β,_ = recurrencecoefficients(Q)
 
@@ -37,15 +41,17 @@ end
     v1 = AccumulateAbstractVector(+, B ./ A)
     v2 = MulAddAccumulate(Vcat(0,0,α[2:∞]) ./ α, Vcat(0,β ./ α) ./ α);
     v3 = AccumulateAbstractVector(*, Vcat(A[1]A[2], A[3:∞] ./ α))
-    Q * (_BandedMatrix(Vcat(((1:∞) .* d)', (((1:∞) .* (v1 .+ B[2:end]./A[2:end]) .- (2:∞) .* (α .* v2 .+ β ./ α)) .* v3)'), ∞, 2,-1))'
+    _BandedMatrix(Vcat(((1:∞) .* d)', (((1:∞) .* (v1 .+ B[2:end]./A[2:end]) .- (2:∞) .* (α .* v2 .+ β ./ α)) .* v3)'), ∞, 2,-1)'
+end
+
+@simplify function *(D::Derivative, P::SemiclassicalJacobi)
+    Q = SemiclassicalJacobi(P.t, P.a+1,P.b+1,P.c+1,P)
+    Q * divmul(Q, D, P)
 end
 
 
-"""
-    divmul(A, B, C)
 
-is equivalent to A \ (B*C)
-"""
+
 function divmul(wP::Weighted{<:Any,<:SemiclassicalJacobi}, D::Derivative, wQ::Weighted{<:Any,<:SemiclassicalJacobi})
     Q,P = wQ.P,wP.P
     ((-sum(orthogonalityweight(Q))/sum(orthogonalityweight(P))) * (Q \ (D * P))')
