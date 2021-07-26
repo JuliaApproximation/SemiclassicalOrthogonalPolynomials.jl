@@ -4,9 +4,9 @@ import SemiclassicalOrthogonalPolynomials: Weighted
 import ClassicalOrthogonalPolynomials: associated, affine
 
 Base.floatmin(::Type{Dual{T,V,N}}) where {T,V,N} = Dual{T,V,N}(floatmin(V))
+Base.big(d::Dual{T,V,N}) where {T,V,N} = Dual{T}(big(d.value), ForwardDiff.Partials(map(big,d.partials.values)))
 
-
-####
+#### 
 #
 # We first do a single interval.
 # Equilibrium measures for a symmetric potential
@@ -61,7 +61,6 @@ for _ = 1:10
 end
 
 plot(equilibrium(b))
-ClassicalOrthogonalPolynomials.plotgrid(equilibrium(b))
 
 
 #####
@@ -99,8 +98,8 @@ function equilibriumcoefficients(P,a,b)
 end
 function equilibriumendpointvalues(ab::SVector{2})
     a,b = ab
-    P = TwoBandJacobi(a/b, -1/2, -1/2, 1/2)
-    P[[a/b,1],:] * equilibriumcoefficients(P,a,b)
+    P = TwoBandJacobi(a/b, -one(a)/2, -one(a)/2, one(a)/2)
+    Vector(P[[a/b,1],:] * equilibriumcoefficients(P,a,b))
 end
 
 function equilibrium(ab)
@@ -109,7 +108,7 @@ function equilibrium(ab)
     Weighted(P) * equilibriumcoefficients(P,a,b)
 end
 
-(a,b) = ab = SVector(2.,3.)
+ab = SVector(2.,3.)
 ab -= jacobian(equilibriumendpointvalues,ab) \ equilibriumendpointvalues(ab)
 
 
