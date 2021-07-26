@@ -59,7 +59,7 @@ end
 
 @simplify function *(D::Derivative, wQ::Weighted{<:Any,<:SemiclassicalJacobi})
     wP = Weighted(SemiclassicalJacobi(wQ.P.t, wQ.P.a-1,wQ.P.b-1,wQ.P.c-1))
-    divmul(wP, D, wQ)
+    wP * divmul(wP, D, wQ)
 end
 
 
