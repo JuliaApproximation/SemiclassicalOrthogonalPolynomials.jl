@@ -334,9 +334,10 @@ end
         end
     end
 
+    m = 5
+    x = Inclusion(0..1)
+
     for Ps in (SemiclassicalJacobi.(2, 0,0,0:100), SemiclassicalJacobi{Float64}.(2, 0,0,0:100))
-        m = 5
-        x = Inclusion(0..1)
         @test jacobimatrix(LanczosPolynomial(@. (2-x)^m))[1:10,1:10] ≈ jacobimatrix(Ps[m+1])[1:10,1:10]
         @test SemiclassicalJacobi(2,0,0,2)[0.1,1:5] ≈ SemiclassicalJacobi(2,0,0,2,Ps[1])[0.1,1:5] ≈ Ps[3][0.1,1:5]
     end
