@@ -78,7 +78,7 @@ function divmul(HQ::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi}, D::Derivative,
     v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
     v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
 
-    HalfWeighted{:a}(Q) * _BandedMatrix(
+    _BandedMatrix(
         Vcat(
         ((a:∞) .* v2 .- ((a+1):∞) .* Vcat(1,v1[2:end] .* d))',
         (((a+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
@@ -172,9 +172,8 @@ function divmul(HQ::HalfWeighted{:bc}, D::Derivative, HP::HalfWeighted{:bc})
     e = AccumulateAbstractVector(*, Vcat(1,A ./ α))
     f = MulAddAccumulate(Vcat(0,0,A[2:end] ./ α[2:end]), Vcat(0, (B./ α) .* e))
     g = cumsum(β ./ α)
-    L = _BandedMatrix(Vcat((-((t+1)* (0:∞) .+ (t*(b+1) + c+1)) .* e .+ ((c+b+1):∞).*f .- ((b+c+2):∞) .* e .* g )',
+    _BandedMatrix(Vcat((-((t+1)* (0:∞) .+ (t*(b+1) + c+1)) .* e .+ ((c+b+1):∞).*f .- ((b+c+2):∞) .* e .* g )',
                         (((b+c+2):∞)  .* d)'),ℵ₀,1,0)
-    HalfWeighted{:bc}(Q) *  L
 end
 
 function divmul(HQ::HalfWeighted{:ac}, D::Derivative, HP::HalfWeighted{:ac})
@@ -189,9 +188,8 @@ function divmul(HQ::HalfWeighted{:ac}, D::Derivative, HP::HalfWeighted{:ac})
     e = AccumulateAbstractVector(*, Vcat(1,A ./ α))
     f = MulAddAccumulate(Vcat(0,0,A[2:end] ./ α[2:end]), Vcat(0, (B./ α) .* e))
     g = cumsum(β ./ α)
-    L = _BandedMatrix(Vcat((t* ((a+1):∞) .* e .- ((c+a+1):∞).*f .+ ((a+c+2):∞) .* e .* g )',
+    _BandedMatrix(Vcat((t* ((a+1):∞) .* e .- ((c+a+1):∞).*f .+ ((a+c+2):∞) .* e .* g )',
             (-((a+c+2):∞)  .* d)'),ℵ₀,1,0)
-    HalfWeighted{:ac}(Q) *  L
 end
 
 
