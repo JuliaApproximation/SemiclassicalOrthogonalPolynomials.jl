@@ -51,4 +51,12 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
         P = TwoBandJacobi(ρ, -1/2, -1/2, 1/2)
         @test all(x -> ρ ≤ abs(x) ≤ 1, plotgrid(P[:,1:5]))
     end
+
+    @testset "associated transform error" begin
+        a,b = 0.5, 0.9
+        Vp = x -> 4x^3 - 20x
+        Q = associated(TwoBandJacobi((a/b), -1/2, -1/2, 1/2))
+        x = axes(Q,1)
+        @test norm((Q[:,Base.OneTo(30)] \ Vp.(b*x))[1]) ≤ 1E-13
+    end
 end
