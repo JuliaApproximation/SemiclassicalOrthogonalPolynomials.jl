@@ -55,6 +55,19 @@ function equilibrium(b::Number)
     Weighted(U)[affine(-b..b,axes(T,1)),:] * ((Weighted(T) \ Weighted(U))[3:end,:] \ equilibriumcoefficients(T,b)[3:end])
 end
 
+μ = equilibrium(sqrt(2))
+
+T = Chebyshev()
+b = sqrt(2)
+μ = Weighted(T) * equilibriumcoefficients(T, b)
+x = axes(μ,1)
+
+plot(μ)
+
+xx = 0.7; 2b*(log.(abs.(x .- x'))*μ)[xx] - V(b*xx)
+
+
+
 b = 1.0 # initial guess
 for _ = 1:10
     b -= derivative(equilibriumendpointvalue,b) \ equilibriumendpointvalue(b)
