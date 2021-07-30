@@ -11,7 +11,7 @@ import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAb
 import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedBasisLayout,
                                         Bidiagonal, Tridiagonal, SymTridiagonal, symtridiagonalize, normalizationconstant, LanczosPolynomial,
                                         OrthogonalPolynomialRatio, Weighted, Expansion, UnionDomain, oneto, Hilbert, WeightedOrthogonalPolynomial, HalfWeighted,
-                                        Associated
+                                        Associated, golubwelsch, associated
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid, plotgrid
 import FillArrays: SquareEye

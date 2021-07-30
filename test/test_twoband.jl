@@ -1,4 +1,4 @@
-using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, Test
+using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, BandedMatrices, Test
 import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated, plotgrid
 
 @testset "Two Band" begin
@@ -27,21 +27,33 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
         @test !issymmetric(jacobimatrix(T)[1:10,1:10])
     end
 
+    @testset "Associated" begin
+        ρ = 0.5
+        T = TwoBandJacobi(ρ, -1/2, -1/2, 1/2)
+        Q = associated(T)
+        x = axes(Q,1)
+        @test 0 in x
+        @test (Q[0.6,1:101]' * (Q[:,Base.OneTo(101)] \ exp.(x))) ≈ exp(0.6)
+        @test (Q[-0.6,1:101]' * (Q[:,Base.OneTo(101)] \ exp.(x))) ≈ exp(-0.6)
+
+        @test (Q * (Q \ exp.(x)))[0.6] ≈ exp(0.6)
+    end
+
     @testset "Hilbert" begin
         ρ = 0.5
         w = TwoBandWeight(ρ, -1/2, -1/2, 1/2)
-        x = axes(w,1)
-        H = inv.(x .- x')
+        T = TwoBandJacobi(ρ, -1/2, -1/2, 1/2)
+        Q = associated(T)
+        t = axes(w,1)
+        x = axes(Q,1)
+        H = inv.(x .- t')
         @test iszero(H*w)
         @test sum(w) ≈ π
         
-        T = TwoBandJacobi(ρ, -1/2, -1/2, 1/2)
-        Q = associated(T)
-        @test (Q[0.6,1:100]' * (Q[:,Base.OneTo(100)] \ exp.(x))) ≈ exp(0.6)
-        @test (Q[-0.6,1:100]' * (Q[:,Base.OneTo(100)] \ exp.(x))) ≈ exp(-0.6)
+        B = Q \ H * Weighted(T)
+        @test B isa BandedMatrix
 
-        @test (Q * (Q \ exp.(x)))[0.6] ≈ exp(0.6)
-        @test_broken Q \ (H * Weighted(T)) # need to deal with Hcat
+        @test Q[0.6,:]'* (B * (T\exp.(t))) ≈ -4.701116657130821 # Mathematica
 
         @test_broken H*TwoBandWeight(ρ, 1/2, 1/2, -1/2)
     end
