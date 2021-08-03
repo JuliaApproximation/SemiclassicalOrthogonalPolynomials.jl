@@ -447,6 +447,11 @@ end
     end
 end
 
+@testset "Complex" begin
+    @test sum(SemiclassicalJacobiWeight{ComplexF64}(2,1,1,1)) ≈ 1/4
+    SemiclassicalJacobi{ComplexF64}(2,1,1,1) \ SemiclassicalJacobi{ComplexF64}(2,0,1,1)
+end
+
 include("test_derivative.jl")
 include("test_twoband.jl")
 include("test_lowering.jl")
