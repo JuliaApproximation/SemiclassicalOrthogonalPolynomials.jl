@@ -46,7 +46,7 @@ function getindex(P::SemiclassicalJacobiWeight, x::Real)
 end
 
 function sum(P::SemiclassicalJacobiWeight{T}) where T
-    (t,a,b,c) = map(big, map(float, (P.t,P.a,P.b,P.c)))
+    (t,a,b,c) = big.(float.(real.((P.t,P.a,P.b,P.c))))
     return convert(T, t^c * beta(1+a,1+b) * _₂F₁general2(1+a,-c,2+a+b,1/t))
 end
 
@@ -336,13 +336,13 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
     elseif wA.a == wB.a && wA.b == wB.b && wA.c+1 == wB.c
         @assert A.a == B.a && A.b == B.b && A.c+1 == B.c
         -op_lowering(A,A.t)
-    elseif wA.a+1 ≤ wB.a
+    elseif real(wA.a)+1 ≤ real(wB.a)
         C = SemiclassicalJacobi(A.t, A.a+1, A.b, A.c, A)
         w_C = SemiclassicalJacobiWeight(wA.t, wA.a+1, wA.b, wA.c) .* C
         L_2 = w_C \ w_B
         L_1 = w_A \ w_C
         L_1 * L_2
-    elseif wA.b+1 ≤ wB.b
+    elseif real(wA.b)+1 ≤ real(wB.b)
         C = SemiclassicalJacobi(A.t, A.a, A.b+1, A.c, A)
         w_C = SemiclassicalJacobiWeight(wA.t, wA.a, wA.b+1, wA.c) .* C
         L_2 = w_C \ w_B
