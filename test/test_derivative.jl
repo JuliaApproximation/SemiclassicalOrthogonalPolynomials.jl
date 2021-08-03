@@ -35,7 +35,7 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
         L = Q \ (D * P̃);
         # L is bidiagonal
         @test norm(triu(L[1:10,1:10],3)) ≤ 3E-12
-        @test L[:,5] isa Vcat
+        @test L[:,5][1:10] ≈ L[1:10,5]
 
         A,B,C = recurrencecoefficients(P);
         α,β,γ = recurrencecoefficients(Q);

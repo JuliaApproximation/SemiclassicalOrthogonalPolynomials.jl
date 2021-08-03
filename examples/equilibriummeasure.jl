@@ -40,7 +40,7 @@ function equilibriumcoefficients(T, b)
     W = Weighted(T)
     t = axes(W,1)
     H = @. inv(t - t')
-    H̃ = U \ (H*W)
+    H̃ = U \H*W
     [1/(b*sum(W[:,1])); 2H̃[:,2:end] \ ( U \ derivative.(V, b*t))]
 end
 function equilibriumendpointvalue(b::Number)
@@ -55,10 +55,24 @@ function equilibrium(b::Number)
     Weighted(U)[affine(-b..b,axes(T,1)),:] * ((Weighted(T) \ Weighted(U))[3:end,:] \ equilibriumcoefficients(T,b)[3:end])
 end
 
+μ = equilibrium(sqrt(2))
+
+T = Chebyshev()
+b = sqrt(2)
+μ = Weighted(T) * equilibriumcoefficients(T, b)
+x = axes(μ,1)
+
+plot(μ)
+
+xx = 0.7; 2b*(log.(abs.(x .- x'))*μ)[xx] - V(b*xx)
+
+
+
 b = 1.0 # initial guess
 for _ = 1:10
     b -= derivative(equilibriumendpointvalue,b) \ equilibriumendpointvalue(b)
 end
+b
 
 plot(equilibrium(b))
 
@@ -92,12 +106,15 @@ function equilibriumcoefficients(P,a,b)
     W = Weighted(P)
     Q = associated(P)
     t = axes(W,1)
-    H = @. inv(t - t')
-    H̃ = Q \ (H*W)
-    [1/(b*sum(W[:,1])); 2H̃[:,2:end] \( Q \ derivative.(V, b*t))]
+    x = axes(Q,1)
+    H = @. inv(x - t')
+    H̃ = Q \ H*W
+    [1/(b*sum(W[:,1])); 2H̃[:,2:end] \( Q \ derivative.(V, b*x))]
 end
 function equilibriumendpointvalues(ab::SVector{2})
     a,b = ab
+    # orthogonal polynomials w.r.t.
+    # abs(x) / (sqrt(1-x^2) * sqrt(x^2 - ρ^2))
     P = TwoBandJacobi(a/b, -one(a)/2, -one(a)/2, one(a)/2)
     Vector(P[[a/b,1],:] * equilibriumcoefficients(P,a,b))
 end
@@ -110,7 +127,11 @@ end
 
 ab = SVector(2.,3.)
 ab -= jacobian(equilibriumendpointvalues,ab) \ equilibriumendpointvalues(ab)
-
+a,b = ab
+xx = range(-4,4;length=1000)
+μ = equilibrium(ab)
+μx = x -> a < abs(x) < b ? μ[x/b] : 0.0
+plot!(xx, μx.(xx))
 
 plot(equilibrium(ab))
 

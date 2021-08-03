@@ -1,5 +1,5 @@
-twoband(ρ) = UnionDomain(-1..(-ρ), ρ..1)
-
+twoband(ρ::T) where T = UnionDomain(-one(T)..(-ρ), ρ..one(T))
+twoband_0(ρ::T) where T = UnionDomain(-one(T)..(-ρ), zero(T), ρ..one(T))
 
 """
     TwoBandWeight(ρ, a, b, c)
@@ -32,9 +32,9 @@ function sum(w::TwoBandWeight{T}) where T
     else
         error("not implemented")
 #         1/2 \[Pi] (-((\[Rho]^(1 + 2 b + 2 c)
-#       Gamma[1 + b] Hypergeometric2F1Regularized[-a, 1/2 + c, 
+#       Gamma[1 + b] Hypergeometric2F1Regularized[-a, 1/2 + c,
 #       3/2 + b + c, \[Rho]^2])/Gamma[1/2 - c]) + (
-#    Gamma[1 + a] Hypergeometric2F1Regularized[-b, -(1/2) - a - b - c, 
+#    Gamma[1 + a] Hypergeometric2F1Regularized[-b, -(1/2) - a - b - c,
 #      1/2 - b - c, \[Rho]^2])/
 #    Gamma[3/2 + a + b + c]) Sec[(b + c) \[Pi]]
     end
@@ -69,14 +69,14 @@ copy(A::TwoBandJacobi) = A
 
 orthogonalityweight(Z::TwoBandJacobi) = TwoBandWeight(Z.ρ, Z.a, Z.b, Z.c)
 
-function  getindex(R::TwoBandJacobi, x::Real, j::Integer)
-    ρ = R.ρ
-    if isodd(j)
-        R.P[(1-x^2)/(1-ρ^2), (j+1)÷2]
-    else
-        x * R.Q[(1-x^2)/(1-ρ^2), j÷2]
-    end
-end
+# function  getindex(R::TwoBandJacobi, x::Real, j::Integer)
+#     ρ = R.ρ
+#     if isodd(j)
+#         R.P[(1-x^2)/(1-ρ^2), (j+1)÷2]
+#     else
+#         x * R.Q[(1-x^2)/(1-ρ^2), j÷2]
+#     end
+# end
 
 
 struct Interlace{T,AA,BB} <: LazyVector{T}
@@ -94,28 +94,49 @@ getindex(A::Interlace{T}, k::Int) where T = convert(T, isodd(k) ? A.a[(k+1)÷2] 
 function jacobimatrix(R::TwoBandJacobi{T}) where T
     ρ = R.ρ
     L = R.P \ (SemiclassicalJacobiWeight(R.P.t,0,0,1) .* R.Q)
-    Tridiagonal(Interlace(L.dv/L[1,1], (1-ρ^2) * L.ev), Zeros{T}(∞), Interlace((1-ρ^2) * L.dv,L.ev/L[1,1]))
+    Tridiagonal(Interlace(L.dv/L[1,1], (ρ^2-1) * L.ev), Zeros{T}(∞), Interlace((1-ρ^2) * L.dv,L.ev/(-L[1,1])))
 end
 
 
-@simplify function *(H::Hilbert, w::TwoBandWeight)
-    if 2w.a == 2w.b == -1 && 2w.c == 1
-        zeros(promote_type(eltype(H),eltype(w)), axes(w,1))
+const ConvKernel2{T,D1,D2} = BroadcastQuasiMatrix{T,typeof(-),Tuple{D1,QuasiAdjoint{T,D2}}}
+const Hilbert2{T,D1,D2} = BroadcastQuasiMatrix{T,typeof(inv),Tuple{ConvKernel2{T,Inclusion{T,D1},Inclusion{T,D2}}}}
+
+@simplify function *(H::Hilbert2, w::TwoBandWeight)
+    if 2w.a == 2w.b == -1 && 2w.c == 1 && axes(H,2) == axes(w,1) && axes(H,1).domain ⊆ twoband_0(w.ρ)
+        zeros(promote_type(eltype(H),eltype(w)), axes(H,1))
     else
        error("Not Implemented")
     end
 end
 
-
-function grid(L::SubQuasiArray{T,2,<:Associated{<:Any,<:TwoBandJacobi},<:Tuple{Inclusion,OneTo}}) where T
-    g = grid(legendre(parent(L).P.ρ .. 1)[:,parentindices(L)[2]])
-    [-g; g]
-end
-    
 function plotgrid(L::SubQuasiArray{T,2,<:TwoBandJacobi,<:Tuple{Inclusion,AbstractUnitRange}}) where T
     g = plotgrid(legendre(parent(L).ρ .. 1)[:,parentindices(L)[2]])
     [-g; g]
 end
 
-LinearAlgebra.factorize(L::SubQuasiArray{<:Any,2,<:Associated{<:Any,<:TwoBandJacobi},<:Tuple{Inclusion,OneTo}}) =
-    ContinuumArrays._factorize(BasisLayout(), L)
+###
+# Associated
+###
+
+axes(Q::Associated{T,<:TwoBandJacobi}) where T = (Inclusion(twoband_0(Q.P.ρ)), axes(Q.P,2))
+function golubwelsch(V::SubQuasiArray{T,2,<:Normalized{<:Any,<:Associated{<:Any,<:TwoBandJacobi}},<:Tuple{Inclusion,AbstractUnitRange}}) where T
+    x,w = golubwelsch(jacobimatrix(V))
+    n = length(x)
+    if isodd(n)
+        x[(n+1)÷2] = zero(T) # make exactly zero
+    else
+        x[n÷2] = zero(T) # make exactly zero
+        x[(n÷2)+1] = zero(T) # make exactly zero
+    end
+    w .*= sum(orthogonalityweight(parent(V)))
+    x,w
+end
+
+@simplify function *(H::Hilbert2, wP::Weighted{<:Any,<:TwoBandJacobi}) 
+    P = wP.P
+    w = orthogonalityweight(P)
+    A = recurrencecoefficients(P)[1]
+    Q = associated(P)
+    @assert axes(H,1) == axes(Q,1)
+    Q * BandedMatrix(1 =>Fill(-A[1]*sum(w),∞))
+end
