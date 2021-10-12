@@ -7,13 +7,14 @@ import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe
 
 import ArrayLayouts: MemoryLayout, ldiv, diagonaldata, subdiagonaldata, supdiagonaldata
 import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout, _BandedMatrix
-import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAbstractVector, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector, AccumulateAbstractVector, LazyVector, AbstractCachedMatrix
-import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedBasisLayout,
+import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAbstractVector, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector,
+                    AccumulateAbstractVector, LazyVector, AbstractCachedMatrix, BroadcastLayout
+import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedOPLayout,
                                         Bidiagonal, Tridiagonal, SymTridiagonal, symtridiagonalize, normalizationconstant, LanczosPolynomial,
-                                        OrthogonalPolynomialRatio, Weighted, Expansion, UnionDomain, oneto, Hilbert, WeightedOrthogonalPolynomial, HalfWeighted,
-                                        Associated, golubwelsch, associated
+                                        OrthogonalPolynomialRatio, Weighted, WeightLayout, UnionDomain, oneto, Hilbert, WeightedBasis, HalfWeighted,
+                                        Associated, golubwelsch, associated, AbstractOPLayout, weight
 import InfiniteArrays: OneToInf, InfUnitRange
-import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid, plotgrid
+import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid, plotgrid, _equals, ExpansionLayout
 import FillArrays: SquareEye
 import HypergeometricFunctions: _₂F₁general2
 
@@ -61,7 +62,7 @@ function ==(A::SemiclassicalJacobiWeight, B::SemiclassicalJacobiWeight)
          (A.t == B.t && A.c == B.c))
 end
 
-function Expansion(w::SemiclassicalJacobiWeight{T}) where T
+function jacobiexpansion(w::SemiclassicalJacobiWeight{T}) where T
     t,a,b,c = w.t,w.a,w.b,w.c
     P = jacobi(b, a, UnitInterval{T}())
     x = axes(P,1)
@@ -69,8 +70,8 @@ function Expansion(w::SemiclassicalJacobiWeight{T}) where T
     LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), P).w
 end
 
-==(A::SemiclassicalJacobiWeight, B::Expansion) = Expansion(A) == B
-==(A::Expansion, B::SemiclassicalJacobiWeight) = A == Expansion(B)
+_equals(::WeightLayout, ::ExpansionLayout, A::SemiclassicalJacobiWeight, B) = jacobiexpansion(A) == B
+_equals(::ExpansionLayout, ::WeightLayout, A, B::SemiclassicalJacobiWeight) = A == jacobiexpansion(B)
 
 
 """
@@ -289,11 +290,11 @@ function semijacobi_ldiv(P::SemiclassicalJacobi, Q)
     (P \ R) * _p0(R̃) * (R̃ \ Q)
 end
 
-struct SemiclassicalJacobiLayout <: AbstractBasisLayout end
+struct SemiclassicalJacobiLayout <: AbstractOPLayout end
 MemoryLayout(::Type{<:SemiclassicalJacobi}) = SemiclassicalJacobiLayout()
 
-copy(L::Ldiv{<:NormalizedBasisLayout,SemiclassicalJacobiLayout}) = copy(Ldiv{ApplyLayout{typeof(*)},SemiclassicalJacobiLayout}(L.A, L.B))
-copy(L::Ldiv{SemiclassicalJacobiLayout,<:NormalizedBasisLayout}) = copy(Ldiv{SemiclassicalJacobiLayout,ApplyLayout{typeof(*)}}(L.A, L.B))
+copy(L::Ldiv{<:NormalizedOPLayout,SemiclassicalJacobiLayout}) = copy(Ldiv{ApplyLayout{typeof(*)},SemiclassicalJacobiLayout}(L.A, L.B))
+copy(L::Ldiv{SemiclassicalJacobiLayout,<:NormalizedOPLayout}) = copy(Ldiv{SemiclassicalJacobiLayout,ApplyLayout{typeof(*)}}(L.A, L.B))
 
 copy(L::Ldiv{ApplyLayout{typeof(*)},SemiclassicalJacobiLayout}) = copy(Ldiv{ApplyLayout{typeof(*)},BasisLayout}(L.A, L.B))
 copy(L::Ldiv{SemiclassicalJacobiLayout,ApplyLayout{typeof(*)}}) = copy(Ldiv{BasisLayout,ApplyLayout{typeof(*)}}(L.A, L.B))
@@ -306,6 +307,8 @@ copy(L::Ldiv{SemiclassicalJacobiLayout,WeightedOPLayout}) = copy(Ldiv{BasisLayou
 
 
 copy(L::Ldiv{SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
+copy(L::Ldiv{SemiclassicalJacobiLayout,<:AbstractBasisLayout}) = semijacobi_ldiv(L.A, L.B)
+copy(L::Ldiv{SemiclassicalJacobiLayout,BroadcastLayout{typeof(*)}}) = semijacobi_ldiv(L.A, L.B)
 copy(L::Ldiv{<:Any,SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
 copy(L::Ldiv{<:AbstractBasisLayout,SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
 function copy(L::Ldiv{SemiclassicalJacobiLayout,SemiclassicalJacobiLayout})
@@ -353,6 +356,8 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
     end
 end
 
+\(P::SemiclassicalJacobi, Q::Weighted{<:Any,<:SemiclassicalJacobi}) = P \ convert(WeightedBasis, Q)
+
 \(A::SemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi) = (SemiclassicalJacobiWeight(A.t,0,0,0) .* A) \ w_B
 
 
@@ -395,13 +400,20 @@ end
 # sqrt(1-(1-x)^2) == sqrt(2x-x^2) == sqrt(x)*sqrt(2-x)
 # sqrt(1-(1-x)^2) == sqrt(2x-x^2) == sqrt(x)*sqrt(2-x)
 
-convert(::Type{WeightedOrthogonalPolynomial}, Q::HalfWeighted{:a,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, Q.P.a,zero(T),zero(T)) .* Q.P
-convert(::Type{WeightedOrthogonalPolynomial}, Q::HalfWeighted{:b,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, zero(T),Q.P.b,zero(T)) .* Q.P
-convert(::Type{WeightedOrthogonalPolynomial}, Q::HalfWeighted{:c,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, zero(T),zero(T),Q.P.c) .* Q.P
+weight(W::HalfWeighted{:a,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(W.P.t, W.P.a,zero(T),zero(T))
+weight(W::HalfWeighted{:b,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(W.P.t, zero(T),W.P.b,zero(T))
+weight(W::HalfWeighted{:c,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(W.P.t, zero(T),zero(T),W.P.c)
+weight(W::HalfWeighted{:ab,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(W.P.t, W.P.a,W.P.b,zero(T))
+weight(W::HalfWeighted{:ac,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(W.P.t, W.P.a,zero(T),W.P.c)
+weight(W::HalfWeighted{:bc,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(W.P.t, zero(T),W.P.b,W.P.c)
 
-convert(::Type{WeightedOrthogonalPolynomial}, Q::HalfWeighted{:ab,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, Q.P.a,Q.P.b,zero(T)) .* Q.P
-convert(::Type{WeightedOrthogonalPolynomial}, Q::HalfWeighted{:bc,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, zero(T),Q.P.b,Q.P.c) .* Q.P
-convert(::Type{WeightedOrthogonalPolynomial}, Q::HalfWeighted{:ac,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, Q.P.a,zero(T),Q.P.c) .* Q.P
+convert(::Type{WeightedBasis}, Q::HalfWeighted{:a,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, Q.P.a,zero(T),zero(T)) .* Q.P
+convert(::Type{WeightedBasis}, Q::HalfWeighted{:b,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, zero(T),Q.P.b,zero(T)) .* Q.P
+convert(::Type{WeightedBasis}, Q::HalfWeighted{:c,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, zero(T),zero(T),Q.P.c) .* Q.P
+
+convert(::Type{WeightedBasis}, Q::HalfWeighted{:ab,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, Q.P.a,Q.P.b,zero(T)) .* Q.P
+convert(::Type{WeightedBasis}, Q::HalfWeighted{:bc,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, zero(T),Q.P.b,Q.P.c) .* Q.P
+convert(::Type{WeightedBasis}, Q::HalfWeighted{:ac,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, Q.P.a,zero(T),Q.P.c) .* Q.P
 
 
 include("derivatives.jl")
