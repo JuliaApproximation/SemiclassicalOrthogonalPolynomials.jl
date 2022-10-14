@@ -30,15 +30,12 @@ function sum(w::TwoBandWeight{T}) where T
     if 2w.a == 2w.b == -1 && 2w.c == 1
         convert(T,π)
     else
-        error("not implemented")
-#         1/2 \[Pi] (-((\[Rho]^(1 + 2 b + 2 c)
-#       Gamma[1 + b] Hypergeometric2F1Regularized[-a, 1/2 + c,
-#       3/2 + b + c, \[Rho]^2])/Gamma[1/2 - c]) + (
-#    Gamma[1 + a] Hypergeometric2F1Regularized[-b, -(1/2) - a - b - c,
-#      1/2 - b - c, \[Rho]^2])/
-#    Gamma[3/2 + a + b + c]) Sec[(b + c) \[Pi]]
+        a = w.a; b = w.b; c = w.c; ρ = w.ρ
+        π/2 * (-((ρ^(1 + 2b + 2c) * gamma(1 + b) * _₂F₁(-a, 1/2 + c, 3/2 + b + c, ρ^2))/gamma(1/2 - c)) 
+        + (gamma(1 + a) * _₂F₁(-b, -(1/2) - a - b - c, 1/2 - b - c, ρ^2)) / gamma(3/2 + a + b + c)) * sec((b + c)*π)
     end
 end
+
 
 """
     TwoBandJacobi(ρ, a, b, c)
@@ -78,6 +75,8 @@ orthogonalityweight(Z::TwoBandJacobi) = TwoBandWeight(Z.ρ, Z.a, Z.b, Z.c)
 #     end
 # end
 
+weight(W::HalfWeighted{:ab,T,<:TwoBandJacobi}) where T = TwoBandWeight(W.P.ρ, W.P.a,W.P.b,zero(T))
+convert(::Type{WeightedBasis}, Q::HalfWeighted{:ab,T,<:TwoBandJacobi}) where T = TwoBandWeight(Q.P.ρ, Q.P.a,Q.P.b,zero(T)) .* Q.P
 
 struct Interlace{T,AA,BB} <: LazyVector{T}
     a::AA
@@ -94,7 +93,7 @@ getindex(A::Interlace{T}, k::Int) where T = convert(T, isodd(k) ? A.a[(k+1)÷2] 
 function jacobimatrix(R::TwoBandJacobi{T}) where T
     ρ = R.ρ
     L = R.P \ (SemiclassicalJacobiWeight(R.P.t,0,0,1) .* R.Q)
-    Tridiagonal(Interlace(L.dv/L[1,1], (ρ^2-1) * L.ev), Zeros{T}(∞), Interlace((1-ρ^2) * L.dv,L.ev/(-L[1,1])))
+    Tridiagonal(Interlace(L.dv/L[1,1], -(ρ^2-1) * L.ev), Zeros{T}(∞), Interlace((1-ρ^2) * L.dv,L.ev/(L[1,1])))
 end
 
 
