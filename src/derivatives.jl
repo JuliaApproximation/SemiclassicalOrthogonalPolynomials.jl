@@ -217,3 +217,27 @@ end
     HQ * divmul(HQ, D, HP)
 end
 
+##
+# Double weighted TwoBandJacobi
+##
+
+function divmul(Q::TwoBandJacobi, D::Derivative, HP::HalfWeighted{:ab,<:Any,<:TwoBandJacobi})
+    P = HP.P
+    ρ=P.ρ; t=inv(1-ρ^2)
+    a,b,c = Q.a,Q.b,Q.c
+    Dₑ = -2*(1-ρ^2) * ( SemiclassicalJacobi(t,a,b,c+1/2) \ (Derivative(axes(Q,1))*HalfWeighted{:ab}(SemiclassicalJacobi(t,a+1,b+1,c-1/2))) )
+    D₀ = -2*(1-ρ^2)^2 * ( Weighted(SemiclassicalJacobi(t,a,b,c-1/2)) \ (Derivative(axes(Q,1))*Weighted(SemiclassicalJacobi(t,a+1,b+1,c+1/2))) )
+
+    (dₑ, dlₑ, d₀, dl₀) = Dₑ.data[1,:], Dₑ.data[2,:], D₀.data[1,:], D₀.data[2,:]
+    BandedMatrix(-1=>Interlace(dₑ, -d₀), -3=>Interlace(-dlₑ, dl₀))
+end
+
+@simplify function *(D::Derivative, HP::HalfWeighted{:ab,<:Any,<:TwoBandJacobi})
+    P = HP.P
+    ρ = P.ρ
+    if !(P.a == 1 && P.b == 1 && P.c == 0)
+        error("Not implemented.")
+    end
+    Q = TwoBandJacobi(ρ, P.a-1,P.b-1,P.c)
+    Q * divmul(Q, D, HP)
+end

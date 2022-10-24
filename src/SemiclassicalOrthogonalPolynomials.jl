@@ -47,7 +47,8 @@ function getindex(P::SemiclassicalJacobiWeight, x::Real)
 end
 
 function sum(P::SemiclassicalJacobiWeight{T}) where T
-    (t,a,b,c) = map(big, map(float, (P.t,P.a,P.b,P.c)))
+    # (t,a,b,c) = map(big, map(float, (P.t,P.a,P.b,P.c)))
+    (t,a,b,c) = P.t, P.a, P.b, P.c
     return convert(T, t^c * beta(1+a,1+b) * _₂F₁general2(1+a,-c,2+a+b,1/t))
 end
 
@@ -416,6 +417,7 @@ convert(::Type{WeightedBasis}, Q::HalfWeighted{:bc,T,<:SemiclassicalJacobi}) whe
 convert(::Type{WeightedBasis}, Q::HalfWeighted{:ac,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, Q.P.a,zero(T),Q.P.c) .* Q.P
 
 
+include("twoband.jl")
 include("derivatives.jl")
 
 
@@ -473,7 +475,6 @@ function LazyArrays.cache_filldata!(P::SemiclassicalJacobiFamily, inds::Abstract
     P
 end
 
-include("twoband.jl")
 include("lowering.jl")
 
 end

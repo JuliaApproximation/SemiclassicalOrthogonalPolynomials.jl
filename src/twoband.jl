@@ -30,6 +30,7 @@ function sum(w::TwoBandWeight{T}) where T
     if 2w.a == 2w.b == -1 && 2w.c == 1
         convert(T,π)
     else
+        # error("not implemented.")
         a = w.a; b = w.b; c = w.c; ρ = w.ρ
         π/2 * (-((ρ^(1 + 2b + 2c) * gamma(1 + b) * _₂F₁(-a, 1/2 + c, 3/2 + b + c, ρ^2))/gamma(1/2 - c)) 
         + (gamma(1 + a) * _₂F₁(-b, -(1/2) - a - b - c, 1/2 - b - c, ρ^2)) / gamma(3/2 + a + b + c)) * sec((b + c)*π)
@@ -93,7 +94,10 @@ getindex(A::Interlace{T}, k::Int) where T = convert(T, isodd(k) ? A.a[(k+1)÷2] 
 function jacobimatrix(R::TwoBandJacobi{T}) where T
     ρ = R.ρ
     L = R.P \ (SemiclassicalJacobiWeight(R.P.t,0,0,1) .* R.Q)
-    Tridiagonal(Interlace(L.dv/L[1,1], -(ρ^2-1) * L.ev), Zeros{T}(∞), Interlace((1-ρ^2) * L.dv,L.ev/(L[1,1])))
+    # M = (L / L[1,1])' # equal to R.Q \ R.P
+
+    Tridiagonal(Interlace(L.dv/L[1,1], (ρ^2-1) * L.ev), Zeros{T}(∞), Interlace((1-ρ^2) * L.dv,L.ev/(-L[1,1])))
+    # Tridiagonal(Interlace(L.dv/L[1,1], (1-ρ^2) * L.ev), Zeros{T}(∞), Interlace((1-ρ^2) * L.dv, L.ev/L[1,1]))
 end
 
 

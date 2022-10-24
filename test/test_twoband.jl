@@ -24,7 +24,8 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
         @test orthogonalityweight(T) == TwoBandWeight(ρ, -1/2, -1/2, 1/2)
 
         R = TwoBandJacobi(ρ, 1, 1, 0)
-        @test x=0.6; τ=(1-x^2)*R.P.t; n=10; R[x, 1:n] ≈ Interlace(R.P[τ, 1:n÷2], x*R.Q[τ, 1:n÷2])[1:n]
+        x=0.6; τ=(1-x^2)*R.P.t; n=10
+        @test R[x, 1:n] ≈ Interlace(R.P[τ, 1:n÷2], x*R.Q[τ, 1:n÷2])[1:n]
 
         # bug
         @test !issymmetric(jacobimatrix(T)[1:10,1:10])
