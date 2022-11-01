@@ -143,3 +143,69 @@ end
     @assert axes(H,1) == axes(Q,1)
     Q * BandedMatrix(1 =>Fill(-A[1]*sum(w),∞))
 end
+
+
+##
+# Derivative of double weighted TwoBandJacobi
+##
+
+function divmul(Q::TwoBandJacobi, D::Derivative, HP::HalfWeighted{:ab,<:Any,<:TwoBandJacobi})
+    
+    ρ=Q.ρ; t=inv(1-ρ^2)
+    a,b,c = Q.a,Q.b,Q.c
+    P = SemiclassicalJacobi(t,a,b,c+1/2)
+    Dₑ = -2*(1-ρ^2) * ( P \ (Derivative(axes(P,1))*HalfWeighted{:ab}(SemiclassicalJacobi(t,a+1,b+1,c-1/2))) )
+    D₀ = -2*(1-ρ^2)^2 * ( Weighted(SemiclassicalJacobi(t,a,b,c-1/2)) \ (Derivative(axes(P,1))*Weighted(SemiclassicalJacobi(t,a+1,b+1,c+1/2))) )
+
+    (dₑ, dlₑ, d₀, dl₀) = Dₑ.data[1,:], Dₑ.data[2,:], D₀.data[1,:], D₀.data[2,:]
+    BandedMatrix(-1=>Interlace(dₑ, -d₀), -3=>Interlace(-dlₑ, dl₀))
+end
+
+@simplify function *(D::Derivative, HP::HalfWeighted{:ab,<:Any,<:TwoBandJacobi})
+    P = HP.P
+    ρ = P.ρ
+    if !(P.a == 1 && P.b == 1 && P.c == 0)
+        error("Not implemented.")
+    end
+    Q = TwoBandJacobi(ρ, P.a-1,P.b-1,P.c)
+    Q * divmul(Q, D, HP)
+end
+
+###
+# L^2 inner product of double weighted TwoBandJacobi
+###
+@simplify function *(A::QuasiAdjoint{<:Any,<:HalfWeighted{:ab,<:Any,<:TwoBandJacobi}}, B::HalfWeighted{:ab,<:Any,<:TwoBandJacobi})
+    T = promote_type(eltype(A), eltype(B))
+    P = B.P
+    a,b,c = P.a,P.b,P.c
+    
+    if !(a == 1 && b == 1 && c == 0)
+        error("Not implemented.")
+    end
+
+    ρ = P.ρ
+    t = inv(1-ρ^2)
+    Lₑ = SemiclassicalJacobi{T}(t,a-1,b-1,c-1/2) \ HalfWeighted{:ab}(SemiclassicalJacobi{T}(t,a,b,c-1/2))
+    Lₒ = WeightedSemiclassicalJacobi{T}(t,a-1,b-1,c+1/2) \ WeightedSemiclassicalJacobi{T}(t,a,b,c+1/2)
+    
+    mₑ = (1-ρ^2)^4*(1-ρ^2)^(1/2)*sum(orthogonalityweight(SemiclassicalJacobi{T}(t,a-1,b-1,c-1/2)))
+    mₒ = (1-ρ^2)^4*(1-ρ^2)^(3/2)*sum(orthogonalityweight(SemiclassicalJacobi{T}(t,a-1,b-1,c+1/2)))
+
+    mₑ = Fill{T}(mₑ, ∞);  mₒ = Fill{T}(mₒ, ∞)
+
+    # Sum of entries in each column squared.
+    dₑ = mₑ.*((Lₑ .* Lₑ)' * Ones{T}(∞))
+    d₀ = mₒ.*((Lₒ .* Lₒ)' * Ones{T}(∞))
+
+    # Sum of entries x entries in next column.
+    dlₑ = mₑ.* (Lₑ[2:∞,:] .* Lₑ[2:∞,2:∞])' * Ones{T}(∞)
+    dl₀ = mₒ.* (Lₒ[2:∞,:] .* Lₒ[2:∞,2:∞])' * Ones{T}(∞)
+
+    # Sum of entries and entries in second column over.
+    dllₑ = mₑ.* (Lₑ[3:∞,:] .* Lₑ[3:∞,3:∞])' * Ones{T}(∞)
+    dll₀ = mₒ.* (Lₒ[3:∞,:] .* Lₒ[3:∞,3:∞])' * Ones{T}(∞)
+    
+    BandedMatrix(0=>Interlace(dₑ, d₀), 
+        -2=>Interlace(-dlₑ, -dl₀), 2=>Interlace(-dlₑ, -dl₀), 
+        -4=>Interlace(dllₑ, dll₀), 4=>Interlace(dllₑ, dll₀))
+end
