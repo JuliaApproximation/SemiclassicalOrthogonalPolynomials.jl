@@ -1,4 +1,4 @@
-using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, BandedMatrices, Test
+using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, BandedMatrices, LinearAlgebra, Test
 import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated, plotgrid
 import SemiclassicalOrthogonalPolynomials: Interlace
 

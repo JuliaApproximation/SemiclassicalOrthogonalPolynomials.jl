@@ -30,10 +30,11 @@ function sum(w::TwoBandWeight{T}) where T
     if 2w.a == 2w.b == -1 && 2w.c == 1
         convert(T,π)
     else
-        # error("not implemented.")
-        a = w.a; b = w.b; c = w.c; ρ = w.ρ
-        π/2 * (-((ρ^(1 + 2b + 2c) * gamma(1 + b) * _₂F₁(-a, 1/2 + c, 3/2 + b + c, ρ^2))/gamma(1/2 - c)) 
-        + (gamma(1 + a) * _₂F₁(-b, -(1/2) - a - b - c, 1/2 - b - c, ρ^2)) / gamma(3/2 + a + b + c)) * sec((b + c)*π)
+        a,b,c,ρ = w.a,w.b,w.c,w.ρ
+        convert(T,π)/2 * sec((b + c)*convert(T,π)) * (
+            - ρ^(one(T) + 2b + 2c) * gamma(one(T) + b) * _₂F₁(-a, one(T)/2 + c, convert(T,3)/2 + b + c, ρ^2) / gamma(one(T)/2 - c)
+            + gamma(one(T) + a) * _₂F₁(-b, -one(T)/2 - a - b - c, one(T)/2 - b - c, ρ^2) / gamma(convert(T,3)/2 + a + b + c)
+        )
     end
 end
 
@@ -148,14 +149,13 @@ end
 ##
 # Derivative of double weighted TwoBandJacobi
 ##
+function divmul(R::TwoBandJacobi, D::Derivative, HP::HalfWeighted{:ab,<:Any,<:TwoBandJacobi})
+    T = promote_type(eltype(R), eltype(HP))
+    ρ=convert(T,R.ρ); t=inv(one(T)-ρ^2)
+    a,b,c = R.a,R.b,R.c
 
-function divmul(Q::TwoBandJacobi, D::Derivative, HP::HalfWeighted{:ab,<:Any,<:TwoBandJacobi})
-    
-    ρ=Q.ρ; t=inv(1-ρ^2)
-    a,b,c = Q.a,Q.b,Q.c
-    P = SemiclassicalJacobi(t,a,b,c+1/2)
-    Dₑ = -2*(1-ρ^2) * ( P \ (Derivative(axes(P,1))*HalfWeighted{:ab}(SemiclassicalJacobi(t,a+1,b+1,c-1/2))) )
-    D₀ = -2*(1-ρ^2)^2 * ( Weighted(SemiclassicalJacobi(t,a,b,c-1/2)) \ (Derivative(axes(P,1))*Weighted(SemiclassicalJacobi(t,a+1,b+1,c+1/2))) )
+    Dₑ = -2*(one(T)-ρ^2) .* (R.Q \ (Derivative(axes(R.Q,1))*HalfWeighted{:ab}(HP.P.P)))
+    D₀ = -2*(one(T)-ρ^2)^2 .* (Weighted(R.P) \ (Derivative(axes(R.P,1))*Weighted(HP.P.Q)))
 
     (dₑ, dlₑ, d₀, dl₀) = Dₑ.data[1,:], Dₑ.data[2,:], D₀.data[1,:], D₀.data[2,:]
     BandedMatrix(-1=>Interlace(dₑ, -d₀), -3=>Interlace(-dlₑ, dl₀))
@@ -164,11 +164,10 @@ end
 @simplify function *(D::Derivative, HP::HalfWeighted{:ab,<:Any,<:TwoBandJacobi})
     P = HP.P
     ρ = P.ρ
-    if !(P.a == 1 && P.b == 1 && P.c == 0)
-        error("Not implemented.")
-    end
-    Q = TwoBandJacobi(ρ, P.a-1,P.b-1,P.c)
-    Q * divmul(Q, D, HP)
+    @assert P.a == 1 && P.b == 1 && P.c == 0
+
+    R = TwoBandJacobi(ρ, P.a-1,P.b-1,P.c)
+    R * divmul(R, D, HP)
 end
 
 ###
@@ -179,17 +178,19 @@ end
     P = B.P
     a,b,c = P.a,P.b,P.c
     
-    if !(a == 1 && b == 1 && c == 0)
-        error("Not implemented.")
-    end
+    @assert A.parent.P.a == a && A.parent.P.b == b && A.parent.P.c == c
+    @assert a == 1 && b == 1 && c == 0
 
-    ρ = P.ρ
-    t = inv(1-ρ^2)
-    Lₑ = SemiclassicalJacobi{T}(t,a-1,b-1,c-1/2) \ HalfWeighted{:ab}(SemiclassicalJacobi{T}(t,a,b,c-1/2))
-    Lₒ = WeightedSemiclassicalJacobi{T}(t,a-1,b-1,c+1/2) \ WeightedSemiclassicalJacobi{T}(t,a,b,c+1/2)
+    ρ = convert(T,P.ρ)
+    t = inv(one(T)-ρ^2)
+    Pₗ = SemiclassicalJacobi{T}(t,a-one(T),b-one(T),c-one(T)/2)
+    Qₗ = SemiclassicalJacobi{T}(t,a-one(T),b-one(T),c+one(T)/2)
+
+    Lₑ = Pₗ \ HalfWeighted{:ab}(P.P)
+    Lₒ = Weighted(Qₗ) \ Weighted(P.Q)
     
-    mₑ = (1-ρ^2)^4*(1-ρ^2)^(1/2)*sum(orthogonalityweight(SemiclassicalJacobi{T}(t,a-1,b-1,c-1/2)))
-    mₒ = (1-ρ^2)^4*(1-ρ^2)^(3/2)*sum(orthogonalityweight(SemiclassicalJacobi{T}(t,a-1,b-1,c+1/2)))
+    mₑ = (one(T)-ρ^2)^4*(1-ρ^2)^(one(T)/2)*sum(orthogonalityweight(Pₗ))
+    mₒ = (one(T)-ρ^2)^4*(1-ρ^2)^(convert(T,3)/2)*sum(orthogonalityweight(Qₗ))
 
     mₑ = Fill{T}(mₑ, ∞);  mₒ = Fill{T}(mₒ, ∞)
 
