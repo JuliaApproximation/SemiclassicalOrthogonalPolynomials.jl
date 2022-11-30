@@ -365,7 +365,7 @@ end
         @test 2φ(2t-1)*Base.unsafe_getindex(P,t,n)/(Base.unsafe_getindex(P,t,n+1)) ≈ 1 atol=1E-3
 
 
-        L1 = P \ WeightedSemiclassicalJacobi(t,0,0,1,P)
+        L1 = P \ Weighted(SemiclassicalJacobi(t,0,0,1,P))
         @test L1[n+1,n]/L1[n,n] ≈ -1/(2φ(2t-1)) atol=1E-3
     end
 
