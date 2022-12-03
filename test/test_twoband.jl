@@ -1,5 +1,6 @@
-using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, BandedMatrices, Test
+using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, BandedMatrices, LinearAlgebra, Test
 import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated, plotgrid
+import SemiclassicalOrthogonalPolynomials: Interlace, HalfWeighted, WeightedBasis
 
 @testset "Two Band" begin
     @testset "TwoBandWeight" begin
@@ -22,6 +23,10 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
         @test copy(T) == T
         @test U ≠ T
         @test orthogonalityweight(T) == TwoBandWeight(ρ, -1/2, -1/2, 1/2)
+
+        R = TwoBandJacobi(ρ, 1, 1, 0)
+        x=0.6; τ=(1-x^2)*R.P.t; n=10
+        @test R[x, 1:n] ≈ Interlace((-1).^(2:n÷2+1).*R.P[τ, 1:n÷2], (-1).^(2:n÷2+1).*x.*R.Q[τ, 1:n÷2])[1:n]
 
         # bug
         @test !issymmetric(jacobimatrix(T)[1:10,1:10])
@@ -70,5 +75,40 @@ import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated
         Q = associated(TwoBandJacobi((a/b), -1/2, -1/2, 1/2))
         x = axes(Q,1)
         @test norm((Q[:,Base.OneTo(30)] \ Vp.(b*x))[1]) ≤ 1E-13
+    end
+
+    @testset "derivative half weighted twoband" begin    
+        ρ = 0.2
+        R = TwoBandJacobi(ρ, 0, 0, 0)
+        D = R \ Derivative(axes(R,1))*HalfWeighted{:ab}(TwoBandJacobi(ρ, 1, 1, 0))
+
+        @test (D.l, D.u) == (3, -1)
+        @test D[1:5,1] ≈ [0.0, -0.33858064516128994, 0.0, -1.030932383768154, 0.0]
+        @test D[1:5,2] ≈ [0.0, 0.0, -0.4609776443497252, 0.0, -0.34580926348402935]
+    end
+
+    @testset "L2 inner product" begin
+        ρ = 0.2
+        HP = HalfWeighted{:ab}(TwoBandJacobi(ρ, 1, 1, 0))
+        M = HP' * HP
+        
+        @test (M.l, M.u) == (4, 4)
+
+        Mm = M[1:20, 1:20]
+        @test Mm == Mm'
+
+        # The following is checked via QuadGK, e.g. 2*quadgk(x->HP[x,n]*HP[x,n], ρ, 1, rtol=1e-3)[1]
+        @test diag(Mm[1:5, 1:5]) ≈ [0.0399723828825396, 0.01926644161200575, 0.028656015290810938, 0.014202710309357196, 0.02719735154820007]
+        @test diag(Mm[2:6, 1:5]) ≈ [0, 0, 0, 0, 0]
+        @test diag(Mm[3:7, 1:5]) ≈ [0.003417521501385307, -0.0013645130261003458, 0.0008788935542028268, -0.0005306108105399927, 0.0003587270849050795]
+        @test diag(Mm[4:8, 1:5]) ≈ [0, 0, 0, 0, 0]
+        @test diag(Mm[5:9, 1:5]) ≈ [-0.011436406405959944, -0.004811623256062165, -0.012192463544540394, -0.005436023256389608, -0.012469708623429861]
+    end
+
+    @testset "halfweight" begin
+        ρ = 0.5
+        T = TwoBandJacobi(ρ, -1/2, -1/2, 1/2)
+        @test HalfWeighted{:ab}(T)[0.6,1:10] ≈ convert(WeightedBasis, HalfWeighted{:ab}(T))[0.6,1:10] ≈ (1-0.6^2)^(-1/2) * (0.6^2-ρ^2)^(-1/2) * T[0.6,1:10]
+        
     end
 end

@@ -30,15 +30,14 @@ function sum(w::TwoBandWeight{T}) where T
     if 2w.a == 2w.b == -1 && 2w.c == 1
         convert(T,π)
     else
-        error("not implemented")
-#         1/2 \[Pi] (-((\[Rho]^(1 + 2 b + 2 c)
-#       Gamma[1 + b] Hypergeometric2F1Regularized[-a, 1/2 + c,
-#       3/2 + b + c, \[Rho]^2])/Gamma[1/2 - c]) + (
-#    Gamma[1 + a] Hypergeometric2F1Regularized[-b, -(1/2) - a - b - c,
-#      1/2 - b - c, \[Rho]^2])/
-#    Gamma[3/2 + a + b + c]) Sec[(b + c) \[Pi]]
+        a,b,c,ρ = w.a,w.b,w.c,w.ρ
+        convert(T,π)/2 * sec((b + c)*convert(T,π)) * (
+            - ρ^(one(T) + 2b + 2c) * gamma(one(T) + b) * _₂F₁(-a, one(T)/2 + c, convert(T,3)/2 + b + c, ρ^2) / gamma(one(T)/2 - c)
+            + gamma(one(T) + a) * _₂F₁(-b, -one(T)/2 - a - b - c, one(T)/2 - b - c, ρ^2) / gamma(convert(T,3)/2 + a + b + c)
+        )
     end
 end
+
 
 """
     TwoBandJacobi(ρ, a, b, c)
@@ -78,6 +77,8 @@ orthogonalityweight(Z::TwoBandJacobi) = TwoBandWeight(Z.ρ, Z.a, Z.b, Z.c)
 #     end
 # end
 
+weight(W::HalfWeighted{:ab,T,<:TwoBandJacobi}) where T = TwoBandWeight(W.P.ρ, W.P.a,W.P.b,zero(T))
+convert(::Type{WeightedBasis}, Q::HalfWeighted{:ab,T,<:TwoBandJacobi}) where T = TwoBandWeight(Q.P.ρ, Q.P.a,Q.P.b,zero(T)) .* Q.P
 
 struct Interlace{T,AA,BB} <: LazyVector{T}
     a::AA
@@ -94,7 +95,10 @@ getindex(A::Interlace{T}, k::Int) where T = convert(T, isodd(k) ? A.a[(k+1)÷2] 
 function jacobimatrix(R::TwoBandJacobi{T}) where T
     ρ = R.ρ
     L = R.P \ (SemiclassicalJacobiWeight(R.P.t,0,0,1) .* R.Q)
+    # M = (L / L[1,1])' # equal to R.Q \ R.P
+
     Tridiagonal(Interlace(L.dv/L[1,1], (ρ^2-1) * L.ev), Zeros{T}(∞), Interlace((1-ρ^2) * L.dv,L.ev/(-L[1,1])))
+    # Tridiagonal(Interlace(L.dv/L[1,1], (1-ρ^2) * L.ev), Zeros{T}(∞), Interlace((1-ρ^2) * L.dv, L.ev/L[1,1]))
 end
 
 
@@ -139,4 +143,70 @@ end
     Q = associated(P)
     @assert axes(H,1) == axes(Q,1)
     Q * BandedMatrix(1 =>Fill(-A[1]*sum(w),∞))
+end
+
+
+##
+# Derivative of double weighted TwoBandJacobi
+##
+function divmul(R::TwoBandJacobi, D::Derivative, HP::HalfWeighted{:ab,<:Any,<:TwoBandJacobi})
+    T = promote_type(eltype(R), eltype(HP))
+    ρ=convert(T,R.ρ); t=inv(one(T)-ρ^2)
+    a,b,c = R.a,R.b,R.c
+
+    Dₑ = -2*(one(T)-ρ^2) .* (R.Q \ (Derivative(axes(R.Q,1))*HalfWeighted{:ab}(HP.P.P)))
+    D₀ = -2*(one(T)-ρ^2)^2 .* (Weighted(R.P) \ (Derivative(axes(R.P,1))*Weighted(HP.P.Q)))
+
+    (dₑ, dlₑ, d₀, dl₀) = Dₑ.data[1,:], Dₑ.data[2,:], D₀.data[1,:], D₀.data[2,:]
+    BandedMatrix(-1=>Interlace(dₑ, -d₀), -3=>Interlace(-dlₑ, dl₀))
+end
+
+@simplify function *(D::Derivative, HP::HalfWeighted{:ab,<:Any,<:TwoBandJacobi})
+    P = HP.P
+    ρ = P.ρ
+    @assert P.a == 1 && P.b == 1 && P.c == 0
+
+    R = TwoBandJacobi(ρ, P.a-1,P.b-1,P.c)
+    R * divmul(R, D, HP)
+end
+
+###
+# L^2 inner product of double weighted TwoBandJacobi
+###
+@simplify function *(A::QuasiAdjoint{<:Any,<:HalfWeighted{:ab,<:Any,<:TwoBandJacobi}}, B::HalfWeighted{:ab,<:Any,<:TwoBandJacobi})
+    T = promote_type(eltype(A), eltype(B))
+    P = B.P
+    a,b,c = P.a,P.b,P.c
+    
+    @assert A.parent.P.a == a && A.parent.P.b == b && A.parent.P.c == c
+    @assert a == 1 && b == 1 && c == 0
+
+    ρ = convert(T,P.ρ)
+    t = inv(one(T)-ρ^2)
+    Pₗ = SemiclassicalJacobi{T}(t,a-one(T),b-one(T),c-one(T)/2)
+    Qₗ = SemiclassicalJacobi{T}(t,a-one(T),b-one(T),c+one(T)/2)
+
+    Lₑ = Pₗ \ HalfWeighted{:ab}(P.P)
+    Lₒ = Weighted(Qₗ) \ Weighted(P.Q)
+    
+    mₑ = (one(T)-ρ^2)^4*(1-ρ^2)^(one(T)/2)*sum(orthogonalityweight(Pₗ))
+    mₒ = (one(T)-ρ^2)^4*(1-ρ^2)^(convert(T,3)/2)*sum(orthogonalityweight(Qₗ))
+
+    mₑ = Fill{T}(mₑ, ∞);  mₒ = Fill{T}(mₒ, ∞)
+
+    # Sum of entries in each column squared.
+    dₑ = mₑ.*((Lₑ .* Lₑ)' * Ones{T}(∞))
+    d₀ = mₒ.*((Lₒ .* Lₒ)' * Ones{T}(∞))
+
+    # Sum of entries x entries in next column.
+    dlₑ = mₑ.* (Lₑ[2:∞,:] .* Lₑ[2:∞,2:∞])' * Ones{T}(∞)
+    dl₀ = mₒ.* (Lₒ[2:∞,:] .* Lₒ[2:∞,2:∞])' * Ones{T}(∞)
+
+    # Sum of entries and entries in second column over.
+    dllₑ = mₑ.* (Lₑ[3:∞,:] .* Lₑ[3:∞,3:∞])' * Ones{T}(∞)
+    dll₀ = mₒ.* (Lₒ[3:∞,:] .* Lₒ[3:∞,3:∞])' * Ones{T}(∞)
+    
+    BandedMatrix(0=>Interlace(dₑ, d₀), 
+        -2=>Interlace(-dlₑ, -dl₀), 2=>Interlace(-dlₑ, -dl₀), 
+        -4=>Interlace(dllₑ, dll₀), 4=>Interlace(dllₑ, dll₀))
 end

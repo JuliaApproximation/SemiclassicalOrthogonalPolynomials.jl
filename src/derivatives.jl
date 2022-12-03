@@ -216,4 +216,3 @@ end
     HQ = HalfWeighted{:bc}(SemiclassicalJacobi(t, P.a+1,P.b-1,P.c-1))
     HQ * divmul(HQ, D, HP)
 end
-
