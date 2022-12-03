@@ -1,6 +1,6 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, BandedMatrices, LinearAlgebra, Test
 import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated, plotgrid
-import SemiclassicalOrthogonalPolynomials: Interlace
+import SemiclassicalOrthogonalPolynomials: Interlace, HalfWeighted, WeightedBasis
 
 @testset "Two Band" begin
     @testset "TwoBandWeight" begin
@@ -103,5 +103,12 @@ import SemiclassicalOrthogonalPolynomials: Interlace
         @test diag(Mm[3:7, 1:5]) ≈ [0.003417521501385307, -0.0013645130261003458, 0.0008788935542028268, -0.0005306108105399927, 0.0003587270849050795]
         @test diag(Mm[4:8, 1:5]) ≈ [0, 0, 0, 0, 0]
         @test diag(Mm[5:9, 1:5]) ≈ [-0.011436406405959944, -0.004811623256062165, -0.012192463544540394, -0.005436023256389608, -0.012469708623429861]
+    end
+
+    @testset "halfweight" begin
+        ρ = 0.5
+        T = TwoBandJacobi(ρ, -1/2, -1/2, 1/2)
+        @test HalfWeighted{:ab}(T)[0.6,1:10] ≈ convert(WeightedBasis, HalfWeighted{:ab}(T))[0.6,1:10] ≈ (1-0.6^2)^(-1/2) * (0.6^2-ρ^2)^(-1/2) * T[0.6,1:10]
+        
     end
 end
