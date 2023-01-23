@@ -7,7 +7,7 @@ import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe
 
 import ArrayLayouts: MemoryLayout, ldiv, diagonaldata, subdiagonaldata, supdiagonaldata
 import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout, _BandedMatrix
-import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAbstractVector, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector,
+import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAbstractVector, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector, ApplyArray,
                     AccumulateAbstractVector, LazyVector, AbstractCachedMatrix, BroadcastLayout
 import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedOPLayout,
                                         Bidiagonal, Tridiagonal, SymTridiagonal, symtridiagonalize, normalizationconstant, LanczosPolynomial,
@@ -19,6 +19,35 @@ import FillArrays: SquareEye
 import HypergeometricFunctions: _₂F₁general2
 
 export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio, TwoBandJacobi, TwoBandWeight
+
+######## Temporarily here, will move to different package
+
+
+using InfiniteArrays
+import Base: size, getindex
+mutable struct SelectInfiniteBand{T} <: AbstractVector{T}
+    data::AbstractMatrix{T}
+    band::Integer
+    SelectInfiniteBand{T}(M::AbstractMatrix{T}, band::Integer) where T = new{T}(M, band)
+end
+function SelectInfiniteBand(M::AbstractArray{T}, band::Integer) where T
+    # only for infinite square matrices
+    @assert length(axes(M,1)) == length(axes(M,2))
+    @assert length(axes(M,1)) == ℵ₀
+    return SelectInfiniteBand{T}(M, band)
+end
+Base.size(::SelectInfiniteBand) = (ℵ₀,)
+function Base.getindex(M::SelectInfiniteBand, nm::Int)
+    if M.band <= 0
+        return M.data[nm-M.band,nm]
+    else
+        return M.data[nm,nm+M.band]
+    end
+end
+
+########
+
+
 
 """"
     SemiclassicalJacobiWeight(t, a, b, c)
@@ -183,12 +212,12 @@ function semiclassical_jacobimatrix(t, a, b, c)
         # if J is Tridiagonal(c,a,b) then for norm. OPs it becomes SymTridiagonal(a, sqrt.( b.* c))
         return SymTridiagonal(A, sqrt.(B.*C))
     end
-    P = jacobi(b, a, UnitInterval{T}())
-    iszero(c) && return symtridiagonalize(jacobimatrix(P))
+    P = Normalized(Jacobi{T}(a,b)[affine(T(0)..T(1),Inclusion(-T(1)..T(1))),:])
+    iszero(c) && return jacobimatrix(P)
     x = axes(P,1)
-    jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), P))
+    # jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), P))
+    return cholesky_jacobimatrix(x->(x.^a.*(1 .-x).^b.*(t.-x).^c), Normalized(Legendre{T}()[affine(T(0)..T(1),Inclusion(-T(1)..T(1))),:]))
 end
-
 
 function symraised_jacobimatrix(Q, y)
     ℓ = OrthogonalPolynomialRatio(Q,y)
@@ -291,6 +320,16 @@ function semijacobi_ldiv(P::SemiclassicalJacobi, Q)
     (P \ R) * _p0(R̃) * (R̃ \ Q)
 end
 
+# returns conversion operator from SemiclassicalJacobi P to SemiclassicalJacobi Q.
+function semijacobi_ldiv(Q::SemiclassicalJacobi,P::SemiclassicalJacobi)
+    @assert Q.t ≈ P.t
+    M = (P.X)^(Q.a-P.a)*(I-P.X)^(Q.b-P.b)*(Q.t*I-P.X)^(Q.c-P.c)
+    # the next line is a workaround for a Symtridiagonal / Symmetric bug
+    M = Symmetric(BandedMatrix(0 => SelectInfiniteBand(M,0), 1 => SelectInfiniteBand(M,1)))
+    K = (cholesky(M).U)
+    return ApplyArray(*, Diagonal(Fill(1/K[1],∞)), K) # match our normalization choice P_0(x) = 1
+end
+
 struct SemiclassicalJacobiLayout <: AbstractOPLayout end
 MemoryLayout(::Type{<:SemiclassicalJacobi}) = SemiclassicalJacobiLayout()
 
@@ -322,6 +361,7 @@ function copy(L::Ldiv{SemiclassicalJacobiLayout,SemiclassicalJacobiLayout})
     inv(M_Q) * L' * M_P
 end
 
+\(A::SemiclassicalJacobi, B::SemiclassicalJacobi) = semijacobi_ldiv(A, B)
 \(A::LanczosPolynomial, B::SemiclassicalJacobi) = semijacobi_ldiv(A, B)
 \(A::SemiclassicalJacobi, B::LanczosPolynomial) = semijacobi_ldiv(A, B)
 function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
