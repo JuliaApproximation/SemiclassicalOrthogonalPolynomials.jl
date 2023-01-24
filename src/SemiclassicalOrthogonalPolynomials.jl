@@ -20,35 +20,6 @@ import HypergeometricFunctions: _₂F₁general2
 
 export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio, TwoBandJacobi, TwoBandWeight
 
-######## Temporarily here, will move to different package
-
-
-using InfiniteArrays
-import Base: size, getindex
-mutable struct SelectInfiniteBand{T} <: AbstractVector{T}
-    data::AbstractMatrix{T}
-    band::Integer
-    SelectInfiniteBand{T}(M::AbstractMatrix{T}, band::Integer) where T = new{T}(M, band)
-end
-function SelectInfiniteBand(M::AbstractArray{T}, band::Integer) where T
-    # only for infinite square matrices
-    @assert length(axes(M,1)) == length(axes(M,2))
-    @assert length(axes(M,1)) == ℵ₀
-    return SelectInfiniteBand{T}(M, band)
-end
-Base.size(::SelectInfiniteBand) = (ℵ₀,)
-function Base.getindex(M::SelectInfiniteBand, nm::Int)
-    if M.band <= 0
-        return M.data[nm-M.band,nm]
-    else
-        return M.data[nm,nm+M.band]
-    end
-end
-
-########
-
-
-
 """"
     SemiclassicalJacobiWeight(t, a, b, c)
 
@@ -325,7 +296,7 @@ function semijacobi_ldiv(Q::SemiclassicalJacobi,P::SemiclassicalJacobi)
     @assert Q.t ≈ P.t
     M = (P.X)^(Q.a-P.a)*(I-P.X)^(Q.b-P.b)*(Q.t*I-P.X)^(Q.c-P.c)
     # the next line is a workaround for a Symtridiagonal / Symmetric bug
-    M = Symmetric(BandedMatrix(0 => SelectInfiniteBand(M,0), 1 => SelectInfiniteBand(M,1)))
+    M = Symmetric(ApplyArray(*,M,Diagonal(ones(∞))))
     K = (cholesky(M).U)
     return ApplyArray(*, Diagonal(Fill(1/K[1],∞)), K) # match our normalization choice P_0(x) = 1
 end
