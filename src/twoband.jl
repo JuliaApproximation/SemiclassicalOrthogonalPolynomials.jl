@@ -145,14 +145,62 @@ end
     Q * BandedMatrix(1 =>Fill(-A[1]*sum(w),∞))
 end
 
+###
+# Lowering
+###
+
+function \(R::TwoBandJacobi, P::TwoBandJacobi)
+    bw = R.a + R.b + R.c - P.a - P.b - P.c + 1
+    @assert isinteger(bw) && bw > 0
+    bw = Int(bw)
+
+    A = R.P \ P.P
+    B = R.Q \ P.Q
+    d = [(-1)^b*Interlace(view(A, band(b)), view(B, band(b))) for b in 0:bw-1]
+
+    bs = (2j-2=>d[j] for j in 1:bw)
+    BandedMatrix(bs...)
+end
+
+function \(R::TwoBandJacobi, HP::HalfWeighted{:ab,<:Any,<:TwoBandJacobi})
+    P = HP.P
+    if R.a + 1 == P.a == 1 && R.b + 1 == P.b == 1 && R.c == P.c == 0
+        ρ = P.ρ
+
+        A = R.P \ HalfWeighted{:ab}(P.P)
+        B = R.Q \ HalfWeighted{:ab}(P.Q)
+
+        d = [(-1)^b*(1-ρ^2)^2*Interlace(view(A, band(b)), view(B, band(b))) for b in 0:-1:-2]
+
+        bs = (-2j+2=>d[j] for j in 1:3)
+        BandedMatrix(bs...)
+    else
+        error("Not implemented.")
+    end
+end
 
 ##
-# Derivative of double weighted TwoBandJacobi
+# Derivatives
 ##
+
+function divmul(R::TwoBandJacobi, D::Derivative, P::TwoBandJacobi)
+    T = promote_type(eltype(R), eltype(P))
+    ρ=convert(T,R.ρ); t=inv(one(T)-ρ^2)
+    x = axes(R.Q, 1)
+
+    Dₑ = -T(2) * t .* (R.Q \ (Derivative(x)*P.P))
+    Dₒ = -T(2) .* (HalfWeighted{:c}(R.P) \ (Derivative(x)* HalfWeighted{:c}(P.Q)))
+
+    d = Dₑ.args[1] .* Dₑ.args[2].parent.data
+    (dₑ, dlₑ) = d[1,:], d[2, :]
+    (dₒ, dlₒ) = Dₒ.data[1,:], Dₒ.data[2,:]
+    BandedMatrix(1=>Interlace(dlₒ, -dₑ), 3=>Interlace(-dₒ[2:∞],dlₑ))
+end
+
+# double weighted TwoBandJacobi
 function divmul(R::TwoBandJacobi, D::Derivative, HP::HalfWeighted{:ab,<:Any,<:TwoBandJacobi})
     T = promote_type(eltype(R), eltype(HP))
     ρ=convert(T,R.ρ); t=inv(one(T)-ρ^2)
-    a,b,c = R.a,R.b,R.c
 
     Dₑ = -2*(one(T)-ρ^2) .* (R.Q \ (Derivative(axes(R.Q,1))*HalfWeighted{:ab}(HP.P.P)))
     D₀ = -2*(one(T)-ρ^2)^2 .* (Weighted(R.P) \ (Derivative(axes(R.P,1))*Weighted(HP.P.Q)))
@@ -168,6 +216,14 @@ end
 
     R = TwoBandJacobi(ρ, P.a-1,P.b-1,P.c)
     R * divmul(R, D, HP)
+end
+
+@simplify function *(D::Derivative, P::TwoBandJacobi)
+    ρ = P.ρ
+    @assert P.a == 0 && P.b == 0 && P.c == 0
+
+    R = TwoBandJacobi(ρ, P.a+1,P.b+1,P.c)
+    R * divmul(R, D, P)
 end
 
 ###

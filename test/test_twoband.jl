@@ -77,6 +77,16 @@ import SemiclassicalOrthogonalPolynomials: Interlace, HalfWeighted, WeightedBasi
         @test norm((Q[:,Base.OneTo(30)] \ Vp.(b*x))[1]) ≤ 1E-13
     end
 
+    @testset "derivative twoband" begin
+        ρ = 0.2
+        R = TwoBandJacobi(ρ,0,0,0)
+        Q = TwoBandJacobi(ρ,1,1,0)
+
+        D = Q \ Derivative(axes(R,1))*R
+        x = rand(ρ:0.001:1, 1)
+        @test derivative.(x->TwoBandJacobi{eltype(x)}(ρ,0,0,0)[x,1:5], x)[1] ≈ (Q[x,1:10]*D[1:10,1:10])[:,1:5]'
+    end
+
     @testset "derivative half weighted twoband" begin    
         ρ = 0.2
         R = TwoBandJacobi(ρ, 0, 0, 0)
@@ -110,5 +120,23 @@ import SemiclassicalOrthogonalPolynomials: Interlace, HalfWeighted, WeightedBasi
         T = TwoBandJacobi(ρ, -1/2, -1/2, 1/2)
         @test HalfWeighted{:ab}(T)[0.6,1:10] ≈ convert(WeightedBasis, HalfWeighted{:ab}(T))[0.6,1:10] ≈ (1-0.6^2)^(-1/2) * (0.6^2-ρ^2)^(-1/2) * T[0.6,1:10]
         
+    end
+
+    @test "lowering" begin
+        # unweighted
+        ρ = 0.2
+        R = TwoBandJacobi(ρ,0,0,0)
+        for (a,b,c) in [(1,0,0), (0,2,0), (1,2,3)]
+            Q = TwoBandJacobi(ρ,a,b,c)
+            L = Q \ R
+            n=15; x = rand(ρ:0.001:1,n)
+            @test (Q[x,1:25]*L[1:25,1:25])[1:n,1:n] ≈ R[x, 1:n]
+        end
+
+        # HalfWeighted{:ab}
+        Q = HalfWeighted{:ab}(TwoBandJacobi(ρ,1,1,0))
+        L = R \ Q
+        n=15; x = rand(ρ:0.001:1,n)
+        @test (R[x,1:25]*L[1:25,1:25])[1:n,1:n] ≈ Q[x, 1:n]
     end
 end
