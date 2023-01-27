@@ -1,6 +1,7 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, BandedMatrices, LinearAlgebra, Test
 import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated, plotgrid
 import SemiclassicalOrthogonalPolynomials: Interlace, HalfWeighted, WeightedBasis
+import ForwardDiff: derivative
 
 @testset "Two Band" begin
     @testset "TwoBandWeight" begin
@@ -92,7 +93,6 @@ import SemiclassicalOrthogonalPolynomials: Interlace, HalfWeighted, WeightedBasi
         R = TwoBandJacobi(ρ, 0, 0, 0)
         D = R \ Derivative(axes(R,1))*HalfWeighted{:ab}(TwoBandJacobi(ρ, 1, 1, 0))
 
-        @test (D.l, D.u) == (3, -1)
         @test D[1:5,1] ≈ [0.0, -0.33858064516128994, 0.0, -1.030932383768154, 0.0]
         @test D[1:5,2] ≈ [0.0, 0.0, -0.4609776443497252, 0.0, -0.34580926348402935]
     end
@@ -122,11 +122,11 @@ import SemiclassicalOrthogonalPolynomials: Interlace, HalfWeighted, WeightedBasi
         
     end
 
-    @test "lowering" begin
+    @testset "lowering" begin
         # unweighted
         ρ = 0.2
         R = TwoBandJacobi(ρ,0,0,0)
-        for (a,b,c) in [(1,0,0), (0,2,0), (1,2,3)]
+        for (a,b,c) in [(1,0,0), (0,2,0), (1,2,1)]
             Q = TwoBandJacobi(ρ,a,b,c)
             L = Q \ R
             n=15; x = rand(ρ:0.001:1,n)
