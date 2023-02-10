@@ -12,7 +12,7 @@ import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAb
 import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedOPLayout,
                                         Bidiagonal, Tridiagonal, SymTridiagonal, symtridiagonalize, normalizationconstant, LanczosPolynomial,
                                         OrthogonalPolynomialRatio, Weighted, WeightLayout, UnionDomain, oneto, Hilbert, WeightedBasis, HalfWeighted,
-                                        Associated, golubwelsch, associated, AbstractOPLayout, weight
+                                        Associated, golubwelsch, associated, AbstractOPLayout, weight, cholesky_jacobimatrix, qr_jacobimatrix
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid, plotgrid, _equals, ExpansionLayout
 import FillArrays: SquareEye
@@ -93,7 +93,7 @@ RaisedOP(Q, y::Number) = RaisedOP(Q, OrthogonalPolynomialRatio(Q,y))
 function jacobimatrix(P::RaisedOP{T}) where T
     ℓ = P.ℓ
     X = jacobimatrix(P.Q)
-    a,b = diagonaldata(X), supdiagonaldata(X)
+    a,b = view(X,band(0)), view(X,band(1)) # a,b = diagonaldata(X), supdiagonaldata(X)
     # non-normalized lower diag of Jacobi
     v = Vcat(zero(T),b .* ℓ)
     c = BroadcastVector((ℓ,a,b,sa,v) -> ℓ*a + b - b*ℓ^2 - sa*ℓ + ℓ*v, ℓ, a, b, a[2:∞], v)
@@ -183,17 +183,30 @@ function semiclassical_jacobimatrix(t, a, b, c)
         # if J is Tridiagonal(c,a,b) then for norm. OPs it becomes SymTridiagonal(a, sqrt.( b.* c))
         return SymTridiagonal(A, sqrt.(B.*C))
     end
-    P = Normalized(Jacobi{T}(a,b)[affine(T(0)..T(1),Inclusion(-T(1)..T(1))),:])
-    iszero(c) && return jacobimatrix(P)
+    P = jacobi(b, a, UnitInterval{T}())
+    iszero(c) && return symtridiagonalize(jacobimatrix(P))
     x = axes(P,1)
-    # jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), P))
-    return cholesky_jacobimatrix(x->(x.^a.*(1 .-x).^b.*(t.-x).^c), Normalized(Legendre{T}()[affine(T(0)..T(1),Inclusion(-T(1)..T(1))),:]))
+    # Cholesky method for non-integer order weights needs additional work, for now keep Lanczos in those cases
+    if isinteger(a) && isinteger(b) && isinteger(c)
+        return cholesky_jacobimatrix(x->(x.^a.*(1 .-x).^b.*(t.-x).^c), Normalized(legendre(UnitInterval{T}())))
+    else
+        X = jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), P))
+        # todo: workaround for bug which prevents (LanczosJacobiMatrix)^Int from working
+        return Symmetric(BandedMatrix(0 => X.dv, 1 => X.ev)) 
+    end
 end
+
+# todo: These function overloads are workarounds for the Lanczos bug which prevents (LanczosJacobiMatrix)^Int from working
+# Can be removed once that is fixed 
+diagonaldata(X::BandedMatrix) = view(X,band(0))
+subdiagonaldata(X::BandedMatrix) = view(X,band(-1))
+supdiagonaldata(X::BandedMatrix) = view(X,band(1))
 
 function symraised_jacobimatrix(Q, y)
     ℓ = OrthogonalPolynomialRatio(Q,y)
     X = jacobimatrix(Q)
-    a,b = diagonaldata(X), supdiagonaldata(X)
+    # todo: cannot just use diagonaldata due to workaround for bug which prevents (LanczosJacobiMatrix)^Int from working
+    a,b = view(X,band(0)), view(X,band(1))
     SymTridiagonal(SemiclassicalJacobiBand{:dv}(a,b,ℓ), SemiclassicalJacobiBand{:ev}(a,b,ℓ))
 end
 
@@ -294,11 +307,29 @@ end
 # returns conversion operator from SemiclassicalJacobi P to SemiclassicalJacobi Q.
 function semijacobi_ldiv(Q::SemiclassicalJacobi,P::SemiclassicalJacobi)
     @assert Q.t ≈ P.t
-    M = (P.X)^(Q.a-P.a)*(I-P.X)^(Q.b-P.b)*(Q.t*I-P.X)^(Q.c-P.c)
-    # the next line is a workaround for a Symtridiagonal / Symmetric bug
-    M = Symmetric(ApplyArray(*,M,Diagonal(ones(∞))))
-    K = (cholesky(M).U)
-    return ApplyArray(*, Diagonal(Fill(1/K[1],∞)), K) # match our normalization choice P_0(x) = 1
+    # For polynomial modifications, use Cholesky. Use Lanzos otherwise.
+    (Q == P) && return Diagonal(Ones(∞))
+    Δa = Q.a-P.a
+    Δb = Q.b-P.b
+    Δc = Q.c-P.c
+    if isinteger() && isinteger() && isinteger()
+        if !iszero(Q.a-P.a)
+            M = (P.X)^(Q.a-P.a)
+        end
+        if !iszero(Q.b-P.b)
+            M = (I-P.X)^(Q.b-P.b)
+        end
+        if !iszero(Q.b-P.b)
+            M = (Q.t*I-P.X)^(Q.c-P.c)
+        end
+        # M = Symmetric(ApplyArray(*,M,Diagonal(ones(∞)))) # todo: workaround for a Symtridiagonal / Symmetric bug
+        K = cholesky(Symmetric(M)).U
+        return ApplyArray(*, Diagonal(Fill(1/K[1],∞)), K) # match our normalization choice P_0(x) = 1
+    else
+        R = SemiclassicalJacobi(P.t, mod(P.a,-1), mod(P.b,-1), mod(P.c,-1))
+        R̃ = toclassical(R)
+        return (P \ R) * _p0(R̃) * (R̃ \ Q)
+    end
 end
 
 struct SemiclassicalJacobiLayout <: AbstractOPLayout end

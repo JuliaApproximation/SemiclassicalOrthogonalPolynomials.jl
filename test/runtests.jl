@@ -117,7 +117,7 @@ end
         @testset "Mass matrix" begin
             @test (T'*(w_T .* T))[1:10,1:10] ≈ sum(w_T)I
             M = W'*(w_W .* W)
-            @test (sum(w_T)*inv(R)'L)[1:10,1:10] ≈ M[1:10,1:10]
+            @test (sum(w_T)*inv(R[1:10,1:10])'L[1:10,1:10]) ≈ M[1:10,1:10]
             @test T[0.1,1:10]' ≈ W[0.1,1:10]' * R[1:10,1:10]
         end
     end
@@ -450,3 +450,4 @@ end
 include("test_derivative.jl")
 include("test_twoband.jl")
 include("test_lowering.jl")
+
