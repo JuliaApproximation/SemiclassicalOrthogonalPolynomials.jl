@@ -308,19 +308,20 @@ end
 function semijacobi_ldiv(Q::SemiclassicalJacobi,P::SemiclassicalJacobi)
     @assert Q.t ≈ P.t
     # For polynomial modifications, use Cholesky. Use Lanzos otherwise.
-    (Q == P) && return Diagonal(Ones(∞))
+    M = Diagonal(Ones(∞))
+    (Q == P) && return M
     Δa = Q.a-P.a
     Δb = Q.b-P.b
     Δc = Q.c-P.c
-    if isinteger() && isinteger() && isinteger()
+    if isinteger(Δa) && isinteger(Δb) && isinteger(Δc)
         if !iszero(Q.a-P.a)
-            M = (P.X)^(Q.a-P.a)
+            M = ApplyArray(*,M,(P.X)^(Q.a-P.a))
         end
         if !iszero(Q.b-P.b)
-            M = (I-P.X)^(Q.b-P.b)
+            M = ApplyArray(*,M,(I-P.X)^(Q.b-P.b))
         end
-        if !iszero(Q.b-P.b)
-            M = (Q.t*I-P.X)^(Q.c-P.c)
+        if !iszero(Q.c-P.c)
+            M = ApplyArray(*,M,(Q.t*I-P.X)^(Q.c-P.c))
         end
         # M = Symmetric(ApplyArray(*,M,Diagonal(ones(∞)))) # todo: workaround for a Symtridiagonal / Symmetric bug
         K = cholesky(Symmetric(M)).U
