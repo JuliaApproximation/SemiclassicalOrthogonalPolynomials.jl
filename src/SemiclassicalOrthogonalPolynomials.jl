@@ -101,13 +101,6 @@ function jacobimatrix(P::RaisedOP{T}) where T
     Tridiagonal(c, BroadcastVector((ℓ,a,b,v) -> a - b * ℓ + v, ℓ,a,b,v), b)
 end
 
-
-
-
-
-
-
-
 """
   the bands of the Jacobi matrix
 """
@@ -140,7 +133,6 @@ SemiclassicalJacobiBand{:ev,T}(a,b,ℓ) where T = SemiclassicalJacobiBand{:ev,T}
 SemiclassicalJacobiBand{dv}(a,b,ℓ) where dv = SemiclassicalJacobiBand{dv,promote_type(eltype(a),eltype(b),eltype(ℓ))}(a,b,ℓ)
 
 copy(r::SemiclassicalJacobiBand) = r # immutable
-
 
 
 """
@@ -191,24 +183,15 @@ function semiclassical_jacobimatrix(t, a, b, c)
         return qr_jacobimatrix(x->(t.-x).^(c÷2), Normalized(jacobi(a,b,UnitInterval{T}())))
     elseif isodd(c)
         return semiclassical_jacobimatrix(SemiclassicalJacobi(t, a, b, c-1), a, b, c)
-    else # c is not an even integer, use Lanczos for now
-        X = jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), P))
-        # todo: workaround for bug which prevents (LanczosJacobiMatrix)^Int from working
-        return Symmetric(BandedMatrix(0 => X.dv, 1 => X.ev)) 
+    else # if c is not an even integer, use Lanczos for now
+        return jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), P))
     end
 end
-
-# todo: These function overloads are workarounds for the Lanczos bug which prevents (LanczosJacobiMatrix)^Int from working
-# todo: Can be removed once that is fixed
-diagonaldata(X::BandedMatrix) = view(X,band(0))
-subdiagonaldata(X::BandedMatrix) = view(X,band(-1))
-supdiagonaldata(X::BandedMatrix) = view(X,band(1))
 
 function symraised_jacobimatrix(Q, y)
     ℓ = OrthogonalPolynomialRatio(Q,y)
     X = jacobimatrix(Q)
-    # todo: cannot just use diagonaldata due to workaround for bug which prevents (LanczosJacobiMatrix)^Int from working
-    a,b = view(X,band(0)), view(X,band(1))
+    a,b = diagonaldata(X), supdiagonaldata(X)
     SymTridiagonal(SemiclassicalJacobiBand{:dv}(a,b,ℓ), SemiclassicalJacobiBand{:ev}(a,b,ℓ))
 end
 
