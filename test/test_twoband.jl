@@ -1,6 +1,6 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, BandedMatrices, LinearAlgebra, Test
-import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, associated, plotgrid
-import SemiclassicalOrthogonalPolynomials: Interlace, HalfWeighted, WeightedBasis
+import ClassicalOrthogonalPolynomials: orthogonalityweight, Weighted, plotgrid
+import SemiclassicalOrthogonalPolynomials: Interlace, HalfWeighted, WeightedBasis, associated
 import ForwardDiff: derivative
 
 @testset "Two Band" begin
