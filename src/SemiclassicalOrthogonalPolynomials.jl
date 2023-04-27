@@ -1,7 +1,7 @@
 module SemiclassicalOrthogonalPolynomials
-using ClassicalOrthogonalPolynomials: WeightedOPLayout
 using ClassicalOrthogonalPolynomials, FillArrays, LazyArrays, ArrayLayouts, QuasiArrays, InfiniteArrays, ContinuumArrays, LinearAlgebra, BandedMatrices,
-        SpecialFunctions, HypergeometricFunctions
+        SpecialFunctions, HypergeometricFunctions, SingularIntegrals
+
 
 import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe_getindex, convert, OneTo
 
@@ -11,8 +11,9 @@ import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAb
                     AccumulateAbstractVector, LazyVector, AbstractCachedMatrix, BroadcastLayout
 import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedOPLayout,
                                         Bidiagonal, Tridiagonal, SymTridiagonal, symtridiagonalize, normalizationconstant, LanczosPolynomial,
-                                        OrthogonalPolynomialRatio, Weighted, WeightLayout, UnionDomain, oneto, Hilbert, WeightedBasis, HalfWeighted,
-                                        Associated, golubwelsch, associated, AbstractOPLayout, weight
+                                        OrthogonalPolynomialRatio, Weighted, WeightLayout, UnionDomain, oneto, WeightedBasis, HalfWeighted,
+                                        golubwelsch, AbstractOPLayout, weight, WeightedOPLayout
+import SingularIntegrals: Associated, associated, Hilbert
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid, plotgrid, _equals, ExpansionLayout
 import FillArrays: SquareEye
@@ -319,7 +320,7 @@ function copy(L::Ldiv{SemiclassicalJacobiLayout,SemiclassicalJacobiLayout})
     M_Q = massmatrix(Q)
     M_P = massmatrix(P)
     L = P \ (SemiclassicalJacobiWeight(Q.t, Q.a-P.a, Q.b-P.b, Q.c-P.c) .* Q)
-    inv(M_Q) * L' * M_P
+    (inv(M_Q) * L') * M_P
 end
 
 \(A::LanczosPolynomial, B::SemiclassicalJacobi) = semijacobi_ldiv(A, B)
