@@ -372,8 +372,10 @@ end
         R_t = SemiclassicalJacobi(t, 0, 0, 1, P) \ P;
 
         sqrt(0.5)
-        @test R_0[999,999:1000] ≈ sqrt.([0.5,0.5]) atol=1e-2
-        @test R_1[999,999:1000] ≈ [sqrt(0.5),-sqrt(0.5)] atol=1e-2
+        @test R_0[999,999] ≈ sqrt.(0.5) atol=1e-2
+        @test R_0[999,1000] ≈ sqrt.(0.5) atol=1e-2
+        @test R_1[999,999] ≈ sqrt.(0.5) atol=1e-2
+        @test R_1[999,1000] ≈ -sqrt.(0.5) atol=1e-2
         @test R_t[200,201]/R_t[200,200] ≈ -1/(2*φ(2t-1)) atol=1e-2
     end
 

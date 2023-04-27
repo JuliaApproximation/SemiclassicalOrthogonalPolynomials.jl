@@ -184,7 +184,7 @@ function semiclassical_jacobimatrix(t, a, b, c)
         return cholesky_jacobimatrix(x->(t-x),P)
     elseif isodd(c) && c ≥ 0 # reduce other odd integer c cases to be mostly QR
         J = SemiclassicalJacobi(t, a, b, c-1)
-        return cholesky_jacobimatrix(Symmetric(BandedMatrix(0=>t.-J.X.dv, 1=>J.X.ev)),J)
+        return cholesky_jacobimatrix(Symmetric(t*I-BandedMatrix(0=>J.X.dv, 1=>J.X.ev)), J)
     else # if c is not an integer, use Lanczos for now
         x = axes(P,1)
         return jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), jacobi(b, a, UnitInterval{T}())))
