@@ -98,6 +98,7 @@ function jacobimatrix(R::TwoBandJacobi{T}) where T
     # M = (L / L[1,1])' # equal to R.Q \ R.P
 
     Tridiagonal(Interlace(L.dv/L[1,1], (ρ^2-1) * L.ev), Zeros{T}(∞), Interlace((1-ρ^2) * L.dv,L.ev/(-L[1,1])))
+    # Tridiagonal(Interlace(L.dv/L[1,1], (1-ρ^2) * L.ev), Zeros{T}(∞), Interlace((1-ρ^2) * L.dv, L.ev/L[1,1]))
 end
 
 
