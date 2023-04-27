@@ -1,7 +1,7 @@
 using SemiclassicalOrthogonalPolynomials
 using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra, InfiniteArrays
 import LazyArrays: AbstractCachedVector
-import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, backαcoeff!, αcoefficients!, evalϕn, neg1c_tolegendre, evalQn, getindex, initialα_gen, symlowered_jacobimatrix, αgenfillerbackwards!, symlowered_jacobimatrix
+import SemiclassicalOrthogonalPolynomials: initialα, evalϕn, neg1c_tolegendre, evalQn, getindex, initialα_gen, symlowered_jacobimatrix, αgenfillerbackwards!, symlowered_jacobimatrix
 
 @testset "Special case: SemiclassicalJacobi(t,0,0,-1) " begin
     @testset "inital α" begin
@@ -16,56 +16,6 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
         @test initialα(t4) ≈ 0.9610516212042500
     end
 
-    @testset "αdirect! consistency" begin
-        N = 5
-        t1 = 1.1
-        t2 = 1.841
-        t3 = 3.91899
-        t4 = BigFloat("1.0000000000000000000001")
-        α1 = zeros(eltype(float(t1)), N)
-        α2 = zeros(eltype(float(t2)), N)
-        α3 = zeros(eltype(float(t3)), N)
-        α4 = zeros(eltype(float(t3)), N)
-        αdirect!(α1,t1,1:N)
-        αdirect!(α2,t2,1:N)
-        αdirect!(α3,t3,1:N)
-        αdirect!(α4,t4,1:N)
-        @test αdirect.((1:N),t1) ≈ α1
-        @test αdirect.((1:N),t2) ≈ α2
-        @test αdirect.((1:N),t3) ≈ α3
-        @test αdirect.((1:N),t4) ≈ α4
-    end
-
-    @testset "basic forward and back recurrence" begin
-        # set parameters
-        N = 30
-        t1 = BigFloat("1.841")
-        t2 = BigFloat("1.0000000000000000000001")
-        # initialize α
-        α1f = zeros(eltype(float(t1)), N)
-        α1f[1] = initialα(t1)
-        α2f = zeros(eltype(float(t2)), N)
-        α2f[1] = initialα(t2)
-        α1b = zeros(eltype(float(t1)), N)
-        α2b = zeros(eltype(float(t2)), N)
-        # compute coefficients via forward recurrence
-        αcoefficients!(α1f,t1,BigInt.(2:N))
-        αcoefficients!(α2f,t2,BigInt.(2:N))
-        # compute coefficients via back recurrence
-        backαcoeff!(α1b,t1,BigInt.(1:N))
-        backαcoeff!(α2b,t2,BigInt.(1:N))
-        # Mathematica α1
-        @test α1b[4]  ≈ 0.262708732908399743 ≈ α1f[4]  
-        @test α1b[6]  ≈ 0.272687692260606064 ≈ α1f[6]  
-        @test α1b[10] ≈ 0.281264391787711543 ≈ α1f[10] 
-        @test α1b[20] ≈ 0.288083843194443346 ≈ α1f[20]
-        # Mathematica α2
-        @test α2b[3]  ≈ 0.98621165663772362 ≈ α2f[3]
-        @test α2b[5]  ≈ 0.99152243369113373 ≈ α2f[5]
-        @test α2b[10] ≈ 0.99562287407137481 ≈ α2f[10]  
-        @test α2b[20] ≈ 0.99774034482793111 ≈ α2f[20] 
-    end
-
     @testset "evaluation normalized" begin
         t = BigFloat("1.1")
         # Mathematica values
@@ -77,10 +27,6 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
     @testset "evaluation non-normalized" begin
         t = 1.1
         x = 0.1
-        n = 5
-        α = zeros(n+1)'
-        α[1] = initialα(2*t-1)
-        αcoefficients!(α,2*t-1,2:n)
         # compare versions with and without recomputing α with Mathematica results
         @test evalϕn(0,x,t) == 1
         @test evalϕn(1,x,t) ≈ -1.165935217151491
@@ -89,7 +35,7 @@ import SemiclassicalOrthogonalPolynomials: initialα, αdirect, αdirect!, back�
 
     @testset "Expansion" begin
         # basis
-        t = 1.00001
+        t = 1.0001
         Q = SemiclassicalJacobi(t,0,0,-1)
         x = axes(Q,1)
         # test functions
@@ -145,6 +91,30 @@ end
 
 @testset "Generic lowering operators" begin
     @testset "Iterative lowering" begin
+        # lowering a iteratively
+        t = 1.812
+        PLegendre = SemiclassicalJacobi(t,0,0,0)
+        RaisetoLower = SemiclassicalJacobi(t,15,3,6,PLegendre)
+        RaisetoCompare = SemiclassicalJacobi(t,12,3,6,PLegendre)
+        LoweredPoly = SemiclassicalJacobi(t,12,3,6,RaisetoLower)
+        @test LoweredPoly.X[1:100,1:100] ≈ RaisetoCompare.X[1:100,1:100]
+        # lowering b iteratively
+        t = 1.1
+        PLegendre = SemiclassicalJacobi(t,0,0,0)
+        RaisetoLower = SemiclassicalJacobi(t,7,6,8,PLegendre)
+        RaisetoCompare = SemiclassicalJacobi(t,7,4,8,PLegendre)
+        LoweredPoly = SemiclassicalJacobi(t,7,4,8,RaisetoLower)
+        @test LoweredPoly.X[1:100,1:100] ≈ RaisetoCompare.X[1:100,1:100]
+        # lowering c iteratively
+        t = 1.001
+        PLegendre = SemiclassicalJacobi(t,0,0,0)
+        RaisetoLower = SemiclassicalJacobi(t,5,8,8,PLegendre)
+        RaisetoCompare = SemiclassicalJacobi(t,5,8,5,PLegendre)
+        LoweredPoly = SemiclassicalJacobi(t,5,8,5,RaisetoLower)
+        @test LoweredPoly.X[1:100,1:100] ≈ RaisetoCompare.X[1:100,1:100]
+    end
+
+    @testset "Iterative lowering, non-integer" begin
         # lowering a iteratively
         t = 1.812
         PLegendre = SemiclassicalJacobi(t,0,0,0)

@@ -170,12 +170,11 @@ SemiclassicalJacobi{T}(t, a, b, c) where T = SemiclassicalJacobi(convert(T,t), c
 
 WeightedSemiclassicalJacobi{T}(t, a, b, c, P...) where T = SemiclassicalJacobiWeight{T}(convert(T,t), convert(T,a), convert(T,b), convert(T,c)) .* SemiclassicalJacobi{T}(convert(T,t), convert(T,a), convert(T,b), convert(T,c), P...)
 
-
+isnormalized(::SemiclassicalJacobi) = true # we only work with orthonormal semiclassical Jacobi polynomials
 
 function semiclassical_jacobimatrix(t, a, b, c)
     T = float(promote_type(typeof(t), typeof(a), typeof(b), typeof(c)))
-    if a == 0 && b == 0 && c == -1
-        # for this special case we can generate the Jacobi operator explicitly
+    if a == 0 && b == 0 && c == -1 # special case: use explicit forms
         N = (1:∞)
         α = T.(neg1c_αcfs(t)) # cached coefficients
         A = Vcat((α[1]+1)/2 , -N./(N.*4 .- 2).*α .+ (N.+1)./(N.*4 .+ 2).*α[2:end].+1/2)
@@ -204,7 +203,7 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     elseif a == Q.a+1 && b == Q.b && c == Q.c  # raising by 1
         symraised_jacobimatrix(Q, 0)
     elseif a == Q.a && b == Q.b+1 && c == Q.c
-        symraised_jacobimatrix(Q, 1)
+        return cholesky_jacobimatrix(x->(1-x),Q)
     elseif a == Q.a && b == Q.b && c == Q.c+1
         symraised_jacobimatrix(Q, Q.t)
     elseif a == Q.a && b == Q.b && c == Q.c-1 # lowering by 1
@@ -228,7 +227,7 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     elseif a == Q.a && b == Q.b && c == Q.c # same basis
         jacobimatrix(Q)
     else
-        error("Not Implemented")
+        return error("Not Implemented")
     end
 end
 
@@ -255,8 +254,6 @@ function summary(io::IO, P::SemiclassicalJacobi)
     t,a,b,c = P.t,P.a,P.b,P.c
     print(io, "SemiclassicalJacobi with weight x^$a * (1-x)^$b * ($t-x)^$c")
 end
-
-
 
 jacobimatrix(P::SemiclassicalJacobi) = P.X
 
@@ -375,7 +372,6 @@ end
 
 function ldiv(Q::SemiclassicalJacobi, f::AbstractQuasiVector)
     if iszero(Q.a) && iszero(Q.b) && Q.c == -1
-        # todo: due to a stdlib error this won't work with bigfloat as is
         T = typeof(Q.t)
         R = Legendre{T}()[affine(Inclusion(zero(T)..one(T)), axes(Legendre{T}(),1)), :]
         B = neg1c_tolegendre(Q.t)
@@ -389,7 +385,6 @@ function ldiv(Qn::SubQuasiArray{<:Any,2,<:SemiclassicalJacobi,<:Tuple{<:Inclusio
     _,jr = parentindices(Qn)
     Q = parent(Qn)
     if iszero(Q.a) && iszero(Q.b) && Q.c == -1
-        # todo: due to a stdlib error this won't work with bigfloat as is
         T = typeof(Q.t)
         R = Legendre{T}()[affine(Inclusion(zero(T)..one(T)), axes(Legendre{T}(),1)), :]
         B = neg1c_tolegendre(Q.t)
@@ -465,7 +460,6 @@ Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Union{AbstractUnitRa
 Base.broadcasted(::Type{SemiclassicalJacobi{T}}, t::Number, a::Union{AbstractUnitRange,Number}, b::Union{AbstractUnitRange,Number}, c::Union{AbstractUnitRange,Number}) where T = 
     SemiclassicalJacobiFamily{T}(t, a, b, c)
 
-
 _broadcast_getindex(a,k) = a[k]
 _broadcast_getindex(a::Number,k) = a
 
@@ -477,6 +471,6 @@ function LazyArrays.cache_filldata!(P::SemiclassicalJacobiFamily, inds::Abstract
     P
 end
 
-include("lowering.jl")
+include("neg1c.jl")
 
 end
