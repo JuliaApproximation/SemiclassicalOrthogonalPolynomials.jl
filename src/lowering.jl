@@ -1,5 +1,5 @@
 ###########
-# Generic methods for obtaining Jacobi matrices with one of the a, b and c parameters lowered by 1.
+# Generic fallback methods for obtaining Jacobi matrices with one of the a, b and c parameters lowered by 1.
 # passing symbols :a, :b or :c into lowindex determines which parameter is lowered
 ######
 function initialα_gen(P::SemiclassicalJacobi, lowindex::Symbol)
@@ -163,8 +163,8 @@ end
 
 ###########
 # Methods for the special case of computing SemiclassicalJacobi(t,0,0,-1)
-######
 # As this can be built from SemiclassicalJacobi(t,0,0,0) which is just shifted and normalized Legendre(), we have more explicit methods at our disposal due to explicitly known coefficients for the Legendre bases.
+######
 
 ###
 #   α coefficients implementation, cached, direct and via recurrences
