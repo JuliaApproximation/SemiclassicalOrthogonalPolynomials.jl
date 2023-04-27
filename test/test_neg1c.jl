@@ -1,7 +1,7 @@
 using SemiclassicalOrthogonalPolynomials
 using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, LinearAlgebra, InfiniteArrays
 import LazyArrays: AbstractCachedVector
-import SemiclassicalOrthogonalPolynomials: evalϕn, neg1c_tolegendre, evalQn, getindex, initialα_gen
+import SemiclassicalOrthogonalPolynomials: evalϕn, neg1c_tolegendre, evalQn, getindex
 
 @testset "Special case: SemiclassicalJacobi(t,0,0,-1) " begin
     @testset "inital α" begin

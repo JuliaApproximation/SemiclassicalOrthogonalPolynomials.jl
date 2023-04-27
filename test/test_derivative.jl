@@ -3,7 +3,6 @@ import ClassicalOrthogonalPolynomials: recurrencecoefficients, _BandedMatrix, _p
 import LazyArrays: Accumulate, AccumulateAbstractVector
 import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
 
-
 @testset "Derivative" begin
     @testset "basics" begin
         t = 2
