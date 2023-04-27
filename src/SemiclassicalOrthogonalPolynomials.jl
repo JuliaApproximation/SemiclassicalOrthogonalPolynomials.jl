@@ -1,7 +1,7 @@
 module SemiclassicalOrthogonalPolynomials
 using ClassicalOrthogonalPolynomials: WeightedOPLayout
 using ClassicalOrthogonalPolynomials, FillArrays, LazyArrays, ArrayLayouts, QuasiArrays, InfiniteArrays, ContinuumArrays, LinearAlgebra, BandedMatrices,
-        SpecialFunctions, HypergeometricFunctions, SingularIntegrals
+        SpecialFunctions, HypergeometricFunctions, SingularIntegrals, InfiniteLinearAlgebra
 
 import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe_getindex, convert, OneTo
 
@@ -178,12 +178,13 @@ function semiclassical_jacobimatrix(t, a, b, c)
     end
     P = Normalized(jacobi(b, a, UnitInterval{T}()))
     iszero(c) && return jacobimatrix(P)
-    if iseven(c)
+    if iseven(c) && c ≥ 0
         return qr_jacobimatrix(x->(t-x)^(c÷2), P)
     elseif isone(c)
         return cholesky_jacobimatrix(x->(t-x),P)
-    elseif isodd(c) # reduce other odd integer c cases to be mostly QR
-        return cholesky_jacobimatrix(x->(t-x), SemiclassicalJacobi(t, a, b, c-1))
+    elseif isodd(c) && c ≥ 0 # reduce other odd integer c cases to be mostly QR
+        J = SemiclassicalJacobi(t, a, b, c-1)
+        return cholesky_jacobimatrix(Symmetric(BandedMatrix(0=>t.-J.X.dv, 1=>J.X.ev)),J)
     else # if c is not an integer, use Lanczos for now
         x = axes(P,1)
         return jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), jacobi(b, a, UnitInterval{T}())))
@@ -218,17 +219,14 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     elseif iszero(Δa) && iszero(Δb) && isone(Δc÷2)
         qr_jacobimatrix(Q.t*I-Q.X,Q)
     elseif isone(Δa) && iszero(Δb) && iszero(Δc)  # raising by 1
-        cholesky_jacobimatrix(Symmetric(ApplyArray(*,Diagonal(Ones(∞)),Q.X)),Q)
+        # TODO: remove workaround for cholesky(SymTridiagonal) bug
+        cholesky_jacobimatrix(Symmetric(BandedMatrix(0=>Q.X.dv, 1=>Q.X.ev)),Q)
     elseif iszero(Δa) && isone(Δb) && iszero(Δc)
-        cholesky_jacobimatrix(I-Q.X,Q)
+        # TODO: remove workaround for cholesky(SymTridiagonal) bug
+        cholesky_jacobimatrix(Symmetric(I-BandedMatrix(0=>Q.X.dv, 1=>Q.X.ev)),Q)
     elseif iszero(Δa) && iszero(Δb) && isone(Δc)
-        cholesky_jacobimatrix(Q.t*I-Q.X,Q)
-    elseif iszero(Δa) && iszero(Δb) && isone(abs(Δc)) # lowering by 1
-        symlowered_jacobimatrix(Q, :c)
-    elseif isone(abs(Δa)) && iszero(Δb) && iszero(Δc)
-        symlowered_jacobimatrix(Q, :a)
-    elseif iszero(Δb) && isone(abs(Δb)) && iszero(Δc)
-        symlowered_jacobimatrix(Q, :b)
+        # TODO: remove workaround for cholesky(SymTridiagonal) bug
+        cholesky_jacobimatrix(Symmetric(Q.t*I-BandedMatrix(0=>Q.X.dv, 1=>Q.X.ev)),Q)
     elseif a > Q.a  # iterative raising by 1
         semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a+1, Q.b, Q.c, Q), a, b, c)
     elseif b > Q.b
