@@ -180,7 +180,7 @@ function semiclassical_jacobimatrix(t, a, b, c)
     iszero(c) && return jacobimatrix(P)
     if iseven(c)
         return qr_jacobimatrix(x->(t-x)^(c÷2), P)
-    elseif isodd(c)
+    elseif isone(c)
         return cholesky_jacobimatrix(x->(t-x),P)
     elseif isodd(c) # reduce other odd integer c cases to be mostly QR
         return cholesky_jacobimatrix(x->(t-x), SemiclassicalJacobi(t, a, b, c-1))
@@ -220,9 +220,9 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     elseif isone(Δa) && iszero(Δb) && iszero(Δc)  # raising by 1
         cholesky_jacobimatrix(Symmetric(ApplyArray(*,Diagonal(Ones(∞)),Q.X)),Q)
     elseif iszero(Δa) && isone(Δb) && iszero(Δc)
-        qr_jacobimatrix(I-Q.X,Q)
+        cholesky_jacobimatrix(I-Q.X,Q)
     elseif iszero(Δa) && iszero(Δb) && isone(Δc)
-        qr_jacobimatrix(Q.t*I-Q.X,Q)
+        cholesky_jacobimatrix(Q.t*I-Q.X,Q)
     elseif iszero(Δa) && iszero(Δb) && isone(abs(Δc)) # lowering by 1
         symlowered_jacobimatrix(Q, :c)
     elseif isone(abs(Δa)) && iszero(Δb) && iszero(Δc)
@@ -374,7 +374,7 @@ function copy(L::Ldiv{SemiclassicalJacobiLayout,SemiclassicalJacobiLayout})
     M_Q = massmatrix(Q)
     M_P = massmatrix(P)
     L = P \ (SemiclassicalJacobiWeight(Q.t, Q.a-P.a, Q.b-P.b, Q.c-P.c) .* Q)
-    inv(M_Q) * L' * M_P
+    (inv(M_Q) * L') * M_P
 end
 
 \(A::SemiclassicalJacobi, B::SemiclassicalJacobi) = semijacobi_ldiv(A, B)
