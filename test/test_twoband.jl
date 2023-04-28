@@ -124,8 +124,8 @@ import ForwardDiff: derivative
     @testset "lowering" begin
         # unweighted
         # Broken
-        # ρ = 0.2
-        # R = TwoBandJacobi(ρ,0,0,0)
+        ρ = 0.2
+        R = TwoBandJacobi(ρ,0,0,0)
         # for (a,b,c) in [(1,0,0), (0,2,0), (1,2,1)]
         #    Q = TwoBandJacobi(ρ,a,b,c)
         #    L = Q \ R
