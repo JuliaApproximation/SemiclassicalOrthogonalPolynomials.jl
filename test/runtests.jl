@@ -476,8 +476,17 @@ end
     P = SemiclassicalJacobi(t, 1, 1, 1)
     Q = SemiclassicalJacobi(t, 3, 3, 3)
     @test istriu((Q \ P)[1:10,1:10])
+    P = SemiclassicalJacobi(t, 1, 1, 1)
+    Q = SemiclassicalJacobi(t, 1, 1, 3, P)
+    @test istriu((Q \ P)[1:10,1:10])
+    P = SemiclassicalJacobi(t, 0, 1, 1)
+    Q = SemiclassicalJacobi(t, 2, 1, 1)
+    @test istriu((Q \ P)[1:10,1:10])
+    P = SemiclassicalJacobi(t, 1, 1, 1)
+    Q = SemiclassicalJacobi(t, 1, 3, 1)
 end
 
 include("test_derivative.jl")
 include("test_twoband.jl")
 include("test_neg1c.jl")
+
