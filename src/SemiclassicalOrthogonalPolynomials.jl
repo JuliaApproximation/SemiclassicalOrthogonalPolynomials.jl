@@ -430,7 +430,7 @@ function ldiv(Q::SemiclassicalJacobi, f::AbstractQuasiVector)
     if iszero(Q.a) && iszero(Q.b) && Q.c == -1
         # TODO: due to a stdlib error this won't work with bigfloat as is
         T = typeof(Q.t)
-        R = Legendre{T}()[affine(Inclusion(zero(T)..one(T)), axes(Legendre{T}(),1)), :]
+        R = legendre(zero(T)..one(T))
         B = neg1c_tolegendre(Q.t)
         return (B \ (R \ f))
     end
@@ -444,7 +444,7 @@ function ldiv(Qn::SubQuasiArray{<:Any,2,<:SemiclassicalJacobi,<:Tuple{<:Inclusio
     if iszero(Q.a) && iszero(Q.b) && Q.c == -1
         # TODO: due to a stdlib error this won't work with bigfloat as is
         T = typeof(Q.t)
-        R = Legendre{T}()[affine(Inclusion(zero(T)..one(T)), axes(Legendre{T}(),1)), :]
+        R = legendre(zero(T)..one(T))
         B = neg1c_tolegendre(Q.t)
         return (B[jr,jr] \ (R[:,jr] \ C))
     end
