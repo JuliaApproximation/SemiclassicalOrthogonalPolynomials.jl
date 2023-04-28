@@ -132,10 +132,10 @@ WeightedSemiclassicalJacobi{T}(t, a, b, c, P...) where T = SemiclassicalJacobiWe
 
 function semiclassical_jacobimatrix(t, a, b, c)
     T = float(promote_type(typeof(t), typeof(a), typeof(b), typeof(c)))
-    if a == 0 && b == 0 && c == -1
+    if iszero(a) && iszero(b) && c == -one(T)
         # for this special case we can generate the Jacobi operator explicitly
         N = (1:∞)
-        α = neg1c_αcfs(t) # cached coefficients
+        α = neg1c_αcfs(one(T)*t) # cached coefficients
         A = Vcat((α[1]+1)/2 , -N./(N.*4 .- 2).*α .+ (N.+1)./(N.*4 .+ 2).*α[2:end].+1/2)
         C = -(N)./(N.*4 .- 2)
         B = Vcat((α[1]^2*3-α[1]*α[2]*2-1)/6 , -(N)./(N.*4 .+ 2).*α[2:end]./α)
@@ -163,12 +163,12 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     Δc = c-Q.c
 
     # special cases 
-    if iszero(a) && iszero(b) && c == -1 # (a,b,c) = (0,0,-1) special case
-        semiclassical_jacobimatrix(Q.t, a, b, c)
+    if iszero(a) && iszero(b) && c == -one(eltype(Q.t)) # (a,b,c) = (0,0,-1) special case
+        return semiclassical_jacobimatrix(Q.t, zero(Q.t), zero(Q.t), c)
     elseif iszero(c) # classical Jacobi polynomial special case
-        jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c))
+        return jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c))
     elseif iszero(Δa) && iszero(Δb) && iszero(Δc) # same basis
-        Q.X
+        return Q.X
     end
 
     if isone(Δa÷2) && iszero(Δb) && iszero(Δc)  # raising by 2

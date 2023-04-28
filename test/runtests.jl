@@ -27,6 +27,13 @@ import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweig
     @test P̃[0.1,1:10] ≈ P[2*0.1-1,1:10]/P[0.1,1]
 end
 
+@testset "Classical special case" begin
+    P = SemiclassicalJacobi(2, 3, 2, 0)
+    @test P.X[1:10,1:10] ≈ symtridiagonalize(jacobimatrix(jacobi(2,3,0..1)))[1:10,1:10]
+    P = SemiclassicalJacobi(2, 3, 4, 0, P)
+    @test P.X[1:10,1:10] ≈ symtridiagonalize(jacobimatrix(jacobi(4,3,0..1)))[1:10,1:10]
+end
+
 @testset "SemiclassicalJacobiWeight" begin
     a,b,c = 0.2,0.1,0.3
     w = SemiclassicalJacobiWeight(2,a,b,c)

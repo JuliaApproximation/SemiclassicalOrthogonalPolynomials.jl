@@ -88,3 +88,8 @@ import SemiclassicalOrthogonalPolynomials: evalϕn, neg1c_tolegendre, evalQn, ge
         @test (Q*(X*(Q\sinh.(t.*x))))[y] ≈ y*f4(y)
     end
 end
+
+@testset "Consistency check for c=-1 special case" begin
+    P = SemiclassicalJacobi(2, 0, 0, 0)
+    @test SemiclassicalJacobi(2, 0, 0, -1, P).X[1:10,1:10] ≈ SemiclassicalJacobi(2, 0, 0, -1).X[1:10,1:10]
+end
