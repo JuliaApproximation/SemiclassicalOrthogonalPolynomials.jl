@@ -166,7 +166,7 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     if iszero(a) && iszero(b) && c == -one(eltype(Q.t)) # (a,b,c) = (0,0,-1) special case
         return semiclassical_jacobimatrix(Q.t, zero(Q.t), zero(Q.t), c)
     elseif iszero(c) # classical Jacobi polynomial special case
-        return jacobimatrix(Normalized(jacobi(b, a, UnitInterval{T}())))
+        return jacobimatrix(Normalized(jacobi(b, a, UnitInterval{eltype(Q.t)}())))
     elseif iszero(Δa) && iszero(Δb) && iszero(Δc) # same basis
         return Q.X
     end
