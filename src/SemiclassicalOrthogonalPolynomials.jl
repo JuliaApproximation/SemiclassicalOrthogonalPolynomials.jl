@@ -274,29 +274,27 @@ function semijacobi_ldiv(Q::SemiclassicalJacobi,P::SemiclassicalJacobi)
     Δc = Q.c-P.c
     if iseven(Δa) && iseven(Δb) && iseven(Δc)
         # TODO: remove workaround and use P.X instead
-        X = Symmetric(BandedMatrix(0=>P.X.dv, 1=>P.X.ev))
         if !iszero(Δa)
-            M = ApplyArray(*,M,X^(Δa÷2))
+            M = ApplyArray(*,M,Symmetric(BandedMatrix(0=>P.X.dv, 1=>P.X.ev))^(Δa÷2))
         end
         if !iszero(Δb)
-            M = ApplyArray(*,M,(I-X)^(Δb÷2))
+            M = ApplyArray(*,M,Symmetric(BandedMatrix(0=>one(P.t).-P.X.dv, 1=>-P.X.ev))^(Δb÷2))
         end
         if !iszero(Δc)
-            M = ApplyArray(*,M,(Q.t*I-X)^(Δc÷2))
+            M = ApplyArray(*,M,Symmetric(BandedMatrix(0=>Q.t.-P.X.dv, 1=>-P.X.ev))^(Δc÷2))
         end
         K = qr(M).R
         return ApplyArray(*, Diagonal(sign.(view(K,band(0))).*Fill(abs.(1/K[1]),∞)), K) # match our normalization choice P_0(x) = 1
     elseif isinteger(Δa) && isinteger(Δb) && isinteger(Δc)
         # TODO: remove workaround and use P.X instead
-        X = Symmetric(BandedMatrix(0=>P.X.dv, 1=>P.X.ev))
         if !iszero(Δa)
-            M = ApplyArray(*,M,X^Δa)
+            M = ApplyArray(*,M,Symmetric(BandedMatrix(0=>P.X.dv, 1=>P.X.ev))^Δa)
         end
         if !iszero(Δb)
-            M = ApplyArray(*,M,(I-X)^Δb)
+            M = ApplyArray(*,M,Symmetric(BandedMatrix(0=>one(P.t).-P.X.dv, 1=>-P.X.ev))^Δb)
         end
         if !iszero(Δc)
-            M = ApplyArray(*,M,(Q.t*I-X)^Δc)
+            M = ApplyArray(*,M,Symmetric(BandedMatrix(0=>Q.t.-P.X.dv, 1=>-P.X.ev))^Δc)
         end
         K = cholesky(Symmetric(M)).U
         return ApplyArray(*, Diagonal(Fill(1/K[1],∞)), K) # match our normalization choice P_0(x) = 1
