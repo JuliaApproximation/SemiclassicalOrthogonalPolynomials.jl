@@ -102,40 +102,6 @@ function jacobimatrix(P::RaisedOP{T}) where T
 end
 
 """
-  the bands of the Jacobi matrix
-"""
-mutable struct SemiclassicalJacobiBand{dv,T} <: AbstractCachedVector{T}
-    data::Vector{T}
-    a::AbstractVector{T}
-    b::AbstractVector{T}
-    ℓ::AbstractVector{T}
-    datasize::Tuple{Int}
-end
-
-function LazyArrays.cache_filldata!(r::SemiclassicalJacobiBand{:dv}, inds::AbstractUnitRange)
-    rℓ = r.ℓ[inds[1]-1:inds[end]]; ℓ,sℓ = rℓ[2:end], rℓ[1:end-1]
-    ra = r.a[inds[1]:(inds[end]+1)]; a = ra[1:end-1]; sa = ra[2:end]
-    rb = r.b[inds[1]-1:inds[end]]; b = rb[2:end]; sb = rb[1:end-1]
-    r.data[inds] .= @.(a - b * ℓ + sb*sℓ)
-end
-
-function LazyArrays.cache_filldata!(r::SemiclassicalJacobiBand{:ev}, inds::AbstractUnitRange)
-    rℓ = r.ℓ[inds[1]-1:inds[end]]; ℓ,sℓ = rℓ[2:end], rℓ[1:end-1]
-    ra = r.a[inds[1]:(inds[end]+1)]; a = ra[1:end-1]; sa = ra[2:end]
-    rb = r.b[inds[1]-1:inds[end]]; b = rb[2:end]; sb = rb[1:end-1]
-    r.data[inds] .= @.(sqrt((ℓ*a + b - b*ℓ^2 - sa*ℓ + ℓ*sb*sℓ)*b))
-end
-
-size(::SemiclassicalJacobiBand) = (ℵ₀,)
-
-SemiclassicalJacobiBand{:dv,T}(a,b,ℓ) where T = SemiclassicalJacobiBand{:dv,T}(T[a[1] - b[1]ℓ[1]], a, b, ℓ, (1,))
-SemiclassicalJacobiBand{:ev,T}(a,b,ℓ) where T = SemiclassicalJacobiBand{:ev,T}(T[sqrt((ℓ[1]*a[1] + b[1] - b[1]*ℓ[1]^2 - a[2]*ℓ[1])b[1])], a, b, ℓ, (1,))
-SemiclassicalJacobiBand{dv}(a,b,ℓ) where dv = SemiclassicalJacobiBand{dv,promote_type(eltype(a),eltype(b),eltype(ℓ))}(a,b,ℓ)
-
-copy(r::SemiclassicalJacobiBand) = r # immutable
-
-
-"""
    SemiclassicalJacobi(t, a, b, c)
 
 is a quasi-matrix for the  orthogonal polynomials w.r.t. x^a * (1-x)^b * (t-x)^c on [0,1]
@@ -189,13 +155,6 @@ function semiclassical_jacobimatrix(t, a, b, c)
         x = axes(P,1)
         return jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), jacobi(b, a, UnitInterval{T}())))
     end
-end
-
-function symraised_jacobimatrix(Q, y)
-    ℓ = OrthogonalPolynomialRatio(Q,y)
-    X = jacobimatrix(Q)
-    a,b = diagonaldata(X), supdiagonaldata(X)
-    SymTridiagonal(SemiclassicalJacobiBand{:dv}(a,b,ℓ), SemiclassicalJacobiBand{:ev}(a,b,ℓ))
 end
 
 function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
