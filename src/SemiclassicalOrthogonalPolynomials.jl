@@ -273,26 +273,30 @@ function semijacobi_ldiv(Q::SemiclassicalJacobi,P::SemiclassicalJacobi)
     Δb = Q.b-P.b
     Δc = Q.c-P.c
     if iseven(Δa) && iseven(Δb) && iseven(Δc)
-        if !iszero(Q.a-P.a)
-            M = ApplyArray(*,M,(P.X)^((Q.a-P.a)÷2))
+        # TODO: remove workaround and use P.X instead
+        X = Symmetric(BandedMatrix(0=>P.X.dv, 1=>P.X.ev))
+        if !iszero(Δa)
+            M = ApplyArray(*,M,X^(Δa÷2))
         end
-        if !iszero(Q.b-P.b)
-            M = ApplyArray(*,M,(I-P.X)^((Q.b-P.b)÷2))
+        if !iszero(Δb)
+            M = ApplyArray(*,M,(I-X)^(Δb÷2))
         end
-        if !iszero(Q.c-P.c)
-            M = ApplyArray(*,M,(Q.t*I-P.X)^((Q.c-P.c)÷2))
+        if !iszero(Δc)
+            M = ApplyArray(*,M,(Q.t*I-X)^(Δc÷2))
         end
         K = qr(M).R
         return ApplyArray(*, Diagonal(sign.(view(K,band(0))).*Fill(abs.(1/K[1]),∞)), K) # match our normalization choice P_0(x) = 1
     elseif isinteger(Δa) && isinteger(Δb) && isinteger(Δc)
-        if !iszero(Q.a-P.a)
-            M = ApplyArray(*,M,(P.X)^(Q.a-P.a))
+        # TODO: remove workaround and use P.X instead
+        X = Symmetric(BandedMatrix(0=>P.X.dv, 1=>P.X.ev))
+        if !iszero(Δa)
+            M = ApplyArray(*,M,X^Δa)
         end
-        if !iszero(Q.b-P.b)
-            M = ApplyArray(*,M,(I-P.X)^(Q.b-P.b))
+        if !iszero(Δb)
+            M = ApplyArray(*,M,(I-X)^Δb)
         end
-        if !iszero(Q.c-P.c)
-            M = ApplyArray(*,M,(Q.t*I-P.X)^(Q.c-P.c))
+        if !iszero(Δc)
+            M = ApplyArray(*,M,(Q.t*I-X)^Δc)
         end
         K = cholesky(Symmetric(M)).U
         return ApplyArray(*, Diagonal(Fill(1/K[1],∞)), K) # match our normalization choice P_0(x) = 1
@@ -386,7 +390,7 @@ massmatrix(P::SemiclassicalJacobi) = Diagonal(Fill(sum(orthogonalityweight(P)),�
 end
 
 function ldiv(Q::SemiclassicalJacobi, f::AbstractQuasiVector)
-    if iszero(Q.a) && iszero(Q.b) && Q.c == -1
+    if iszero(Q.a) && iszero(Q.b) && Q.c == -one(eltype(Q.t))
         # TODO: due to a stdlib error this won't work with bigfloat as is
         T = typeof(Q.t)
         R = legendre(zero(T)..one(T))
@@ -400,7 +404,7 @@ end
 function ldiv(Qn::SubQuasiArray{<:Any,2,<:SemiclassicalJacobi,<:Tuple{<:Inclusion,<:Any}}, C::AbstractQuasiArray)
     _,jr = parentindices(Qn)
     Q = parent(Qn)
-    if iszero(Q.a) && iszero(Q.b) && Q.c == -1
+    if iszero(Q.a) && iszero(Q.b) && Q.c == -one(eltype(Q.t))
         # TODO: due to a stdlib error this won't work with bigfloat as is
         T = typeof(Q.t)
         R = legendre(zero(T)..one(T))

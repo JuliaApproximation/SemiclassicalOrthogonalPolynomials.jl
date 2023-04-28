@@ -453,6 +453,31 @@ end
     end
 end
 
+@testset "Conversion operators" begin
+    t = 1.2
+    P = SemiclassicalJacobi(t, 1, 0, 1)
+    Q = SemiclassicalJacobi(t, 1, 0, 3)
+    @test istriu((Q \ P)[1:10,1:10])
+    P = SemiclassicalJacobi(t, 1, 0, 1)
+    Q = SemiclassicalJacobi(t, 1, 0, 2)
+    @test istriu((Q \ P)[1:10,1:10])
+    P = SemiclassicalJacobi(t, 1, 1, 1)
+    Q = SemiclassicalJacobi(t, 1, 2, 2)
+    @test istriu((Q \ P)[1:10,1:10])
+    P = SemiclassicalJacobi(t, 0, 1, 1)
+    Q = SemiclassicalJacobi(t, 0, 1, 2)
+    @test istriu((Q \ P)[1:10,1:10])
+    P = SemiclassicalJacobi(t, 1, 1, 1)
+    Q = SemiclassicalJacobi(t, 2, 2, 2)
+    @test istriu((Q \ P)[1:10,1:10])
+    P = SemiclassicalJacobi(t, 0, 1, 1)
+    Q = SemiclassicalJacobi(t, 0, 1, 2)
+    @test istriu((Q \ P)[1:10,1:10])
+    P = SemiclassicalJacobi(t, 1, 1, 1)
+    Q = SemiclassicalJacobi(t, 3, 3, 3)
+    @test istriu((Q \ P)[1:10,1:10])
+end
+
 include("test_derivative.jl")
 include("test_twoband.jl")
 include("test_neg1c.jl")
