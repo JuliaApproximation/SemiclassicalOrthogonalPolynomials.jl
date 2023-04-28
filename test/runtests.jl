@@ -25,6 +25,8 @@ import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweig
     @test P̃ == SemiclassicalJacobi{Float64}(t,0,0,0)
 
     @test P̃[0.1,1:10] ≈ P[2*0.1-1,1:10]/P[0.1,1]
+    @test P != SemiclassicalJacobi(t, 0, 0, 1)
+    @test SemiclassicalJacobi(t, 0, 0, 1) != P
 end
 
 @testset "Classical special case" begin
