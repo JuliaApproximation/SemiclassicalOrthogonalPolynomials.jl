@@ -53,6 +53,7 @@ end
         w_T = orthogonalityweight(T)
         w_W = orthogonalityweight(W)
         @test summary(SemiclassicalJacobiWeight(2,1,1,1)) == "x^1 * (1-x)^1 * (2-x)^1"
+        @test WeightedSemiclassicalJacobi{Float64}(2, -1/2, 0, 1/2) == SemiclassicalJacobiWeight{Float64}(2., -1/2, 0., 1/2) .* SemiclassicalJacobi{Float64}(2., -1/2, 0., 1/2)
 
         @test copy(T) == T
         @test W ≠ T
