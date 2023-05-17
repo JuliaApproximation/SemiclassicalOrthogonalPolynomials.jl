@@ -469,7 +469,7 @@ end
     end
 end
 
-@testset "Conversion operators" begin
+@testset "Conversion operators via decomposition" begin
     t = 1.2
     P = SemiclassicalJacobi(t, 1, 0, 1)
     Q = SemiclassicalJacobi(t, 1, 0, 3)
@@ -513,6 +513,13 @@ end
     P = SemiclassicalJacobi(t, 1, 1, 1)
     Q = SemiclassicalJacobi(t, 3, 1, 1, P)
         @test istriu((Q \ P)[1:10,1:10])
+end
+
+@testset "Conversion operators via Lanczos" begin
+    t = 1.298173
+    P = SemiclassicalJacobi(t, -0.1, 0, -0.4)
+    Q = SemiclassicalJacobi(t, -0.1, 0, -0.2)
+    @test istriu((Q \ P)[1:10,1:10])
 end
 
 include("test_derivative.jl")
