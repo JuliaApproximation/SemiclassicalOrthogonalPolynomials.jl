@@ -144,13 +144,12 @@ function semiclassical_jacobimatrix(t, a, b, c)
     end
     P = Normalized(jacobi(b, a, UnitInterval{T}()))
     iszero(c) && return jacobimatrix(P)
-    if iseven(c) && c ≥ 0
-        return qr_jacobimatrix(x->(t-x)^(c÷2), P)
-    elseif isone(c)
+    if isone(c)
         return cholesky_jacobimatrix(x->(t-x),P)
-    elseif isodd(c) && c ≥ 0 # reduce other odd integer c cases to be mostly QR
-        J = SemiclassicalJacobi(t, a, b, c-1)
-        return cholesky_jacobimatrix(Symmetric(t*I-BandedMatrix(0=>J.X.dv, 1=>J.X.ev)), J)
+    elseif isone(c÷2)
+        return qr_jacobimatrix(x->(t-x),P)
+    elseif isinteger(c) && c ≥ 0 # reduce other integer c cases to hierarchy
+        return SemiclassicalJacobi.(t, a, b, 0:c)[end].X
     else # if c is not an integer, use Lanczos for now
         x = axes(P,1)
         return jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), jacobi(b, a, UnitInterval{T}())))
