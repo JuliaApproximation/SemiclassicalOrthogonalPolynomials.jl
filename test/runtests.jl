@@ -37,6 +37,17 @@ end
     @test summary(SemiclassicalJacobi(2, 3, 4, 0)) == summary(Q)
 end
 
+@testset "Identical special case" begin
+    t = 1.2
+    P = SemiclassicalJacobi(t, 1, 1, 1)
+    Q = SemiclassicalJacobi(t, 1, 1, 1, P)
+    @test P.X[1:100,1:100] ≈ Q.X[1:100,1:100]
+    t = 1.9931202
+    P = SemiclassicalJacobi(t, 1, 3, 7)
+    Q = SemiclassicalJacobi(t, 1, 3, 7, P)
+    @test P.X[1:100,1:100] ≈ Q.X[1:100,1:100]
+end
+
 @testset "SemiclassicalJacobiWeight" begin
     a,b,c = 0.2,0.1,0.3
     w = SemiclassicalJacobiWeight(2,a,b,c)
