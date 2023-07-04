@@ -177,14 +177,11 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     elseif iszero(Δa) && iszero(Δb) && isone(Δc÷2)
         qr_jacobimatrix(Q.t*I-Q.X,Q)
     elseif isone(Δa) && iszero(Δb) && iszero(Δc)  # raising by 1
-        # TODO: remove workaround for cholesky(SymTridiagonal) bug
-        cholesky_jacobimatrix(Symmetric(BandedMatrix(0=>Q.X.dv, 1=>Q.X.ev)),Q)
+        cholesky_jacobimatrix(Q.X,Q)
     elseif iszero(Δa) && isone(Δb) && iszero(Δc)
-        # TODO: remove workaround for cholesky(SymTridiagonal) bug
-        cholesky_jacobimatrix(Symmetric(I-BandedMatrix(0=>Q.X.dv, 1=>Q.X.ev)),Q)
+        cholesky_jacobimatrix(I-Q.X,Q)
     elseif iszero(Δa) && iszero(Δb) && isone(Δc)
-        # TODO: remove workaround for cholesky(SymTridiagonal) bug
-        cholesky_jacobimatrix(Symmetric(Q.t*I-BandedMatrix(0=>Q.X.dv, 1=>Q.X.ev)),Q)
+        cholesky_jacobimatrix(Q.t*I-Q.X,Q)
     elseif a > Q.a  # iterative raising by 1
         semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a+1, Q.b, Q.c, Q), a, b, c)
     elseif b > Q.b
@@ -264,40 +261,38 @@ function semijacobi_ldiv(P::SemiclassicalJacobi, Q)
 end
 
 # returns conversion operator from SemiclassicalJacobi P to SemiclassicalJacobi Q.
-function semijacobi_ldiv(Q::SemiclassicalJacobi,P::SemiclassicalJacobi)
+function semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     @assert Q.t ≈ P.t
-    # For polynomial modifications, use Cholesky. Use Lanzos otherwise.
+    # For polynomial modifications, use Cholesky/QR. Use Lanzos otherwise.
     M = Diagonal(Ones(∞))
     (Q == P) && return M
     Δa = Q.a-P.a
     Δb = Q.b-P.b
     Δc = Q.c-P.c
     if iseven(Δa) && iseven(Δb) && iseven(Δc)
-        # TODO: remove workaround and use P.X instead
         if !iszero(Δa)
-            M = ApplyArray(*,M,Symmetric(BandedMatrix(0=>P.X.dv, 1=>P.X.ev))^(Δa÷2))
+            M = ApplyArray(*,M,P.X^(Δa÷2))
         end
         if !iszero(Δb)
-            M = ApplyArray(*,M,Symmetric(BandedMatrix(0=>one(P.t).-P.X.dv, 1=>-P.X.ev))^(Δb÷2))
+            M = ApplyArray(*,M,(I-P.X)^(Δb÷2))
         end
         if !iszero(Δc)
-            M = ApplyArray(*,M,Symmetric(BandedMatrix(0=>Q.t.-P.X.dv, 1=>-P.X.ev))^(Δc÷2))
+            M = ApplyArray(*,M,(Q.t*I-P.X)^(Δc÷2))
         end
-        K = qr(M).R
-        return ApplyArray(*, Diagonal(sign.(view(K,band(0))).*Fill(abs.(1/K[1]),∞)), K) # match our normalization choice P_0(x) = 1
+        M = qr(M).R
+        return ApplyArray(*, Diagonal(sign.(view(M,band(0))).*Fill(abs.(1/M[1]),∞)), M) # match our normalization choice P_0(x) = 1
     elseif isinteger(Δa) && isinteger(Δb) && isinteger(Δc)
-        # TODO: remove workaround and use P.X instead
         if !iszero(Δa)
-            M = ApplyArray(*,M,Symmetric(BandedMatrix(0=>P.X.dv, 1=>P.X.ev))^Δa)
+            M = ApplyArray(*,M,P.X^(Δa))
         end
         if !iszero(Δb)
-            M = ApplyArray(*,M,Symmetric(BandedMatrix(0=>one(P.t).-P.X.dv, 1=>-P.X.ev))^Δb)
+            M = ApplyArray(*,M,(I-P.X)^(Δb))
         end
         if !iszero(Δc)
-            M = ApplyArray(*,M,Symmetric(BandedMatrix(0=>Q.t.-P.X.dv, 1=>-P.X.ev))^Δc)
+            M = ApplyArray(*,M,(Q.t*I-P.X)^(Δc))
         end
-        K = cholesky(Symmetric(M)).U
-        return ApplyArray(*, Diagonal(Fill(1/K[1],∞)), K) # match our normalization choice P_0(x) = 1
+        M = cholesky(Symmetric(M)).U
+        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M) # match our normalization choice P_0(x) = 1
     else # fallback option for non-integer weight modification
         R = SemiclassicalJacobi(P.t, mod(P.a,-1), mod(P.b,-1), mod(P.c,-1))
         R̃ = toclassical(R)
