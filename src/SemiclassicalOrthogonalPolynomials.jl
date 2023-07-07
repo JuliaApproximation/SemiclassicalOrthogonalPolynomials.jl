@@ -225,8 +225,6 @@ function summary(io::IO, P::SemiclassicalJacobi)
     print(io, "SemiclassicalJacobi with weight x^$a * (1-x)^$b * ($t-x)^$c")
 end
 
-
-
 jacobimatrix(P::SemiclassicalJacobi) = P.X
 
 """

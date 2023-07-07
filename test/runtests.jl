@@ -469,6 +469,39 @@ end
     end
 end
 
+@testset "Weighted Conversion" begin
+    @testset "low c" begin
+        P = SemiclassicalJacobi(1.1,0,0,10)
+        Q = SemiclassicalJacobi(1.1,1,1,10)
+        R = Q \ P
+        L = Weighted(P) \ Weighted(Q)
+        C = R./L'
+        @test C[1,1] ≈ C[5,5]  ≈ C[8,8]
+
+        P = SemiclassicalJacobi(1.6,0,0,10)
+        Q = SemiclassicalJacobi(1.6,2,2,10)
+        R = Q \ P
+        L = Weighted(P) \ Weighted(Q)
+        C = R./L'
+        @test C[1,1] ≈ C[5,5]  ≈ C[8,8]
+
+        P = SemiclassicalJacobi(1.1213,0,0,10)
+        Q = SemiclassicalJacobi(1.1213,2,3,10)
+        R = Q \ P
+        L = Weighted(P) \ Weighted(Q)
+        C = R./L'
+        @test C[1,1] ≈ C[5,5]  ≈ C[8,8]
+    end
+    @testset "high c" begin
+        P = SemiclassicalJacobi(1.1,0,0,100)
+        Q = SemiclassicalJacobi(1.1,1,1,100)
+        R = Q \ P
+        L = Weighted(P) \ Weighted(Q)
+        C = R./L'
+        @test C[1,1] ≈ C[5,5]  ≈ C[8,8]
+    end
+end
+
 @testset "Conversion operators via decomposition" begin
     t = 1.2
     P = SemiclassicalJacobi(t, 1, 0, 1)
