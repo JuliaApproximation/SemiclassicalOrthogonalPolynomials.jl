@@ -1,7 +1,7 @@
 name = "SemiclassicalOrthogonalPolynomials"
 uuid = "291c01f3-23f6-4eb6-aeb0-063a639b53f2"
 authors = ["Sheehan Olver <solver@mac.com>"]
-version = "0.3.5"
+version = "0.4.0"
 
 [deps]
 ArrayLayouts = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
@@ -21,7 +21,7 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 [compat]
 ArrayLayouts = "1"
 BandedMatrices = "0.17"
-ClassicalOrthogonalPolynomials = "0.9, 0.10"
+ClassicalOrthogonalPolynomials = "0.10.1"
 ContinuumArrays = "0.12, 0.13"
 FillArrays = "1"
 HypergeometricFunctions = "0.3.4"
@@ -29,7 +29,7 @@ InfiniteArrays = "0.12.9"
 InfiniteLinearAlgebra = "0.6.19"
 LazyArrays = "1"
 QuasiArrays = "0.9, 0.10"
-SingularIntegrals = "0.0.2"
+SingularIntegrals = "0.1"
 SpecialFunctions = "1.0, 2"
 julia = "1.9"
 
