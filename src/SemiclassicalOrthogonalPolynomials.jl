@@ -128,19 +128,16 @@ SemiclassicalJacobi{T}(t, a, b, c) where T = SemiclassicalJacobi(convert(T,t), c
 
 WeightedSemiclassicalJacobi{T}(t, a, b, c, P...) where T = SemiclassicalJacobiWeight{T}(convert(T,t), convert(T,a), convert(T,b), convert(T,c)) .* SemiclassicalJacobi{T}(convert(T,t), convert(T,a), convert(T,b), convert(T,c), P...)
 
-
-
 function semiclassical_jacobimatrix(t, a, b, c)
     T = float(promote_type(typeof(t), typeof(a), typeof(b), typeof(c)))
     if iszero(a) && iszero(b) && c == -one(T)
         # for this special case we can generate the Jacobi operator explicitly
         N = (1:∞)
-        α = neg1c_αcfs(one(T)*t) # cached coefficients
+        α = neg1c_αcfs(one(T)*t)
         A = Vcat((α[1]+1)/2 , -N./(N.*4 .- 2).*α .+ (N.+1)./(N.*4 .+ 2).*α[2:end].+1/2)
         C = -(N)./(N.*4 .- 2)
         B = Vcat((α[1]^2*3-α[1]*α[2]*2-1)/6 , -(N)./(N.*4 .+ 2).*α[2:end]./α)
-        # if J is Tridiagonal(c,a,b) then for norm. OPs it becomes SymTridiagonal(a, sqrt.( b.* c))
-        return SymTridiagonal(A, sqrt.(B.*C))
+        return SymTridiagonal(A, sqrt.(B.*C)) # if J is Tridiagonal(c,a,b) then for norm. OPs it becomes SymTridiagonal(a, sqrt.( b.* c))
     end
     P = Normalized(jacobi(b, a, UnitInterval{T}()))
     iszero(c) && return jacobimatrix(P)
@@ -150,7 +147,7 @@ function semiclassical_jacobimatrix(t, a, b, c)
         return qr_jacobimatrix(x->(t-x),P)
     elseif isinteger(c) && c ≥ 0 # reduce other integer c cases to hierarchy
         return SemiclassicalJacobi.(t, a, b, 0:Int(c))[end].X
-    else # if c is not an integer, use Lanczos for now
+    else # if c is not an integer, use Lanczos
         x = axes(P,1)
         return jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), jacobi(b, a, UnitInterval{T}())))
     end
@@ -188,7 +185,7 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
         semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b+1, Q.c, Q), a, b, c)
     elseif c > Q.c
         semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c+1, Q), a, b, c)
-    # TODO: Implement lowering via QL/reverse Cholesky or via inverting R
+    # TODO: Implement lowering via QL/reverse Cholesky or via inverting R?
     # elseif b < Q.b  # iterative lowering by 1
     #    semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b-1, Q.c, Q), a, b, c)
     # elseif c < Q.c
@@ -233,8 +230,7 @@ Gives the Lowering operator from OPs w.r.t. (x-y)*w(x) to Q
 as constructed from Chistoffel–Darboux
 """
 function op_lowering(Q, y)
-    # we first use Christoff-Darboux with d = 1
-    # But we want the first OP to be 1 so we rescale
+    # we first use Christoff-Darboux with d = 1 but the first OP should be 1 so we rescale
     P = RaisedOP(Q, y)
     A,_,_ = recurrencecoefficients(Q)
     d = -inv(A[1]*_p0(Q)*P.ℓ[1])
@@ -268,16 +264,16 @@ function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     M = Diagonal(Ones(∞))
     if iseven(Δa) && iseven(Δb) && iseven(Δc)
         M = qr(P.X^(Δa÷2)*(I-P.X)^(Δb÷2)*(Q.t*I-P.X)^(Δc÷2)).R
-        return ApplyArray(*, Diagonal(sign.(view(M,band(0))).*Fill(abs.(1/M[1]),∞)), M) # match normalization choice P_0(x) = 1
+        return ApplyArray(*, Diagonal(sign.(view(M,band(0))).*Fill(abs.(1/M[1]),∞)), M)
     elseif isone(Δa) && iszero(Δb) && iszero(Δc) # special case (Δa,Δb,Δc) = (1,0,0)
         M = cholesky(P.X).U
-        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M) # match normalization choice P_0(x) = 1    
+        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
     elseif iszero(Δa) && isone(Δb) && iszero(Δc) # special case (Δa,Δb,Δc) = (0,1,0)
         M = cholesky(I-P.X).U
-        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M) # match normalization choice P_0(x) = 1
+        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
     elseif iszero(Δa) && iszero(Δb) && isone(Δc) # special case (Δa,Δb,Δc) = (0,0,1)
         M = cholesky(Q.t*I-P.X).U
-        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M) # match normalization choice P_0(x) = 1
+        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
     elseif isinteger(Δa) && isinteger(Δb) && isinteger(Δc)
         M = cholesky(Symmetric(P.X^(Δa)*(I-P.X)^(Δb)*(Q.t*I-P.X)^(Δc))).U
         return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M) # match normalization choice P_0(x) = 1
