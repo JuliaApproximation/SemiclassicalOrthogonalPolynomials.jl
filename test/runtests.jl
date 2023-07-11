@@ -1,7 +1,7 @@
 using SemiclassicalOrthogonalPolynomials
 using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, FillArrays, LinearAlgebra
 import BandedMatrices: _BandedMatrix
-import SemiclassicalOrthogonalPolynomials: op_lowering, RaisedOP, jacobiexpansion
+import SemiclassicalOrthogonalPolynomials: op_lowering, RaisedOP, jacobiexpansion, semijacobi_ldiv_direct
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight, symtridiagonalize
 
 @testset "Jacobi" begin
@@ -63,6 +63,21 @@ end
     @test SemiclassicalJacobi(1.1,0,0,4)[0.2, 1] ≈ SemiclassicalJacobi{Float64}(1.1,0,0,4)[0.2, 1]
     @test SemiclassicalJacobi(1.013,0,0,4)[0.1993, 3] ≈ SemiclassicalJacobi{Float64}(1.013,0,0,4)[0.1993, 3]
     @test SemiclassicalJacobi(1.013,2,2,2.3)[0.7, 4] ≈ SemiclassicalJacobi{Float64}(1.013,2,2,2.3)[0.7, 4]
+end
+
+@testset "Test ldiv versus not recommended direct ldiv" begin
+    # set 1 
+    P = SemiclassicalJacobi(1.1,0,0,4)
+    Q = SemiclassicalJacobi(1.1,1,2,7)
+    R = Q \ P
+    Ralt = semijacobi_ldiv_direct(Q,P)
+    @test R[1:20,1:20] ≈ Ralt[1:20,1:20]
+    # set 2
+    P = SemiclassicalJacobi(1.23,4,1,2)
+    Q = SemiclassicalJacobi(1.23,7,4,6)
+    R = Q \ P
+    Ralt = semijacobi_ldiv_direct(Q,P)
+    @test R[1:20,1:20] ≈ Ralt[1:20,1:20]
 end
 
 @testset "Half-range Chebyshev" begin

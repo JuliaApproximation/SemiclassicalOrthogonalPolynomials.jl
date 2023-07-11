@@ -41,7 +41,7 @@ function backαcoeff!(α, t, inds)
     end
 end
 
-#   cached implementation of normalization constants
+# cached implementation of normalization constants
 mutable struct neg1c_normconstant{T} <: AbstractCachedVector{T}
     data::Vector{T}
     t::T
@@ -79,9 +79,7 @@ function cache_filldata!(B::neg1c_normconstant{T}, inds::UnitRange{Int}) where T
     B.data[m+1:n] = norm[1:end-1]
 end
 
-###
-#   bidiagonal operator which converts from OPs wrt (t-x)^-1 to shifted Legendre
-###
+# bidiagonal operator which converts from OPs wrt (t-x)^-1 to shifted Legendre
 function neg1c_tolegendre(t::T) where T
     nc = neg1c_normconstant(t)
     α = neg1c_αcfs(t)
