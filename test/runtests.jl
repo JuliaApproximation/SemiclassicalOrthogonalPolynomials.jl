@@ -59,6 +59,12 @@ end
     @test w == jacobiexpansion(w)
 end
 
+@testset "Evaluations and Type declaration" begin
+    @test SemiclassicalJacobi(1.1,0,0,4)[0.2, 1] ≈ SemiclassicalJacobi{Float64}(1.1,0,0,4)[0.2, 1]
+    @test SemiclassicalJacobi(1.013,0,0,4)[0.1993, 3] ≈ SemiclassicalJacobi{Float64}(1.013,0,0,4)[0.1993, 3]
+    @test SemiclassicalJacobi(1.013,2,2,2.3)[0.7, 4] ≈ SemiclassicalJacobi{Float64}(1.013,2,2,2.3)[0.7, 4]
+end
+
 @testset "Half-range Chebyshev" begin
     @testset "T and W" begin
         T = SemiclassicalJacobi(2, -1/2, 0, -1/2)

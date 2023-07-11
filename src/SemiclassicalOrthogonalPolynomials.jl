@@ -293,7 +293,7 @@ function semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     Δa = Q.a-P.a
     Δb = Q.b-P.b
     Δc = Q.c-P.c
-    if isinteger(Δa) && isinteger(Δb) && isinteger(Δc) # (Δa,Δb,Δc) are integers -> use QR/Cholesky
+    if isinteger(Δa) && isinteger(Δb) && isinteger(Δc) # (Δa,Δb,Δc) are integers -> use QR/Cholesky iteratively
         if ((isone(Δa)||isone(Δa/2)) && iszero(Δb) && iszero(Δc)) || (iszero(Δa) && (isone(Δb)||isone(Δb/2)) && iszero(Δc))  || (iszero(Δa) && iszero(Δb) && (isone(Δc)||isone(Δc/2)))
             M = semijacobi_ldiv_direct(Q, P)
         elseif Δa > 0  # iterative modification by 1
