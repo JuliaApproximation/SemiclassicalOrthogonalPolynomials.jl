@@ -4,7 +4,10 @@
 ######
 
 # compute n-th coefficient from direct evaluation formula
-αdirect(n, t::T) where T = 2*n*_₂F₁((one(T)+n)/2,(n+2)/2,(2*n+3)/2,1/t^2)/(t*2*(1+2*n)*_₂F₁(n/2,(n+one(T))/2,(2*n+one(T))/2,1/t^2))
+function αdirect(n, tt::T) where T
+    t = big(tt)
+    return convert(T,2*n*_₂F₁((one(T)+n)/2,(n+2)/2,(2*n+3)/2,1/t^2)/(t*2*(1+2*n)*_₂F₁(n/2,(n+one(T))/2,(2*n+one(T))/2,1/t^2)))
+end
 
 # inital value n=0 for α_{n,n-1}(t) coefficients
 initialα(t) = t-2/(log1p(t)-log(t-1))

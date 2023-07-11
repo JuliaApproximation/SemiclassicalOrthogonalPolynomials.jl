@@ -59,6 +59,12 @@ end
     @test w == jacobiexpansion(w)
 end
 
+@testset "Evaluations and Type declaration" begin
+    @test SemiclassicalJacobi(1.1,0,0,4)[0.2, 1] ≈ SemiclassicalJacobi{Float64}(1.1,0,0,4)[0.2, 1]
+    @test SemiclassicalJacobi(1.013,0,0,4)[0.1993, 3] ≈ SemiclassicalJacobi{Float64}(1.013,0,0,4)[0.1993, 3]
+    @test SemiclassicalJacobi(1.013,2,2,2.3)[0.7, 4] ≈ SemiclassicalJacobi{Float64}(1.013,2,2,2.3)[0.7, 4]
+end
+
 @testset "Half-range Chebyshev" begin
     @testset "T and W" begin
         T = SemiclassicalJacobi(2, -1/2, 0, -1/2)
@@ -466,6 +472,39 @@ end
         X̃ = ClassicalOrthogonalPolynomials.SymTridiagonal(a .- bl .+ Vcat(zero(T),bl),
                            sqrt.(bl .* a .+ b .^2 .- bl .^ 2 .- b .* a[2:∞] .* ℓ .+ Vcat(zero(T),bl .* bl[2:∞])));
         @test X̃[1:10,1:10] ≈ X[1:10,1:10]
+    end
+end
+
+@testset "Weighted Conversion" begin
+    @testset "low c" begin
+        P = SemiclassicalJacobi(1.1,0,0,10)
+        Q = SemiclassicalJacobi(1.1,1,1,10)
+        R = Q \ P
+        L = Weighted(P) \ Weighted(Q)
+        C = R./L'
+        @test C[1,1] ≈ C[5,5]  ≈ C[8,8]
+
+        P = SemiclassicalJacobi(1.6,0,0,10)
+        Q = SemiclassicalJacobi(1.6,2,2,10)
+        R = Q \ P
+        L = Weighted(P) \ Weighted(Q)
+        C = R./L'
+        @test C[1,1] ≈ C[5,5]  ≈ C[8,8]
+
+        P = SemiclassicalJacobi(1.1213,0,0,10)
+        Q = SemiclassicalJacobi(1.1213,2,3,10)
+        R = Q \ P
+        L = Weighted(P) \ Weighted(Q)
+        C = R./L'
+        @test C[1,1] ≈ C[5,5]  ≈ C[8,8]
+    end
+    @testset "high c" begin
+        P = SemiclassicalJacobi(1.1,0,0,100)
+        Q = SemiclassicalJacobi(1.1,1,1,100)
+        R = Q \ P
+        L = Weighted(P) \ Weighted(Q)
+        C = R./L'
+        @test C[1,1] ≈ C[5,5]  ≈ C[8,8]
     end
 end
 

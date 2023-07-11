@@ -185,15 +185,14 @@ end
 
 function divmul(R::TwoBandJacobi, D::Derivative, P::TwoBandJacobi)
     T = promote_type(eltype(R), eltype(P))
-    ρ=convert(T,R.ρ); t=inv(one(T)-ρ^2)
+    ρ = convert(T,R.ρ); t=inv(one(T)-ρ^2)
     x = axes(R.Q, 1)
 
     Dₑ = -T(2) * t .* (R.Q \ (Derivative(x)*P.P))
     Dₒ = -T(2) .* (HalfWeighted{:c}(R.P) \ (Derivative(x)* HalfWeighted{:c}(P.Q)))
-
-    d = Dₑ.args[1] .* Dₑ.args[2].parent.data
+    d = Dₑ.args[1][1,1] .* Dₑ.args[2].parent.data
     (dₑ, dlₑ) = d[1,:], d[2, :]
-    (dₒ, dlₒ) = Dₒ.data[1,:], Dₒ.data[2,:]
+    (dₒ, dlₒ) = Vcat(-one(T),Dₒ[band(1)]), Dₒ[band(0)]
     BandedMatrix(1=>Interlace(dlₒ, -dₑ), 3=>Interlace(-dₒ[2:∞],dlₑ))
 end
 
@@ -205,7 +204,7 @@ function divmul(R::TwoBandJacobi, D::Derivative, HP::HalfWeighted{:ab,<:Any,<:Tw
     Dₑ = -2*(one(T)-ρ^2) .* (R.Q \ (Derivative(axes(R.Q,1))*HalfWeighted{:ab}(HP.P.P)))
     D₀ = -2*(one(T)-ρ^2)^2 .* (Weighted(R.P) \ (Derivative(axes(R.P,1))*Weighted(HP.P.Q)))
 
-    (dₑ, dlₑ, d₀, dl₀) = Dₑ.data[1,:], Dₑ.data[2,:], D₀.data[1,:], D₀.data[2,:]
+    (dₑ, dlₑ, d₀, dl₀) = Dₑ[band(0)], Dₑ[band(-1)], D₀[band(-1)], D₀[band(-2)]
     BandedMatrix(-1=>Interlace(dₑ, -d₀), -3=>Interlace(-dlₑ, dl₀))
 end
 
