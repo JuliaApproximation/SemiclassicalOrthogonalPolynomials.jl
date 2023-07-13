@@ -54,7 +54,7 @@ end
 
 function divdiff(wP::Weighted{<:Any,<:SemiclassicalJacobi}, wQ::Weighted{<:Any,<:SemiclassicalJacobi})
     Q,P = wQ.P,wP.P
-    ((-sum(orthogonalityweight(Q))/sum(orthogonalityweight(P))) * (Q \ (D * P))')
+    ((-sum(orthogonalityweight(Q))/sum(orthogonalityweight(P))) * (Q \ diff(P))')
 end
 
 function diff(wQ::Weighted{<:Any,<:SemiclassicalJacobi}; dims=1)

@@ -3,7 +3,7 @@ using ClassicalOrthogonalPolynomials: WeightedOPLayout
 using ClassicalOrthogonalPolynomials, FillArrays, LazyArrays, ArrayLayouts, QuasiArrays, InfiniteArrays, ContinuumArrays, LinearAlgebra, BandedMatrices,
         SpecialFunctions, HypergeometricFunctions, InfiniteLinearAlgebra
 
-import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe_getindex, convert, OneTo
+import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe_getindex, convert, OneTo, diff
 
 import ArrayLayouts: MemoryLayout, ldiv, diagonaldata, subdiagonaldata, supdiagonaldata
 import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout, _BandedMatrix
