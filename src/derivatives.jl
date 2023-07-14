@@ -29,11 +29,11 @@ function LazyArrays.cache_filldata!(K::MulAddAccumulate, inds)
 end
 
 """
-    divmul(A, B, C)
+    divdiff(A, C)
 
-is equivalent to A \\ (B*C)
+is equivalent to A \\ diff(C)
 """
-function divmul(Q::SemiclassicalJacobi, D::Derivative, P::SemiclassicalJacobi)
+function divdiff(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     A,B,_ = recurrencecoefficients(P)
     α,β,_ = recurrencecoefficients(Q)
 
@@ -44,22 +44,22 @@ function divmul(Q::SemiclassicalJacobi, D::Derivative, P::SemiclassicalJacobi)
     _BandedMatrix(Vcat(((1:∞) .* d)', (((1:∞) .* (v1 .+ B[2:end]./A[2:end]) .- (2:∞) .* (α .* v2 .+ β ./ α)) .* v3)'), ∞, 2,-1)'
 end
 
-@simplify function *(D::Derivative, P::SemiclassicalJacobi)
+function diff(P::SemiclassicalJacobi; dims=1)
     Q = SemiclassicalJacobi(P.t, P.a+1,P.b+1,P.c+1,P)
-    Q * divmul(Q, D, P)
+    Q * divdiff(Q, P)
 end
 
 
 
 
-function divmul(wP::Weighted{<:Any,<:SemiclassicalJacobi}, D::Derivative, wQ::Weighted{<:Any,<:SemiclassicalJacobi})
+function divdiff(wP::Weighted{<:Any,<:SemiclassicalJacobi}, wQ::Weighted{<:Any,<:SemiclassicalJacobi})
     Q,P = wQ.P,wP.P
-    ((-sum(orthogonalityweight(Q))/sum(orthogonalityweight(P))) * (Q \ (D * P))')
+    ((-sum(orthogonalityweight(Q))/sum(orthogonalityweight(P))) * (Q \ diff(P))')
 end
 
-@simplify function *(D::Derivative, wQ::Weighted{<:Any,<:SemiclassicalJacobi})
+function diff(wQ::Weighted{<:Any,<:SemiclassicalJacobi}; dims=1)
     wP = Weighted(SemiclassicalJacobi(wQ.P.t, wQ.P.a-1,wQ.P.b-1,wQ.P.c-1))
-    wP * divmul(wP, D, wQ)
+    wP * divdiff(wP, wQ)
 end
 
 
@@ -67,7 +67,7 @@ end
 # One-Weighted
 ##
 
-function divmul(HQ::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi}, D::Derivative, HP::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi})
+function divdiff(HQ::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi}, HP::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi})
     Q = HQ.P
     P = HP.P
     t = P.t
@@ -84,7 +84,7 @@ function divmul(HQ::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi}, D::Derivative,
         (((a+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
 end
 
-function divmul(HQ::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi}, D::Derivative, HP::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi})
+function divdiff(HQ::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi}, HP::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi})
     Q = HQ.P
     P = HP.P
     t = P.t
@@ -102,7 +102,7 @@ function divmul(HQ::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi}, D::Derivative,
         (-((b+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
 end
 
-function divmul(HQ::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi}, D::Derivative, HP::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi})
+function divdiff(HQ::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi}, HP::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi})
     Q = HQ.P
     P = HP.P
     t = P.t
@@ -119,32 +119,32 @@ function divmul(HQ::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi}, D::Derivative,
         (-((c+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
 end
 
-@simplify function *(D::Derivative, HP::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi})
+function diff(HP::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi}; dims=1)
     P = HP.P
     t = P.t
     HQ = HalfWeighted{:a}(SemiclassicalJacobi(t, P.a-1, P.b+1, P.c+1))
-    HQ * divmul(HQ, D, HP)
+    HQ * divdiff(HQ, HP)
 end
 
-@simplify function *(D::Derivative, HP::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi})
+function diff(HP::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi}; dims=1)
     P = HP.P
     t = P.t
     HQ = HalfWeighted{:b}(SemiclassicalJacobi(t, P.a+1, P.b-1, P.c+1))
-    HQ * divmul(HQ, D, HP)
+    HQ * divdiff(HQ, HP)
 end
 
-@simplify function *(D::Derivative, HP::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi})
+function diff(HP::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi}; dims=1)
     P = HP.P
     t = P.t
     HQ = HalfWeighted{:c}(SemiclassicalJacobi(t, P.a+1, P.b+1, P.c-1))
-    HQ * divmul(HQ, D, HP)
+    HQ * divdiff(HQ, HP)
 end
 
 ##
 # Double-Weighted
 ##
 
-function divmul(HQ::HalfWeighted{:ab}, D::Derivative, HP::HalfWeighted{:ab})
+function divdiff(HQ::HalfWeighted{:ab}, HP::HalfWeighted{:ab})
     Q = HQ.P
     P = HP.P
     A,B,_ = recurrencecoefficients(P)
@@ -160,7 +160,7 @@ function divmul(HQ::HalfWeighted{:ab}, D::Derivative, HP::HalfWeighted{:ab})
 end
 
 
-function divmul(HQ::HalfWeighted{:bc}, D::Derivative, HP::HalfWeighted{:bc})
+function divdiff(HQ::HalfWeighted{:bc}, HP::HalfWeighted{:bc})
     Q = HQ.P
     P = HP.P
     t = P.t
@@ -176,7 +176,7 @@ function divmul(HQ::HalfWeighted{:bc}, D::Derivative, HP::HalfWeighted{:bc})
                         (((b+c+2):∞)  .* d)'),ℵ₀,1,0)
 end
 
-function divmul(HQ::HalfWeighted{:ac}, D::Derivative, HP::HalfWeighted{:ac})
+function divdiff(HQ::HalfWeighted{:ac}, HP::HalfWeighted{:ac})
     Q = HQ.P
     P = HP.P
     t = P.t
@@ -194,25 +194,25 @@ end
 
 
 
-@simplify function *(D::Derivative, HP::HalfWeighted{:ab,<:Any,<:SemiclassicalJacobi})
+function diff(HP::HalfWeighted{:ab,<:Any,<:SemiclassicalJacobi}; dims=1)
     P = HP.P
     t = P.t
     HQ = HalfWeighted{:ab}(SemiclassicalJacobi(t, P.a-1,P.b-1,P.c+1))
-    HQ * divmul(HQ, D, HP)
+    HQ * divdiff(HQ, HP)
 end
 
 
-@simplify function *(D::Derivative, HP::HalfWeighted{:ac,<:Any,<:SemiclassicalJacobi})
+function diff(HP::HalfWeighted{:ac,<:Any,<:SemiclassicalJacobi}; dims=1)
     P = HP.P
     t = P.t
     HQ = HalfWeighted{:ac}(SemiclassicalJacobi(t, P.a-1,P.b+1,P.c-1))
-    HQ * divmul(HQ, D, HP)
+    HQ * divdiff(HQ, HP)
 end
 
 
-@simplify function *(D::Derivative, HP::HalfWeighted{:bc,<:Any,<:SemiclassicalJacobi})
+function diff(HP::HalfWeighted{:bc,<:Any,<:SemiclassicalJacobi}; dims=1)
     P = HP.P
     t = P.t
     HQ = HalfWeighted{:bc}(SemiclassicalJacobi(t, P.a+1,P.b-1,P.c-1))
-    HQ * divmul(HQ, D, HP)
+    HQ * divdiff(HQ, HP)
 end

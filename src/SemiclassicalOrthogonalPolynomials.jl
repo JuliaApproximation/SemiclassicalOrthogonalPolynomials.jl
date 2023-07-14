@@ -1,9 +1,9 @@
 module SemiclassicalOrthogonalPolynomials
 using ClassicalOrthogonalPolynomials: WeightedOPLayout
 using ClassicalOrthogonalPolynomials, FillArrays, LazyArrays, ArrayLayouts, QuasiArrays, InfiniteArrays, ContinuumArrays, LinearAlgebra, BandedMatrices,
-        SpecialFunctions, HypergeometricFunctions, SingularIntegrals, InfiniteLinearAlgebra
+        SpecialFunctions, HypergeometricFunctions, InfiniteLinearAlgebra
 
-import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe_getindex, convert, OneTo
+import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe_getindex, convert, OneTo, diff
 
 import ArrayLayouts: MemoryLayout, ldiv, diagonaldata, subdiagonaldata, supdiagonaldata
 import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout, _BandedMatrix
@@ -11,15 +11,15 @@ import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAb
                     AccumulateAbstractVector, LazyVector, AbstractCachedMatrix, BroadcastLayout
 import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedOPLayout,
                                         Bidiagonal, Tridiagonal, SymTridiagonal, symtridiagonalize, normalizationconstant, LanczosPolynomial,
-                                        OrthogonalPolynomialRatio, Weighted, WeightLayout, UnionDomain, oneto, WeightedBasis, HalfWeighted,
+                                        OrthogonalPolynomialRatio, Weighted, AbstractWeightLayout, UnionDomain, oneto, WeightedBasis, HalfWeighted,
                                         golubwelsch, AbstractOPLayout, weight, cholesky_jacobimatrix, qr_jacobimatrix, isnormalized
-import SingularIntegrals: Hilbert, Associated, associated
+
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid, plotgrid, _equals, ExpansionLayout
 import FillArrays: SquareEye
 import HypergeometricFunctions: _₂F₁general2
 
-export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio, TwoBandJacobi, TwoBandWeight
+export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio
 
 """"
     SemiclassicalJacobiWeight(t, a, b, c)
@@ -72,8 +72,8 @@ function jacobiexpansion(w::SemiclassicalJacobiWeight{T}) where T
     LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), P).w
 end
 
-_equals(::WeightLayout, ::ExpansionLayout, A::SemiclassicalJacobiWeight, B) = jacobiexpansion(A) == B
-_equals(::ExpansionLayout, ::WeightLayout, A, B::SemiclassicalJacobiWeight) = A == jacobiexpansion(B)
+_equals(::AbstractWeightLayout, ::ExpansionLayout, A::SemiclassicalJacobiWeight, B) = jacobiexpansion(A) == B
+_equals(::ExpansionLayout, ::AbstractWeightLayout, A, B::SemiclassicalJacobiWeight) = A == jacobiexpansion(B)
 
 
 """
@@ -385,13 +385,13 @@ end
 
 \(w_A::Weighted{<:Any,<:SemiclassicalJacobi}, w_B::Weighted{<:Any,<:SemiclassicalJacobi}) = convert(WeightedBasis, w_A) \ convert(WeightedBasis, w_B)
 
-massmatrix(P::SemiclassicalJacobi) = Diagonal(Fill(sum(orthogonalityweight(P)),∞))
+weightedgrammatrix(P::SemiclassicalJacobi) = Diagonal(Fill(sum(orthogonalityweight(P)),∞))
 
 @simplify function *(Ac::QuasiAdjoint{<:Any,<:SemiclassicalJacobi}, wB::WeightedBasis{<:Any,<:SemiclassicalJacobiWeight,<:SemiclassicalJacobi})
     A = parent(Ac)
     w,B = arguments(wB)
     P = SemiclassicalJacobi(w.t, w.a, w.b, w.c)
-    (P\A)' * massmatrix(P) * (P \ B)
+    (P\A)' * weightedgrammatrix(P) * (P \ B)
 end
 
 function ldiv(Q::SemiclassicalJacobi, f::AbstractQuasiVector)
@@ -440,8 +440,6 @@ convert(::Type{WeightedBasis}, Q::HalfWeighted{:ab,T,<:SemiclassicalJacobi}) whe
 convert(::Type{WeightedBasis}, Q::HalfWeighted{:bc,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, zero(T),Q.P.b,Q.P.c) .* Q.P
 convert(::Type{WeightedBasis}, Q::HalfWeighted{:ac,T,<:SemiclassicalJacobi}) where T = SemiclassicalJacobiWeight(Q.P.t, Q.P.a,zero(T),Q.P.c) .* Q.P
 
-
-include("twoband.jl")
 include("derivatives.jl")
 
 
