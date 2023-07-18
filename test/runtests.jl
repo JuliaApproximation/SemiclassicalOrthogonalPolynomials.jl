@@ -576,5 +576,15 @@ end
     @test istriu((Q \ P)[1:10,1:10])
 end
 
+@testset "L'L (#78)" begin
+    t = 1.1
+    m = 0
+    Q₀₀ = SemiclassicalJacobi(t, 0, 0, m)
+    Q₁₁ = SemiclassicalJacobi(t, 1, 1, m)
+
+    L = (Weighted(Q₀₀) \ Weighted(Q₁₁))
+    L'L
+end
+
 include("test_derivative.jl")
 include("test_neg1c.jl")
