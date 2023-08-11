@@ -349,7 +349,7 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
     Δc = B.c-A.c
 
     if (wA.a == A.a) && (wA.b == A.b) && (wA.c == A.c) && (wB.a == B.a) && (wB.b == B.b) && (wB.c == B.c) && isinteger(A.a) && isinteger(A.b) && isinteger(A.c) && isinteger(B.a) && isinteger(B.b) && isinteger(B.c)
-        k = (A \ SemiclassicalJacobiWeight(A.t,Δa,Δb,Δc))[1]
+        k = sum(SemiclassicalJacobiWeight(B.t,B.a,B.b,B.c))/sum(SemiclassicalJacobiWeight(A.t,A.a,A.b,A.c)) # = (A \ SemiclassicalJacobiWeight(A.t,Δa,Δb,Δc))[1]
         return (ApplyArray(*,Diagonal(Fill(k,∞)),(B \ A)))'
     elseif wA.a == wB.a && wA.b == wB.b && wA.c == wB.c # fallback to Christoffel–Darboux
         A \ B
