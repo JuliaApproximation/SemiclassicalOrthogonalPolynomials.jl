@@ -15,6 +15,7 @@ import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficie
                                         golubwelsch, AbstractOPLayout, weight, cholesky_jacobimatrix, qr_jacobimatrix, isnormalized
 
 import InfiniteArrays: OneToInf, InfUnitRange
+import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid, plotgrid, equals_layout, ExpansionLayout
 import FillArrays: SquareEye
 import HypergeometricFunctions: _₂F₁general2
 
