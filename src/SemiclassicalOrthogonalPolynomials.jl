@@ -15,7 +15,7 @@ import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficie
                                         golubwelsch, AbstractOPLayout, weight, cholesky_jacobimatrix, qr_jacobimatrix, isnormalized
 
 import InfiniteArrays: OneToInf, InfUnitRange
-import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid, plotgrid, _equals, ExpansionLayout
+import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid, plotgrid, equals_layout, ExpansionLayout
 import FillArrays: SquareEye
 import HypergeometricFunctions: _₂F₁general2
 
@@ -72,8 +72,8 @@ function jacobiexpansion(w::SemiclassicalJacobiWeight{T}) where T
     LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), P).w
 end
 
-_equals(::AbstractWeightLayout, ::ExpansionLayout, A::SemiclassicalJacobiWeight, B) = jacobiexpansion(A) == B
-_equals(::ExpansionLayout, ::AbstractWeightLayout, A, B::SemiclassicalJacobiWeight) = A == jacobiexpansion(B)
+equals_layout(::AbstractWeightLayout, ::ExpansionLayout, A::SemiclassicalJacobiWeight, B) = jacobiexpansion(A) == B
+equals_layout(::ExpansionLayout, ::AbstractWeightLayout, A, B::SemiclassicalJacobiWeight) = A == jacobiexpansion(B)
 
 
 """
