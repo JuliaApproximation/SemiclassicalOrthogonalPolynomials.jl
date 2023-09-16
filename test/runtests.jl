@@ -586,5 +586,16 @@ end
     L'L
 end
 
+@testset "Contiguous computation of sums of weights" begin
+    # this computes it in the explicit way
+    Wcomp = SemiclassicalJacobiWeight.(1.1,2:2,3:3,3:100);
+    @time scomp = sum.(Wcomp);
+    # this uses the contiguous recurrence
+    W = SemiclassicalJacobiWeight.(1.1,2,3,3:100);
+    @time s = sum.(W);
+    # consistency
+    @test maximum(abs.(s - scomp)) ≤ 1e-15 
+end
+
 include("test_derivative.jl")
 include("test_neg1c.jl")
