@@ -213,6 +213,7 @@ axes(P::SemiclassicalJacobi{T}) where T = (Inclusion(UnitInterval{T}()),OneToInf
 ==(A::SemiclassicalJacobi, B::SemiclassicalJacobi) = A.t == B.t && A.a == B.a && A.b == B.b && A.c == B.c
 ==(::AbstractQuasiMatrix, ::SemiclassicalJacobi) = false
 ==(::SemiclassicalJacobi, ::AbstractQuasiMatrix) = false
+==(::SemiclassicalJacobi, ::SubQuasiArray) = false
 
 orthogonalityweight(P::SemiclassicalJacobi) = SemiclassicalJacobiWeight(P.t, P.a, P.b, P.c)
 
