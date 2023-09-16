@@ -49,8 +49,7 @@ end
 
 function sum(P::SemiclassicalJacobiWeight{T}) where T
     (t,a,b,c) = map(big, map(float, (P.t,P.a,P.b,P.c)))
-    # (t,a,b,c) = P.t, P.a, P.b, P.c
-    return convert(T, t^c * beta(1+a,1+b) * _₂F₁general2(1+a,-c,2+a+b,1/t))
+    return convert(T, t^c * exp(loggamma(a+1)+loggamma(b+1)-loggamma(a+b+2)) * pFq((a+1,-c),(a+b+2, ), 1/t))
 end
 
 function summary(io::IO, P::SemiclassicalJacobiWeight)
@@ -349,7 +348,7 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
     Δc = B.c-A.c
 
     if (wA.a == A.a) && (wA.b == A.b) && (wA.c == A.c) && (wB.a == B.a) && (wB.b == B.b) && (wB.c == B.c) && isinteger(A.a) && isinteger(A.b) && isinteger(A.c) && isinteger(B.a) && isinteger(B.b) && isinteger(B.c)
-        k = sum(SemiclassicalJacobiWeight(B.t,B.a,B.b,B.c))/sum(SemiclassicalJacobiWeight(A.t,A.a,A.b,A.c)) # = (A \ SemiclassicalJacobiWeight(A.t,Δa,Δb,Δc))[1]
+        k = sum.(SemiclassicalJacobiWeight.(B.t,B.a,B.b,B.c:B.c))/sum.(SemiclassicalJacobiWeight(A.t,A.a,A.b,A.c:A.c)) # = (A \ SemiclassicalJacobiWeight(A.t,Δa,Δb,Δc))[1]
         return (ApplyArray(*,Diagonal(Fill(k,∞)),(B \ A)))'
     elseif wA.a == wB.a && wA.b == wB.b && wA.c == wB.c # fallback to Christoffel–Darboux
         A \ B
@@ -504,6 +503,49 @@ function LazyArrays.cache_filldata!(P::SemiclassicalJacobiFamily, inds::Abstract
         P.data[k] = SemiclassicalJacobi(t, _broadcast_getindex(a,k), _broadcast_getindex(b,k), _broadcast_getindex(c,k), P.data[k-2])
     end
     P
+end
+
+###
+# here we construct hierarchies of c weight sums by means of contiguous recurrence relations
+###
+
+mutable struct SemiclassicalJacobiCWeightFamily{T, C} <: AbstractVector{SemiclassicalJacobiWeight{T}}
+    data::Vector{SemiclassicalJacobiWeight{T}}
+    t::T
+    a::T
+    b::T
+    c::C
+    datasize::Tuple{Int}
+end
+
+getindex(W::SemiclassicalJacobiCWeightFamily, inds) = getindex(W.data, inds)
+
+size(W::SemiclassicalJacobiCWeightFamily) = (length(W.c),)
+
+function SemiclassicalJacobiCWeightFamily{T}(data::Vector, t, a, b, c) where T
+    checkrangesizes(a, b, c)
+    SemiclassicalJacobiCWeightFamily{T,typeof(c)}(data, t, a, b, c, (length(data),))
+end
+
+SemiclassicalJacobiCWeightFamily(t, a, b, c) = SemiclassicalJacobiCWeightFamily{float(promote_type(typeof(t),eltype(a),eltype(b),eltype(c)))}(t, a, b, c)
+function SemiclassicalJacobiCWeightFamily{T}(t::Number, a::Number, b::Number, c::Union{AbstractUnitRange,Number}) where T
+    return SemiclassicalJacobiCWeightFamily{T}(SemiclassicalJacobiWeight.(t,a:a,b:b,c), t, a, b, c)
+end
+
+Base.broadcasted(::Type{SemiclassicalJacobiWeight}, t::Number, a::Number, b::Number, c::Union{AbstractUnitRange,Number}) = 
+SemiclassicalJacobiCWeightFamily(t, a, b, c)
+
+function Base.broadcasted(::typeof(sum), W::SemiclassicalJacobiCWeightFamily)
+    a = W.a; b = W.b; c = W.c; t = W.t;
+    sumw = (a,b,c,t) -> t^c*exp(loggamma(a+1)+loggamma(b+1)-loggamma(a+b+2))*pFq((a+1,-c),(a+b+2, ), 1/t)
+    cmax = maximum(c)
+    F = zeros(cmax+1)
+    F[1] = sumw(a,b,0,t) # c=0
+    F[2] = sumw(a,b,1,t) # c=1
+    for n in 1:cmax-1
+        F[n+2] = (((b+1)*t-(a+1)*(1-t)+n*(2t-1))*F[n+1] + n*t*(1-t)*F[n-1+1])/(a+b+n+2)
+    end
+    return getindex(F,c.+1)
 end
 
 include("neg1c.jl")
