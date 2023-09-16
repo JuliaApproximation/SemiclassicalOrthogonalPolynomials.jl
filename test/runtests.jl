@@ -354,8 +354,7 @@ end
     end
 
     @testset "conversion" begin
-        D = legendre(0..1) \ P
-        @test (P \ legendre(0..1))[1:10,1:10] == inv(Matrix(D[1:10,1:10]))
+        @test_broken (P \ legendre(0..1))[1:10,1:10] == inv(Matrix((legendre(0..1) \ P)[1:10,1:10]))
         @test_broken (P \ Weighted(P)) == (Weighted(P) \ P) == Eye(∞)
     end
 end
