@@ -586,14 +586,22 @@ end
 end
 
 @testset "Contiguous computation of sums of weights" begin
-    # this computes it in the explicit way
-    Wcomp = SemiclassicalJacobiWeight.(1.1,2:2,3:3,3:100);
-    @time scomp = sum.(Wcomp);
-    # this uses the contiguous recurrence
-    W = SemiclassicalJacobiWeight.(1.1,2,3,3:100);
-    @time s = sum.(W);
-    # consistency
-    @test maximum(abs.(s - scomp)) ≤ 1e-15 
+    @testset "basics" begin
+        W = SemiclassicalJacobiWeight.(1.1,2,3,0:100)
+        @test W isa SemiclassicalOrthogonalPolynomials.SemiclassicalJacobiCWeightFamily
+        @test W[1] isa SemiclassicalJacobiWeight
+        @test size(W) == (101,)
+    end
+    @testset "consistency" begin
+        # this computes it in the explicit way
+        Wcomp = SemiclassicalJacobiWeight.(1.1,2:2,3:3,3:100);
+        @time scomp = sum.(Wcomp);
+        # this uses the contiguous recurrence
+        W = SemiclassicalJacobiWeight.(1.1,2,3,3:100);
+        @time s = sum.(W);
+        # consistency
+        @test maximum(abs.(s - scomp)) ≤ 1e-15 
+    end
 end
 
 include("test_derivative.jl")
