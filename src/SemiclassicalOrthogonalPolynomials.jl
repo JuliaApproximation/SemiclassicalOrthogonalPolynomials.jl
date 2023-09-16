@@ -348,7 +348,7 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
     Δc = B.c-A.c
 
     if (wA.a == A.a) && (wA.b == A.b) && (wA.c == A.c) && (wB.a == B.a) && (wB.b == B.b) && (wB.c == B.c) && isinteger(A.a) && isinteger(A.b) && isinteger(A.c) && isinteger(B.a) && isinteger(B.b) && isinteger(B.c)
-        k = sum.(SemiclassicalJacobiWeight.(B.t,B.a,B.b,B.c:B.c))/sum.(SemiclassicalJacobiWeight(A.t,A.a,A.b,A.c:A.c)) # = (A \ SemiclassicalJacobiWeight(A.t,Δa,Δb,Δc))[1]
+        k = sum.(SemiclassicalJacobiWeight.(B.t,B.a,B.b,Int(B.c):Int(B.c)))[1]./sum.(SemiclassicalJacobiWeight.(A.t,A.a,A.b,Int(A.c):Int(A.c)))[1] # = (A \ SemiclassicalJacobiWeight(A.t,Δa,Δb,Δc))[1]
         return (ApplyArray(*,Diagonal(Fill(k,∞)),(B \ A)))'
     elseif wA.a == wB.a && wA.b == wB.b && wA.c == wB.c # fallback to Christoffel–Darboux
         A \ B
@@ -541,6 +541,7 @@ function Base.broadcasted(::typeof(sum), W::SemiclassicalJacobiCWeightFamily)
     cmax = maximum(c)
     F = zeros(cmax+1)
     F[1] = sumw(a,b,0,t) # c=0
+    cmax == 0 && return F[1:1]
     F[2] = sumw(a,b,1,t) # c=1
     for n in 1:cmax-1
         F[n+2] = (((b+1)*t-(a+1)*(1-t)+n*(2t-1))*F[n+1] + n*t*(1-t)*F[n-1+1])/(a+b+n+2)
