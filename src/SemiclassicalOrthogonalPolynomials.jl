@@ -256,14 +256,15 @@ function semijacobi_ldiv(P::SemiclassicalJacobi, Q)
 end
 
 # returns conversion operator from SemiclassicalJacobi P to SemiclassicalJacobi Q in a single step via decomposition.
-function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
-    (Q == P) && return SymTridiagonal(Ones(∞),Zeros(∞))
-    Δa = Q.a-P.a
-    Δb = Q.b-P.b
-    Δc = Q.c-P.c
+semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi) = semijacobi_ldiv_direct(Q.t, Q.a, Q.b, Q.c, P)
+function semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, P::SemiclassicalJacobi)
+    (Qt ≈ P.t) && (Qa ≈ P.a) && (Qb ≈ P.b) && (Qc ≈ P.c) && return SymTridiagonal(Ones(∞),Zeros(∞))
+    Δa = Qa-P.a
+    Δb = Qb-P.b
+    Δc = Qc-P.c
     M = Diagonal(Ones(∞))
     if iseven(Δa) && iseven(Δb) && iseven(Δc)
-        M = qr(P.X^(Δa÷2)*(I-P.X)^(Δb÷2)*(Q.t*I-P.X)^(Δc÷2)).R
+        M = qr(P.X^(Δa÷2)*(I-P.X)^(Δb÷2)*(Qt*I-P.X)^(Δc÷2)).R
         return ApplyArray(*, Diagonal(sign.(view(M,band(0))).*Fill(abs.(1/M[1]),∞)), M)
     elseif isone(Δa) && iszero(Δb) && iszero(Δc) # special case (Δa,Δb,Δc) = (1,0,0)
         M = cholesky(P.X).U
@@ -272,10 +273,10 @@ function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
         M = cholesky(I-P.X).U
         return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
     elseif iszero(Δa) && iszero(Δb) && isone(Δc) # special case (Δa,Δb,Δc) = (0,0,1)
-        M = cholesky(Q.t*I-P.X).U
+        M = cholesky(Qt*I-P.X).U
         return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
     elseif isinteger(Δa) && isinteger(Δb) && isinteger(Δc)
-        M = cholesky(Symmetric(P.X^(Δa)*(I-P.X)^(Δb)*(Q.t*I-P.X)^(Δc))).U
+        M = cholesky(Symmetric(P.X^(Δa)*(I-P.X)^(Δb)*(Qt*I-P.X)^(Δc))).U
         return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M) # match normalization choice P_0(x) = 1
     else
         error("Implement")
@@ -283,26 +284,27 @@ function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
 end
 
 # returns conversion operator from SemiclassicalJacobi P to SemiclassicalJacobi Q.
-function semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
-    @assert Q.t ≈ P.t
-    (Q == P) && return SymTridiagonal(Ones(∞),Zeros(∞))
-    Δa = Q.a-P.a
-    Δb = Q.b-P.b
-    Δc = Q.c-P.c
+semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi) = semijacobi_ldiv(Q.t, Q.a, Q.b, Q.c, P)
+function semijacobi_ldiv(Qt, Qa, Qb, Qc, P::SemiclassicalJacobi)
+    @assert Qt ≈ P.t
+    (Qt ≈ P.t) && (Qa ≈ P.a) && (Qb ≈ P.b) && (Qc ≈ P.c) && return SymTridiagonal(Ones(∞),Zeros(∞))
+    Δa = Qa-P.a
+    Δb = Qb-P.b
+    Δc = Qc-P.c
     if isinteger(Δa) && isinteger(Δb) && isinteger(Δc) # (Δa,Δb,Δc) are integers -> use QR/Cholesky iteratively
         if ((isone(Δa)||isone(Δa/2)) && iszero(Δb) && iszero(Δc)) || (iszero(Δa) && (isone(Δb)||isone(Δb/2)) && iszero(Δc))  || (iszero(Δa) && iszero(Δb) && (isone(Δc)||isone(Δc/2)))
-            M = semijacobi_ldiv_direct(Q, P)
+            M = semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, P)
         elseif Δa > 0  # iterative modification by 1
-            M = ApplyArray(*,semijacobi_ldiv_direct(Q, SemiclassicalJacobi(Q.t, Q.a-1-iseven(Δa), Q.b, Q.c)),semijacobi_ldiv(SemiclassicalJacobi(Q.t, Q.a-1-iseven(Δa), Q.b, Q.c), P))
+            M = ApplyArray(*,semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa-1-iseven(Δa), Qb, Qc, P)),semijacobi_ldiv(Qt, Qa-1-iseven(Δa), Qb, Qc, P))
         elseif Δb > 0
-            M = ApplyArray(*,semijacobi_ldiv_direct(Q, SemiclassicalJacobi(Q.t, Q.a, Q.b-1-iseven(Δb), Q.c)),semijacobi_ldiv(SemiclassicalJacobi(Q.t, Q.a, Q.b-1-iseven(Δb), Q.c), P))
+            M = ApplyArray(*,semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa, Qb-1-iseven(Δb), Qc, P)),semijacobi_ldiv(Qt, Qa, Qb-1-iseven(Δb), Qc, P))
         elseif Δc > 0
-            M = ApplyArray(*,semijacobi_ldiv_direct(Q, SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c-1-iseven(Δc))),semijacobi_ldiv(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c-1-iseven(Δc)), P))
+            M = ApplyArray(*,semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa, Qb, Qc-1-iseven(Δc), P)),semijacobi_ldiv(Qt, Qa, Qb, Qc-1-iseven(Δc), P))
         end
     else # fallback to Lancos
         R = SemiclassicalJacobi(P.t, mod(P.a,-1), mod(P.b,-1), mod(P.c,-1))
         R̃ = toclassical(R)
-        return (P \ R) * _p0(R̃) * (R̃ \ Q)
+        return (P \ R) * _p0(R̃) * (R̃ \ SemiclassicalJacobi(Qt, Qa, Qb, Qc))
     end
 end
 
