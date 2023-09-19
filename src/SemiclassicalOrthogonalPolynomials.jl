@@ -48,8 +48,9 @@ function getindex(P::SemiclassicalJacobiWeight, x::Real)
 end
 
 function sum(P::SemiclassicalJacobiWeight{T}) where T
-    (t,a,b,c) = map(big, map(float, (P.t,P.a,P.b,P.c)))
-    return convert(T, t^c * exp(loggamma(a+1)+loggamma(b+1)-loggamma(a+b+2)) * pFq((a+1,-c),(a+b+2, ), 1/t))
+    (t,a,b,c) = (P.t, P.a, P.b, P.c)
+    t,a,b,c = BigFloat("$t"),BigFloat("$a"),BigFloat("$b"),BigFloat("$c") # This is needed at high parameter values
+    return abs(convert(T, t^c*exp(loggamma(a+1)+loggamma(b+1)-loggamma(a+b+2)) * pFq((a+1,-c),(a+b+2, ), 1/t)))
 end
 
 function summary(io::IO, P::SemiclassicalJacobiWeight)
@@ -342,7 +343,7 @@ end
 \(A::SemiclassicalJacobi, B::SemiclassicalJacobi) = semijacobi_ldiv(A, B)
 \(A::LanczosPolynomial, B::SemiclassicalJacobi) = semijacobi_ldiv(A, B)
 \(A::SemiclassicalJacobi, B::LanczosPolynomial) = semijacobi_ldiv(A, B)
-function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
+function \(w_A::WeightedSemiclassicalJacobi{T}, w_B::WeightedSemiclassicalJacobi{T}) where T
     wA,A = w_A.args
     wB,B = w_B.args
     @assert wA.t == wB.t == A.t == B.t
@@ -351,7 +352,8 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
     Δc = B.c-A.c
 
     if (wA.a == A.a) && (wA.b == A.b) && (wA.c == A.c) && (wB.a == B.a) && (wB.b == B.b) && (wB.c == B.c) && isinteger(A.a) && isinteger(A.b) && isinteger(A.c) && isinteger(B.a) && isinteger(B.b) && isinteger(B.c)
-        k = sum.(SemiclassicalJacobiWeight.(B.t,B.a,B.b,Int(B.c):Int(B.c)))[1]./sum.(SemiclassicalJacobiWeight.(A.t,A.a,A.b,Int(A.c):Int(A.c)))[1] # = (A \ SemiclassicalJacobiWeight(A.t,Δa,Δb,Δc))[1]
+        # k = (A \ SemiclassicalJacobiWeight(A.t,Δa,Δb,Δc))[1]
+        k = sumquotient(SemiclassicalJacobiWeight(B.t,B.a,B.b,B.c),SemiclassicalJacobiWeight(A.t,A.a,A.b,A.c))
         return (ApplyArray(*,Diagonal(Fill(k,∞)),(B \ A)))'
     elseif wA.a == wB.a && wA.b == wB.b && wA.c == wB.c # fallback to Christoffel–Darboux
         A \ B
@@ -538,18 +540,47 @@ end
 Base.broadcasted(::Type{SemiclassicalJacobiWeight}, t::Number, a::Number, b::Number, c::Union{AbstractUnitRange,Number}) = 
 SemiclassicalJacobiCWeightFamily(t, a, b, c)
 
-function Base.broadcasted(::typeof(sum), W::SemiclassicalJacobiCWeightFamily)
+function Base.broadcasted(::typeof(sum), W::SemiclassicalJacobiCWeightFamily{T}) where T
     a = W.a; b = W.b; c = W.c; t = W.t;
-    sumw = (a,b,c,t) -> t^c*exp(loggamma(a+1)+loggamma(b+1)-loggamma(a+b+2))*pFq((a+1,-c),(a+b+2, ), 1/t)
-    cmax = maximum(c)
-    F = zeros(cmax+1)
+    cmin = minimum(c); cmax = maximum(c);
+    @assert isinteger(cmax) && isinteger(cmin)
+    # This is needed at high parameter values.
+    # Manually setting setprecision(2048) allows accurate computation even for very high c. 
+    t,a,b = BigFloat("$t"),BigFloat("$a"),BigFloat("$b")
+    sumw = (a,b,c,t) -> pFq((a+1,-c),(a+b+2, ), 1/t)
+    F = zeros(BigFloat,cmax+1)
     F[1] = sumw(a,b,0,t) # c=0
     cmax == 0 && return F[1:1]
     F[2] = sumw(a,b,1,t) # c=1
-    for n in 1:cmax-1
-        F[n+2] = (((b+1)*t-(a+1)*(1-t)+n*(2t-1))*F[n+1] + n*t*(1-t)*F[n-1+1])/(a+b+n+2)
+    @inbounds for n in 1:cmax-1
+        F[n+2] = ((n-1)/t+1/t-n)/(n+a+b+2)*F[n]+(a+b+4+2*n-2-(n+a+1)/t)/(n+a+b+2)*F[n+1]
     end
-    return getindex(F,c.+1)
+    return abs.(convert.(T,t.^c.*exp(loggamma(a+1)+loggamma(b+1)-loggamma(a+b+2)).*getindex(F,W.c.+1)))
+end
+
+# computes sum(wP)/sum(wQ) by taking into account cancellations
+function sumquotient(wP::SemiclassicalJacobiWeight{T},wQ::SemiclassicalJacobiWeight{T}) where T
+    @assert wP.t ≈ wQ.t
+    @assert isinteger(wP.c) && isinteger(wQ.c)
+    a = wP.a; b = wP.b; c = Int(wP.c); t = wP.t;
+    # This is needed at high parameter values.
+    t,a,b = BigFloat("$t"),BigFloat("$a"),BigFloat("$b")
+    sumw = (a,b,c,t) -> pFq((a+1,-c),(a+b+2, ), 1/t)
+    F = zeros(BigFloat,c+1)
+    F[1] = sumw(a,b,0,t) # c=0
+    F[2] = sumw(a,b,1,t) # c=1
+    @inbounds for n in 1:c-1
+        F[n+2] = ((n-1)/t+1/t-n)/(n+a+b+2)*F[n]+(a+b+4+2*n-2-(n+a+1)/t)/(n+a+b+2)*F[n+1]
+    end
+    a = wQ.a; b = wQ.b; c = Int(wQ.c);
+    t,a,b = BigFloat("$t"),BigFloat("$a"),BigFloat("$b")
+    G = zeros(BigFloat,c+1)
+    G[1] = sumw(a,b,0,t) # c=0
+    G[2] = sumw(a,b,1,t) # c=1
+    @inbounds for n in 1:c-1
+        G[n+2] = ((n-1)/t+1/t-n)/(n+a+b+2)*G[n]+(a+b+4+2*n-2-(n+a+1)/t)/(n+a+b+2)*G[n+1]
+    end
+    return abs.(convert.(T,t.^(Int(wP.c)-c).*exp(loggamma(wP.a+1)+loggamma(wP.b+1)-loggamma(wP.a+wP.b+2)-loggamma(a+1)-loggamma(b+1)+loggamma(a+b+2))*F[Int(wP.c)+1]/G[c+1]))
 end
 
 include("neg1c.jl")
