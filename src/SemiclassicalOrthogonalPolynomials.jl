@@ -566,7 +566,7 @@ function sumquotient(wP::SemiclassicalJacobiWeight{T},wQ::SemiclassicalJacobiWei
     # This is needed at high parameter values.
     t,a,b = BigFloat("$t"),BigFloat("$a"),BigFloat("$b")
     sumw = (a,b,c,t) -> pFq((a+1,-c),(a+b+2, ), 1/t)
-    F = zeros(BigFloat,c+1)
+    F = zeros(BigFloat,max(2,c+1))
     F[1] = sumw(a,b,0,t) # c=0
     F[2] = sumw(a,b,1,t) # c=1
     @inbounds for n in 1:c-1
@@ -574,7 +574,7 @@ function sumquotient(wP::SemiclassicalJacobiWeight{T},wQ::SemiclassicalJacobiWei
     end
     a = wQ.a; b = wQ.b; c = Int(wQ.c);
     t,a,b = BigFloat("$t"),BigFloat("$a"),BigFloat("$b")
-    G = zeros(BigFloat,c+1)
+    G = zeros(BigFloat,max(2,c+1))
     G[1] = sumw(a,b,0,t) # c=0
     G[2] = sumw(a,b,1,t) # c=1
     @inbounds for n in 1:c-1
