@@ -1,5 +1,5 @@
 using SemiclassicalOrthogonalPolynomials
-using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, FillArrays, LinearAlgebra
+using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, FillArrays, LinearAlgebra, SpecialFunctions, HypergeometricFunctions
 import BandedMatrices: _BandedMatrix
 import SemiclassicalOrthogonalPolynomials: op_lowering, RaisedOP, jacobiexpansion, semijacobi_ldiv_direct
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight, symtridiagonalize
@@ -601,6 +601,9 @@ end
         @time s = sum.(W);
         # consistency
         @test maximum(abs.(s - scomp)) ≤ 1e-15 
+        # c = 0
+        t, a, b, c = 1.1, 1, 1, 0
+        @test sum.(SemiclassicalJacobiWeight.(t,a,b,c:c))[1] ≈ t^c * beta(1+a,1+b) * _₂F₁(1+a,-c,2+a+b,1/t)
     end
 end
 

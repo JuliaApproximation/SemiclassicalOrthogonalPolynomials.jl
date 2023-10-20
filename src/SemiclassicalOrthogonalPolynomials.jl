@@ -550,7 +550,7 @@ function Base.broadcasted(::typeof(sum), W::SemiclassicalJacobiCWeightFamily{T})
     sumw = (a,b,c,t) -> pFq((a+1,-c),(a+b+2, ), 1/t)
     F = zeros(BigFloat,cmax+1)
     F[1] = sumw(a,b,0,t) # c=0
-    cmax == 0 && return F[1:1]
+    cmax == 0 && return abs.(convert.(T,t.^c.*exp(loggamma(a+1)+loggamma(b+1)-loggamma(a+b+2)).*getindex(F,1:1)))
     F[2] = sumw(a,b,1,t) # c=1
     @inbounds for n in 1:cmax-1
         F[n+2] = ((n-1)/t+1/t-n)/(n+a+b+2)*F[n]+(a+b+4+2*n-2-(n+a+1)/t)/(n+a+b+2)*F[n+1]
