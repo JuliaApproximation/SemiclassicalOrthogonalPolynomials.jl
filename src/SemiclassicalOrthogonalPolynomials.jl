@@ -9,7 +9,7 @@ import ArrayLayouts: MemoryLayout, ldiv, diagonaldata, subdiagonaldata, supdiago
 import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout, _BandedMatrix
 import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAbstractVector, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector, ApplyArray,
                     AccumulateAbstractVector, LazyVector, AbstractCachedMatrix, BroadcastLayout
-import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedOPLayout,
+import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedOPLayout, MappedOPLayout,
                                         Bidiagonal, Tridiagonal, SymTridiagonal, symtridiagonalize, normalizationconstant, LanczosPolynomial,
                                         OrthogonalPolynomialRatio, Weighted, AbstractWeightLayout, UnionDomain, oneto, WeightedBasis, HalfWeighted,
                                         golubwelsch, AbstractOPLayout, weight, cholesky_jacobimatrix, qr_jacobimatrix, isnormalized
@@ -214,7 +214,8 @@ axes(P::SemiclassicalJacobi{T}) where T = (Inclusion(UnitInterval{T}()),OneToInf
 ==(A::SemiclassicalJacobi, B::SemiclassicalJacobi) = A.t == B.t && A.a == B.a && A.b == B.b && A.c == B.c
 ==(::AbstractQuasiMatrix, ::SemiclassicalJacobi) = false
 ==(::SemiclassicalJacobi, ::AbstractQuasiMatrix) = false
-==(::SemiclassicalJacobi, ::SubQuasiArray) = false
+==(::SemiclassicalJacobi, ::SubQuasiArray{<:Any,2}) = false
+==(::SubQuasiArray{<:Any,2}, ::SemiclassicalJacobi) = false
 
 orthogonalityweight(P::SemiclassicalJacobi) = SemiclassicalJacobiWeight(P.t, P.a, P.b, P.c)
 
@@ -329,6 +330,7 @@ copy(L::Ldiv{SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
 copy(L::Ldiv{SemiclassicalJacobiLayout,<:AbstractBasisLayout}) = semijacobi_ldiv(L.A, L.B)
 copy(L::Ldiv{SemiclassicalJacobiLayout,BroadcastLayout{typeof(*)}}) = semijacobi_ldiv(L.A, L.B)
 copy(L::Ldiv{<:Any,SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
+copy(L::Ldiv{MappedOPLayout,SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
 copy(L::Ldiv{<:AbstractBasisLayout,SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
 function copy(L::Ldiv{SemiclassicalJacobiLayout,SemiclassicalJacobiLayout})
     Q,P = L.A,L.B
