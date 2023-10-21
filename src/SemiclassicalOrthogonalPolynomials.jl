@@ -49,7 +49,7 @@ end
 
 function sum(P::SemiclassicalJacobiWeight{T}) where T
     (t,a,b,c) = (P.t, P.a, P.b, P.c)
-    t,a,b,c = BigFloat("$t"),BigFloat("$a"),BigFloat("$b"),BigFloat("$c") # This is needed at high parameter values
+    t,a,b,c = convert(BigFloat,t),convert(BigFloat,a),convert(BigFloat,b),convert(BigFloat,c) # This is needed at high parameter values
     return abs(convert(T, t^c*exp(loggamma(a+1)+loggamma(b+1)-loggamma(a+b+2)) * pFq((a+1,-c),(a+b+2, ), 1/t)))
 end
 
@@ -548,7 +548,7 @@ function Base.broadcasted(::typeof(sum), W::SemiclassicalJacobiCWeightFamily{T})
     @assert isinteger(cmax) && isinteger(cmin)
     # This is needed at high parameter values.
     # Manually setting setprecision(2048) allows accurate computation even for very high c. 
-    t,a,b = BigFloat("$t"),BigFloat("$a"),BigFloat("$b")
+    t,a,b = convert(BigFloat,t),convert(BigFloat,a),convert(BigFloat,b)
     sumw = (a,b,c,t) -> pFq((a+1,-c),(a+b+2, ), 1/t)
     F = zeros(BigFloat,cmax+1)
     F[1] = sumw(a,b,0,t) # c=0
@@ -566,7 +566,7 @@ function sumquotient(wP::SemiclassicalJacobiWeight{T},wQ::SemiclassicalJacobiWei
     @assert isinteger(wP.c) && isinteger(wQ.c)
     a = wP.a; b = wP.b; c = Int(wP.c); t = wP.t;
     # This is needed at high parameter values.
-    t,a,b = BigFloat("$t"),BigFloat("$a"),BigFloat("$b")
+    t,a,b = convert(BigFloat,t),convert(BigFloat,a),convert(BigFloat,b)
     sumw = (a,b,c,t) -> pFq((a+1,-c),(a+b+2, ), 1/t)
     F = zeros(BigFloat,max(2,c+1))
     F[1] = sumw(a,b,0,t) # c=0
@@ -575,7 +575,7 @@ function sumquotient(wP::SemiclassicalJacobiWeight{T},wQ::SemiclassicalJacobiWei
         F[n+2] = ((n-1)/t+1/t-n)/(n+a+b+2)*F[n]+(a+b+4+2*n-2-(n+a+1)/t)/(n+a+b+2)*F[n+1]
     end
     a = wQ.a; b = wQ.b; c = Int(wQ.c);
-    t,a,b = BigFloat("$t"),BigFloat("$a"),BigFloat("$b")
+    t,a,b = convert(BigFloat,t),convert(BigFloat,a),convert(BigFloat,b)
     G = zeros(BigFloat,max(2,c+1))
     G[1] = sumw(a,b,0,t) # c=0
     G[2] = sumw(a,b,1,t) # c=1
