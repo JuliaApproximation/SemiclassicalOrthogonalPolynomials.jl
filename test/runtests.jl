@@ -604,6 +604,9 @@ end
         # c = 0
         t, a, b, c = 1.1, 1, 1, 0
         @test sum.(SemiclassicalJacobiWeight.(t,a,b,c:c))[1] ≈ t^c * beta(1+a,1+b) * _₂F₁(1+a,-c,2+a+b,1/t)
+        # c = 30
+        t, a, b, c = 1.23, 2, 3, 30
+        @test sum.(SemiclassicalJacobiWeight.(t,a,b,c:c))[1] ≈ t^c * beta(1+a,1+b) * _₂F₁(1+a,-c,2+a+b,1/t)
     end
 end
 
