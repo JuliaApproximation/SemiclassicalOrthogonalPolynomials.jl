@@ -516,7 +516,12 @@ end
 # here we construct hierarchies of c weight sums by means of contiguous recurrence relations
 ###
 
-mutable struct SemiclassicalJacobiCWeightFamily{T, C} <: AbstractVector{SemiclassicalJacobiWeight{T}}
+""""
+A SemiclassicalJacobiCWeightFamily
+
+is a vector containing a sequence of weights of the form `x^a * (1-x)^b * (t-x)^c` where `a` and `b` are scalars and `c` is a range of values with integer spacing; where `x in 0..1`. It is automatically generated when calling `SemiclassicalJacobiWeight.(t,a,b,cmin:cmax)`.
+"""
+struct SemiclassicalJacobiCWeightFamily{T, C} <: AbstractVector{SemiclassicalJacobiWeight{T}}
     data::Vector{SemiclassicalJacobiWeight{T}}
     t::T
     a::T
@@ -542,6 +547,8 @@ end
 Base.broadcasted(::Type{SemiclassicalJacobiWeight}, t::Number, a::Number, b::Number, c::Union{AbstractUnitRange,Number}) = 
 SemiclassicalJacobiCWeightFamily(t, a, b, c)
 
+_unweightedsemiclassicalsum = (a,b,c,t) -> pFq((a+1,-c),(a+b+2, ), 1/t)
+
 function Base.broadcasted(::typeof(sum), W::SemiclassicalJacobiCWeightFamily{T}) where T
     a = W.a; b = W.b; c = W.c; t = W.t;
     cmin = minimum(c); cmax = maximum(c);
@@ -549,36 +556,36 @@ function Base.broadcasted(::typeof(sum), W::SemiclassicalJacobiCWeightFamily{T})
     # This is needed at high parameter values.
     # Manually setting setprecision(2048) allows accurate computation even for very high c. 
     t,a,b = convert(BigFloat,t),convert(BigFloat,a),convert(BigFloat,b)
-    sumw = (a,b,c,t) -> pFq((a+1,-c),(a+b+2, ), 1/t)
     F = zeros(BigFloat,cmax+1)
-    F[1] = sumw(a,b,0,t) # c=0
+    F[1] = _unweightedsemiclassicalsum(a,b,0,t) # c=0
     cmax == 0 && return abs.(convert.(T,t.^c.*exp(loggamma(a+1)+loggamma(b+1)-loggamma(a+b+2)).*getindex(F,1:1)))
-    F[2] = sumw(a,b,1,t) # c=1
+    F[2] = _unweightedsemiclassicalsum(a,b,1,t) # c=1
     @inbounds for n in 1:cmax-1
         F[n+2] = ((n-1)/t+1/t-n)/(n+a+b+2)*F[n]+(a+b+4+2*n-2-(n+a+1)/t)/(n+a+b+2)*F[n+1]
     end
     return abs.(convert.(T,t.^c.*exp(loggamma(a+1)+loggamma(b+1)-loggamma(a+b+2)).*getindex(F,W.c.+1)))
 end
 
-# computes sum(wP)/sum(wQ) by taking into account cancellations
+""""
+sumquotient(wP, wQ) computes sum(wP)/sum(wQ) by taking into account cancellations, allowing more stable computations for high weight parameters.
+"""
 function sumquotient(wP::SemiclassicalJacobiWeight{T},wQ::SemiclassicalJacobiWeight{T}) where T
     @assert wP.t ≈ wQ.t
     @assert isinteger(wP.c) && isinteger(wQ.c)
     a = wP.a; b = wP.b; c = Int(wP.c); t = wP.t;
     # This is needed at high parameter values.
     t,a,b = convert(BigFloat,t),convert(BigFloat,a),convert(BigFloat,b)
-    sumw = (a,b,c,t) -> pFq((a+1,-c),(a+b+2, ), 1/t)
     F = zeros(BigFloat,max(2,c+1))
-    F[1] = sumw(a,b,0,t) # c=0
-    F[2] = sumw(a,b,1,t) # c=1
+    F[1] = _unweightedsemiclassicalsum(a,b,0,t) # c=0
+    F[2] = _unweightedsemiclassicalsum(a,b,1,t) # c=1
     @inbounds for n in 1:c-1
         F[n+2] = ((n-1)/t+1/t-n)/(n+a+b+2)*F[n]+(a+b+4+2*n-2-(n+a+1)/t)/(n+a+b+2)*F[n+1]
     end
     a = wQ.a; b = wQ.b; c = Int(wQ.c);
     t,a,b = convert(BigFloat,t),convert(BigFloat,a),convert(BigFloat,b)
     G = zeros(BigFloat,max(2,c+1))
-    G[1] = sumw(a,b,0,t) # c=0
-    G[2] = sumw(a,b,1,t) # c=1
+    G[1] = _unweightedsemiclassicalsum(a,b,0,t) # c=0
+    G[2] = _unweightedsemiclassicalsum(a,b,1,t) # c=1
     @inbounds for n in 1:c-1
         G[n+2] = ((n-1)/t+1/t-n)/(n+a+b+2)*G[n]+(a+b+4+2*n-2-(n+a+1)/t)/(n+a+b+2)*G[n+1]
     end
