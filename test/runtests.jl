@@ -1,5 +1,5 @@
 using SemiclassicalOrthogonalPolynomials
-using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, FillArrays, LinearAlgebra
+using ClassicalOrthogonalPolynomials, ContinuumArrays, BandedMatrices, QuasiArrays, Test, LazyArrays, FillArrays, LinearAlgebra, SpecialFunctions, HypergeometricFunctions
 import BandedMatrices: _BandedMatrix
 import SemiclassicalOrthogonalPolynomials: op_lowering, RaisedOP, jacobiexpansion, semijacobi_ldiv_direct
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, orthogonalityweight, symtridiagonalize
@@ -354,8 +354,7 @@ end
     end
 
     @testset "conversion" begin
-        D = legendre(0..1) \ P
-        @test (P \ legendre(0..1))[1:10,1:10] == inv(Matrix(D[1:10,1:10]))
+        @test (P \ legendre(0..1))[1:10,1:10] == inv(Matrix((legendre(0..1) \ P)[1:10,1:10]))
         @test_broken (P \ Weighted(P)) == (Weighted(P) \ P) == Eye(∞)
     end
 end
@@ -584,6 +583,31 @@ end
 
     L = (Weighted(Q₀₀) \ Weighted(Q₁₁))
     L'L
+end
+
+@testset "Contiguous computation of sums of weights" begin
+    @testset "basics" begin
+        W = SemiclassicalJacobiWeight.(1.1,2,3,0:100)
+        @test W isa SemiclassicalOrthogonalPolynomials.SemiclassicalJacobiCWeightFamily
+        @test W[1] isa SemiclassicalJacobiWeight
+        @test size(W) == (101,)
+    end
+    @testset "consistency" begin
+        # this computes it in the explicit way
+        Wcomp = SemiclassicalJacobiWeight.(1.1,2:2,3:3,3:100);
+        @time scomp = sum.(Wcomp);
+        # this uses the contiguous recurrence
+        W = SemiclassicalJacobiWeight.(1.1,2,3,3:100);
+        @time s = sum.(W);
+        # consistency
+        @test maximum(abs.(s - scomp)) ≤ 1e-15 
+        # c = 0
+        t, a, b, c = 1.1, 1, 1, 0
+        @test sum.(SemiclassicalJacobiWeight.(t,a,b,c:c))[1] ≈ t^c * beta(1+a,1+b) * _₂F₁(1+a,-c,2+a+b,1/t)
+        # c = 30
+        t, a, b, c = 1.23, 2, 3, 30
+        @test sum.(SemiclassicalJacobiWeight.(t,a,b,c:c))[1] ≈ t^c * beta(1+a,1+b) * _₂F₁(1+a,-c,2+a+b,1/t)
+    end
 end
 
 include("test_derivative.jl")

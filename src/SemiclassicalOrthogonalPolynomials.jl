@@ -48,9 +48,9 @@ function getindex(P::SemiclassicalJacobiWeight, x::Real)
 end
 
 function sum(P::SemiclassicalJacobiWeight{T}) where T
-    (t,a,b,c) = map(big, map(float, (P.t,P.a,P.b,P.c)))
-    # (t,a,b,c) = P.t, P.a, P.b, P.c
-    return convert(T, t^c * beta(1+a,1+b) * _₂F₁general2(1+a,-c,2+a+b,1/t))
+    (t,a,b,c) = (P.t, P.a, P.b, P.c)
+    t,a,b,c = convert(BigFloat,t),convert(BigFloat,a),convert(BigFloat,b),convert(BigFloat,c) # This is needed at high parameter values
+    return abs(convert(T, t^c*exp(loggamma(a+1)+loggamma(b+1)-loggamma(a+b+2)) * pFq((a+1,-c),(a+b+2, ), 1/t)))
 end
 
 function summary(io::IO, P::SemiclassicalJacobiWeight)
@@ -258,14 +258,15 @@ function semijacobi_ldiv(P::SemiclassicalJacobi, Q)
 end
 
 # returns conversion operator from SemiclassicalJacobi P to SemiclassicalJacobi Q in a single step via decomposition.
-function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
-    (Q == P) && return SymTridiagonal(Ones(∞),Zeros(∞))
-    Δa = Q.a-P.a
-    Δb = Q.b-P.b
-    Δc = Q.c-P.c
+semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi) = semijacobi_ldiv_direct(Q.t, Q.a, Q.b, Q.c, P)
+function semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, P::SemiclassicalJacobi)
+    (Qt ≈ P.t) && (Qa ≈ P.a) && (Qb ≈ P.b) && (Qc ≈ P.c) && return SymTridiagonal(Ones(∞),Zeros(∞))
+    Δa = Qa-P.a
+    Δb = Qb-P.b
+    Δc = Qc-P.c
     M = Diagonal(Ones(∞))
     if iseven(Δa) && iseven(Δb) && iseven(Δc)
-        M = qr(P.X^(Δa÷2)*(I-P.X)^(Δb÷2)*(Q.t*I-P.X)^(Δc÷2)).R
+        M = qr(P.X^(Δa÷2)*(I-P.X)^(Δb÷2)*(Qt*I-P.X)^(Δc÷2)).R
         return ApplyArray(*, Diagonal(sign.(view(M,band(0))).*Fill(abs.(1/M[1]),∞)), M)
     elseif isone(Δa) && iszero(Δb) && iszero(Δc) # special case (Δa,Δb,Δc) = (1,0,0)
         M = cholesky(P.X).U
@@ -274,10 +275,10 @@ function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
         M = cholesky(I-P.X).U
         return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
     elseif iszero(Δa) && iszero(Δb) && isone(Δc) # special case (Δa,Δb,Δc) = (0,0,1)
-        M = cholesky(Q.t*I-P.X).U
+        M = cholesky(Qt*I-P.X).U
         return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
     elseif isinteger(Δa) && isinteger(Δb) && isinteger(Δc)
-        M = cholesky(Symmetric(P.X^(Δa)*(I-P.X)^(Δb)*(Q.t*I-P.X)^(Δc))).U
+        M = cholesky(Symmetric(P.X^(Δa)*(I-P.X)^(Δb)*(Qt*I-P.X)^(Δc))).U
         return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M) # match normalization choice P_0(x) = 1
     else
         error("Implement")
@@ -285,26 +286,27 @@ function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
 end
 
 # returns conversion operator from SemiclassicalJacobi P to SemiclassicalJacobi Q.
-function semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
-    @assert Q.t ≈ P.t
-    (Q == P) && return SymTridiagonal(Ones(∞),Zeros(∞))
-    Δa = Q.a-P.a
-    Δb = Q.b-P.b
-    Δc = Q.c-P.c
+semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi) = semijacobi_ldiv(Q.t, Q.a, Q.b, Q.c, P)
+function semijacobi_ldiv(Qt, Qa, Qb, Qc, P::SemiclassicalJacobi)
+    @assert Qt ≈ P.t
+    (Qt ≈ P.t) && (Qa ≈ P.a) && (Qb ≈ P.b) && (Qc ≈ P.c) && return SymTridiagonal(Ones(∞),Zeros(∞))
+    Δa = Qa-P.a
+    Δb = Qb-P.b
+    Δc = Qc-P.c
     if isinteger(Δa) && isinteger(Δb) && isinteger(Δc) # (Δa,Δb,Δc) are integers -> use QR/Cholesky iteratively
         if ((isone(Δa)||isone(Δa/2)) && iszero(Δb) && iszero(Δc)) || (iszero(Δa) && (isone(Δb)||isone(Δb/2)) && iszero(Δc))  || (iszero(Δa) && iszero(Δb) && (isone(Δc)||isone(Δc/2)))
-            M = semijacobi_ldiv_direct(Q, P)
+            M = semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, P)
         elseif Δa > 0  # iterative modification by 1
-            M = ApplyArray(*,semijacobi_ldiv_direct(Q, SemiclassicalJacobi(Q.t, Q.a-1-iseven(Δa), Q.b, Q.c)),semijacobi_ldiv(SemiclassicalJacobi(Q.t, Q.a-1-iseven(Δa), Q.b, Q.c), P))
+            M = ApplyArray(*,semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa-1-iseven(Δa), Qb, Qc, P)),semijacobi_ldiv(Qt, Qa-1-iseven(Δa), Qb, Qc, P))
         elseif Δb > 0
-            M = ApplyArray(*,semijacobi_ldiv_direct(Q, SemiclassicalJacobi(Q.t, Q.a, Q.b-1-iseven(Δb), Q.c)),semijacobi_ldiv(SemiclassicalJacobi(Q.t, Q.a, Q.b-1-iseven(Δb), Q.c), P))
+            M = ApplyArray(*,semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa, Qb-1-iseven(Δb), Qc, P)),semijacobi_ldiv(Qt, Qa, Qb-1-iseven(Δb), Qc, P))
         elseif Δc > 0
-            M = ApplyArray(*,semijacobi_ldiv_direct(Q, SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c-1-iseven(Δc))),semijacobi_ldiv(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c-1-iseven(Δc)), P))
+            M = ApplyArray(*,semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa, Qb, Qc-1-iseven(Δc), P)),semijacobi_ldiv(Qt, Qa, Qb, Qc-1-iseven(Δc), P))
         end
     else # fallback to Lancos
         R = SemiclassicalJacobi(P.t, mod(P.a,-1), mod(P.b,-1), mod(P.c,-1))
         R̃ = toclassical(R)
-        return (P \ R) * _p0(R̃) * (R̃ \ Q)
+        return (P \ R) * _p0(R̃) * (R̃ \ SemiclassicalJacobi(Qt, Qa, Qb, Qc))
     end
 end
 
@@ -343,7 +345,7 @@ end
 \(A::SemiclassicalJacobi, B::SemiclassicalJacobi) = semijacobi_ldiv(A, B)
 \(A::LanczosPolynomial, B::SemiclassicalJacobi) = semijacobi_ldiv(A, B)
 \(A::SemiclassicalJacobi, B::LanczosPolynomial) = semijacobi_ldiv(A, B)
-function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
+function \(w_A::WeightedSemiclassicalJacobi{T}, w_B::WeightedSemiclassicalJacobi{T}) where T
     wA,A = w_A.args
     wB,B = w_B.args
     @assert wA.t == wB.t == A.t == B.t
@@ -352,7 +354,8 @@ function \(w_A::WeightedSemiclassicalJacobi, w_B::WeightedSemiclassicalJacobi)
     Δc = B.c-A.c
 
     if (wA.a == A.a) && (wA.b == A.b) && (wA.c == A.c) && (wB.a == B.a) && (wB.b == B.b) && (wB.c == B.c) && isinteger(A.a) && isinteger(A.b) && isinteger(A.c) && isinteger(B.a) && isinteger(B.b) && isinteger(B.c)
-        k = sum(SemiclassicalJacobiWeight(B.t,B.a,B.b,B.c))/sum(SemiclassicalJacobiWeight(A.t,A.a,A.b,A.c)) # = (A \ SemiclassicalJacobiWeight(A.t,Δa,Δb,Δc))[1]
+        # k = (A \ SemiclassicalJacobiWeight(A.t,Δa,Δb,Δc))[1]
+        k = sumquotient(SemiclassicalJacobiWeight(B.t,B.a,B.b,B.c),SemiclassicalJacobiWeight(A.t,A.a,A.b,A.c))
         return (ApplyArray(*,Diagonal(Fill(k,∞)),(B \ A)))'
     elseif wA.a == wB.a && wA.b == wB.b && wA.c == wB.c # fallback to Christoffel–Darboux
         A \ B
@@ -507,6 +510,86 @@ function LazyArrays.cache_filldata!(P::SemiclassicalJacobiFamily, inds::Abstract
         P.data[k] = SemiclassicalJacobi(t, _broadcast_getindex(a,k), _broadcast_getindex(b,k), _broadcast_getindex(c,k), P.data[k-2])
     end
     P
+end
+
+###
+# here we construct hierarchies of c weight sums by means of contiguous recurrence relations
+###
+
+""""
+A SemiclassicalJacobiCWeightFamily
+
+is a vector containing a sequence of weights of the form `x^a * (1-x)^b * (t-x)^c` where `a` and `b` are scalars and `c` is a range of values with integer spacing; where `x in 0..1`. It is automatically generated when calling `SemiclassicalJacobiWeight.(t,a,b,cmin:cmax)`.
+"""
+struct SemiclassicalJacobiCWeightFamily{T, C} <: AbstractVector{SemiclassicalJacobiWeight{T}}
+    data::Vector{SemiclassicalJacobiWeight{T}}
+    t::T
+    a::T
+    b::T
+    c::C
+    datasize::Tuple{Int}
+end
+
+getindex(W::SemiclassicalJacobiCWeightFamily, inds) = getindex(W.data, inds)
+
+size(W::SemiclassicalJacobiCWeightFamily) = (length(W.c),)
+
+function SemiclassicalJacobiCWeightFamily{T}(data::Vector, t, a, b, c) where T
+    checkrangesizes(a, b, c)
+    SemiclassicalJacobiCWeightFamily{T,typeof(c)}(data, t, a, b, c, (length(data),))
+end
+
+SemiclassicalJacobiCWeightFamily(t, a, b, c) = SemiclassicalJacobiCWeightFamily{float(promote_type(typeof(t),eltype(a),eltype(b),eltype(c)))}(t, a, b, c)
+function SemiclassicalJacobiCWeightFamily{T}(t::Number, a::Number, b::Number, c::Union{AbstractUnitRange,Number}) where T
+    return SemiclassicalJacobiCWeightFamily{T}(SemiclassicalJacobiWeight.(t,a:a,b:b,c), t, a, b, c)
+end
+
+Base.broadcasted(::Type{SemiclassicalJacobiWeight}, t::Number, a::Number, b::Number, c::Union{AbstractUnitRange,Number}) = 
+SemiclassicalJacobiCWeightFamily(t, a, b, c)
+
+_unweightedsemiclassicalsum = (a,b,c,t) -> pFq((a+1,-c),(a+b+2, ), 1/t)
+
+function Base.broadcasted(::typeof(sum), W::SemiclassicalJacobiCWeightFamily{T}) where T
+    a = W.a; b = W.b; c = W.c; t = W.t;
+    cmin = minimum(c); cmax = maximum(c);
+    @assert isinteger(cmax) && isinteger(cmin)
+    # This is needed at high parameter values.
+    # Manually setting setprecision(2048) allows accurate computation even for very high c. 
+    t,a,b = convert(BigFloat,t),convert(BigFloat,a),convert(BigFloat,b)
+    F = zeros(BigFloat,cmax+1)
+    F[1] = _unweightedsemiclassicalsum(a,b,0,t) # c=0
+    cmax == 0 && return abs.(convert.(T,t.^c.*exp(loggamma(a+1)+loggamma(b+1)-loggamma(a+b+2)).*getindex(F,1:1)))
+    F[2] = _unweightedsemiclassicalsum(a,b,1,t) # c=1
+    @inbounds for n in 1:cmax-1
+        F[n+2] = ((n-1)/t+1/t-n)/(n+a+b+2)*F[n]+(a+b+4+2*n-2-(n+a+1)/t)/(n+a+b+2)*F[n+1]
+    end
+    return abs.(convert.(T,t.^c.*exp(loggamma(a+1)+loggamma(b+1)-loggamma(a+b+2)).*getindex(F,W.c.+1)))
+end
+
+""""
+sumquotient(wP, wQ) computes sum(wP)/sum(wQ) by taking into account cancellations, allowing more stable computations for high weight parameters.
+"""
+function sumquotient(wP::SemiclassicalJacobiWeight{T},wQ::SemiclassicalJacobiWeight{T}) where T
+    @assert wP.t ≈ wQ.t
+    @assert isinteger(wP.c) && isinteger(wQ.c)
+    a = wP.a; b = wP.b; c = Int(wP.c); t = wP.t;
+    # This is needed at high parameter values.
+    t,a,b = convert(BigFloat,t),convert(BigFloat,a),convert(BigFloat,b)
+    F = zeros(BigFloat,max(2,c+1))
+    F[1] = _unweightedsemiclassicalsum(a,b,0,t) # c=0
+    F[2] = _unweightedsemiclassicalsum(a,b,1,t) # c=1
+    @inbounds for n in 1:c-1
+        F[n+2] = ((n-1)/t+1/t-n)/(n+a+b+2)*F[n]+(a+b+4+2*n-2-(n+a+1)/t)/(n+a+b+2)*F[n+1]
+    end
+    a = wQ.a; b = wQ.b; c = Int(wQ.c);
+    t,a,b = convert(BigFloat,t),convert(BigFloat,a),convert(BigFloat,b)
+    G = zeros(BigFloat,max(2,c+1))
+    G[1] = _unweightedsemiclassicalsum(a,b,0,t) # c=0
+    G[2] = _unweightedsemiclassicalsum(a,b,1,t) # c=1
+    @inbounds for n in 1:c-1
+        G[n+2] = ((n-1)/t+1/t-n)/(n+a+b+2)*G[n]+(a+b+4+2*n-2-(n+a+1)/t)/(n+a+b+2)*G[n+1]
+    end
+    return abs.(convert.(T,t.^(Int(wP.c)-c).*exp(loggamma(wP.a+1)+loggamma(wP.b+1)-loggamma(wP.a+wP.b+2)-loggamma(a+1)-loggamma(b+1)+loggamma(a+b+2))*F[Int(wP.c)+1]/G[c+1]))
 end
 
 include("neg1c.jl")
