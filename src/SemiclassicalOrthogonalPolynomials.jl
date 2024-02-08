@@ -142,9 +142,9 @@ function semiclassical_jacobimatrix(t, a, b, c)
     P = Normalized(jacobi(b, a, UnitInterval{T}()))
     iszero(c) && return jacobimatrix(P)
     if isone(c)
-        return cholesky_jacobimatrix(x->(t-x),P)
+        return cholesky_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), P)
     elseif isone(c/2)
-        return qr_jacobimatrix(x->(t-x),P)
+        return qr_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), P)
     elseif isinteger(c) && c ≥ 0 # reduce other integer c cases to hierarchy
         return SemiclassicalJacobi.(t, a, b, 0:Int(c))[end].X
     else # if c is not an integer, use Lanczos
