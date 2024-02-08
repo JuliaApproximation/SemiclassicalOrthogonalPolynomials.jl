@@ -153,7 +153,7 @@ function semiclassical_jacobimatrix(t, a, b, c)
     end
 end
 
-|function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
+function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     Δa = a-Q.a
     Δb = b-Q.b
     Δc = c-Q.c
