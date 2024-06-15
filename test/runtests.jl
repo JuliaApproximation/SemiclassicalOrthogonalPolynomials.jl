@@ -624,7 +624,7 @@ end
 
     @testset "Decrementing a" begin
         A = SemiclassicalJacobi(t, a, b, c)
-        B = SemiclassicalJacobi(t, a + 1, b, c)
+        B = SemiclassicalJacobi(t, a + 2, b, c)
         @test (A \ B)[1:100, 1:100] ≈ ApplyArray(inv, B \ A)[1:100, 1:100]
         A = SemiclassicalJacobi(t, 2.15, 2.05, 3.0111) # check fractions (but integer difference)
         B = SemiclassicalJacobi(t, 3.15, 2.05, 3.0111)
@@ -651,7 +651,7 @@ end
 
     @testset "Decrementing c" begin
         A = SemiclassicalJacobi(t, a, b, c)
-        B = SemiclassicalJacobi(t, a, b, c + 1)
+        B = SemiclassicalJacobi(t, a, b, c + 2)
         @test (A \ B)[1:100, 1:100] ≈ ApplyArray(inv, B \ A)[1:100, 1:100]
         A = SemiclassicalJacobi(t, 2.15, 2.05, 3.0111) 
         B = SemiclassicalJacobi(t, 2.15, 2.05, 4.0111)
