@@ -45,3 +45,24 @@ P = SemiclassicalJacobi(t, a, b, c)
 Pb = SemiclassicalJacobi(t, a, -b, c)
 PL = SemiclassicalJacobi(t, a, -b - 1, c)
 Weighted(PL) \ Weighted(Pb)
+
+A = SemiclassicalJacobi(t, a + 1, 0, c + 1)
+B = SemiclassicalJacobi(t, a + 1, 1, c + 1)
+Q, P = A, B 
+Qt, Qa, Qb, Qc = Q.t, Q.a, Q.b, Q.c
+Δa = Qa-P.a
+Δb = Qb-P.b
+Δc = Qc-P.c
+M = cholesky(Symmetric(P.X^(Δa)*(I-P.X)^(Δb)*(Qt*I-P.X)^(Δc))).U
+
+SemiclassicalOrthogonalPolynomials.semijacobi_ldiv(Q.t, Q.a, Q.b, Q.c, P)
+
+
+Qt, Qa, Qb, Qc = Q.t, Q.a, Q.a, Q.c 
+Δa = Qa-P.a
+Δb = Qb-P.b
+Δc = Qc-P.c
+isinteger(Δa) && isinteger(Δb) && isinteger(Δc)
+((isone(Δa)||isone(Δa/2)) && iszero(Δb) && iszero(Δc)) || (iszero(Δa) && (isone(Δb)||isone(Δb/2)) && iszero(Δc))  || (iszero(Δa) && iszero(Δb) && (isone(Δc)||isone(Δc/2)))
+
+SemiclassicalOrthogonalPolynomials.semijacobi_ldiv(Qt, Qa, Qb, Qc, P)
