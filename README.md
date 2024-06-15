@@ -11,7 +11,7 @@ This builds on top of [ClassicalOrthogonalPolynomials.jl](https://github.com/Jul
 
 For example, the following gives a half-range Chebyshev polynomial:
 ```julia
-julia> usnig SemiclassicalOrthogonalPolynomials
+julia> using SemiclassicalOrthogonalPolynomials
 julia> T = SemiclassicalJacobi(2, -1/2, 0, -1/2)
 SemiclassicalJacobi with weight x^-0.5 * (1-x)^0.0 * (2.0-x)^-0.5 on 0..1
 
