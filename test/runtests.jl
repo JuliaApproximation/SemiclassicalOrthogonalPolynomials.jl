@@ -612,3 +612,4 @@ end
 
 include("test_derivative.jl")
 include("test_neg1c.jl")
+include("test_neg1b.jl")

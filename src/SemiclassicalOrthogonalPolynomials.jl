@@ -118,13 +118,16 @@ end
 const WeightedSemiclassicalJacobi{T} = WeightedBasis{T,<:SemiclassicalJacobiWeight,<:SemiclassicalJacobi}
 
 function SemiclassicalJacobi(t, a, b, c, X::AbstractMatrix)
+    _validate_ab(a, b)
     T = float(promote_type(typeof(t), typeof(a), typeof(b), typeof(c), eltype(X)))
     SemiclassicalJacobi{T}(T(t), T(a), T(b), T(c), convert(AbstractMatrix{T},X))
 end
 
-SemiclassicalJacobi(t, a, b, c, P::SemiclassicalJacobi) = SemiclassicalJacobi(t, a, b, c, semiclassical_jacobimatrix(P, a, b, c))
-SemiclassicalJacobi(t, a, b, c) = SemiclassicalJacobi(t, a, b, c, semiclassical_jacobimatrix(t, a, b, c))
-SemiclassicalJacobi{T}(t, a, b, c) where T = SemiclassicalJacobi(convert(T,t), convert(T,a), convert(T,b), convert(T,c))
+_validate_ab(a, b) = (a > -1 && b ≥ -1) || throw(ArgumentError("The provided values of a and b, $a and $b, do not satisfy a > -1, b ≥ -1."))
+
+SemiclassicalJacobi(t, a, b, c, P::SemiclassicalJacobi) = (_validate_ab(a, b); SemiclassicalJacobi(t, a, b, c, semiclassical_jacobimatrix(P, a, b, c)))
+SemiclassicalJacobi(t, a, b, c) = (_validate_ab(a, b); SemiclassicalJacobi(t, a, b, c, semiclassical_jacobimatrix(t, a, b, c)))
+SemiclassicalJacobi{T}(t, a, b, c) where T = (_validate_ab(a, b); SemiclassicalJacobi(convert(T,t), convert(T,a), convert(T,b), convert(T,c)))
 
 WeightedSemiclassicalJacobi{T}(t, a, b, c, P...) where T = SemiclassicalJacobiWeight{T}(convert(T,t), convert(T,a), convert(T,b), convert(T,c)) .* SemiclassicalJacobi{T}(convert(T,t), convert(T,a), convert(T,b), convert(T,c), P...)
 
@@ -138,18 +141,26 @@ function semiclassical_jacobimatrix(t, a, b, c)
         C = -(N)./(N.*4 .- 2)
         B = Vcat((α[1]^2*3-α[1]*α[2]*2-1)/6 , -(N)./(N.*4 .+ 2).*α[2:end]./α)
         return SymTridiagonal(A, sqrt.(B.*C)) # if J is Tridiagonal(c,a,b) then for norm. OPs it becomes SymTridiagonal(a, sqrt.( b.* c))
-    end
-    P = Normalized(jacobi(b, a, UnitInterval{T}()))
-    iszero(c) && return jacobimatrix(P)
-    if isone(c)
-        return cholesky_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), P)
-    elseif isone(c/2)
-        return qr_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), P)
-    elseif isinteger(c) && c ≥ 0 # reduce other integer c cases to hierarchy
-        return SemiclassicalJacobi.(t, a, b, 0:Int(c))[end].X
-    else # if c is not an integer, use Lanczos
-        x = axes(P,1)
-        return jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), jacobi(b, a, UnitInterval{T}())))
+    elseif b == -one(T) 
+        J′ = semiclassical_jacobimatrix(t, a, one(b), c)
+        J′a, J′b = diagonaldata(J′), supdiagonaldata(J′)
+        A = Vcat(one(T), J′a[1:end])
+        B = Vcat(-one(T), J′b[1:end])
+        C = Vcat(zero(T), J′b[1:end])
+        return Tridiagonal(B, A, C)
+    else
+        P = Normalized(jacobi(b, a, UnitInterval{T}()))
+        iszero(c) && return jacobimatrix(P)
+        if isone(c)
+            return cholesky_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), P)
+        elseif isone(c/2)
+            return qr_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), P)
+        elseif isinteger(c) && c ≥ 0 # reduce other integer c cases to hierarchy
+            return SemiclassicalJacobi.(t, a, b, 0:Int(c))[end].X
+        else # if c is not an integer, use Lanczos
+            x = axes(P,1)
+            return jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), jacobi(b, a, UnitInterval{T}())))
+        end
     end
 end
 
@@ -464,7 +475,7 @@ mutable struct SemiclassicalJacobiFamily{T, A, B, C} <: AbstractCachedVector{Sem
     datasize::Tuple{Int}
 end
 
-isnormalized(::SemiclassicalJacobi) = true
+isnormalized(J::SemiclassicalJacobi) = J.b ≠ -1 # there is no normalisation for 
 size(P::SemiclassicalJacobiFamily) = (max(length(P.a), length(P.b), length(P.c)),)
 
 _checkrangesizes() = ()
