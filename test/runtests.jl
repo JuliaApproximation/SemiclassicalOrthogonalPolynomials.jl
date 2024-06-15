@@ -86,7 +86,7 @@ end
         W = SemiclassicalJacobi(2,  1/2, 0, -1/2, T)
         w_T = orthogonalityweight(T)
         w_W = orthogonalityweight(W)
-        @test summary(SemiclassicalJacobiWeight(2,1,1,1)) == "x^1 * (1-x)^1 * (2-x)^1"
+        @test summary(SemiclassicalJacobiWeight(2,1,1,1)) == "x^1 * (1-x)^1 * (2-x)^1 on 0..1"
         @test WeightedSemiclassicalJacobi{Float64}(2, -1/2, 0, 1/2) == SemiclassicalJacobiWeight{Float64}(2., -1/2, 0., 1/2) .* SemiclassicalJacobi{Float64}(2., -1/2, 0., 1/2)
 
         @test copy(T) == T
@@ -608,6 +608,15 @@ end
         t, a, b, c = 1.23, 2, 3, 30
         @test sum.(SemiclassicalJacobiWeight.(t,a,b,c:c))[1] ≈ t^c * beta(1+a,1+b) * _₂F₁(1+a,-c,2+a+b,1/t)
     end
+end
+
+@testset "Issue #103" begin 
+    w = SemiclassicalJacobiWeight(2.0, 2.3, 5.3, 0.4)
+    P = SemiclassicalJacobi(2.0, 2.3, 5.3, 0.4)
+    W = Weighted(P)
+    @test sprint(show, w) == "x^2.3 * (1-x)^5.3 * (2.0-x)^0.4 on 0..1"
+    @test sprint(show, P) == "SemiclassicalJacobi with weight x^2.3 * (1-x)^5.3 * (2.0-x)^0.4 on 0..1"
+    @test sprint(show, W) == "Weighted(SemiclassicalJacobi with weight x^2.3 * (1-x)^5.3 * (2.0-x)^0.4 on 0..1)"
 end
 
 include("test_derivative.jl")

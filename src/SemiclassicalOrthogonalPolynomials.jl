@@ -3,7 +3,7 @@ using ClassicalOrthogonalPolynomials: WeightedOPLayout
 using ClassicalOrthogonalPolynomials, FillArrays, LazyArrays, ArrayLayouts, QuasiArrays, InfiniteArrays, ContinuumArrays, LinearAlgebra, BandedMatrices,
         SpecialFunctions, HypergeometricFunctions, InfiniteLinearAlgebra
 
-import Base: getindex, axes, size, \, /, *, +, -, summary, ==, copy, sum, unsafe_getindex, convert, OneTo, diff
+import Base: getindex, axes, size, \, /, *, +, -, summary, show, ==, copy, sum, unsafe_getindex, convert, OneTo, diff
 
 import ArrayLayouts: MemoryLayout, ldiv, diagonaldata, subdiagonaldata, supdiagonaldata
 import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout, _BandedMatrix
@@ -53,9 +53,10 @@ function sum(P::SemiclassicalJacobiWeight{T}) where T
     return abs(convert(T, t^c*exp(loggamma(a+1)+loggamma(b+1)-loggamma(a+b+2)) * pFq((a+1,-c),(a+b+2, ), 1/t)))
 end
 
+show(io::IO, P::SemiclassicalJacobiWeight) = summary(io, P)
 function summary(io::IO, P::SemiclassicalJacobiWeight)
     t,a,b,c = P.t,P.a,P.b,P.c
-    print(io, "x^$a * (1-x)^$b * ($t-x)^$c")
+    print(io, "x^$a * (1-x)^$b * ($t-x)^$c on 0..1")
 end
 
 function ==(A::SemiclassicalJacobiWeight, B::SemiclassicalJacobiWeight)
@@ -230,10 +231,12 @@ axes(P::SemiclassicalJacobi{T}) where T = (Inclusion(UnitInterval{T}()),OneToInf
 
 orthogonalityweight(P::SemiclassicalJacobi) = SemiclassicalJacobiWeight(P.t, P.a, P.b, P.c)
 
+show(io::IO, P::SemiclassicalJacobi) = summary(io, P)
 function summary(io::IO, P::SemiclassicalJacobi)
     t,a,b,c = P.t,P.a,P.b,P.c
-    print(io, "SemiclassicalJacobi with weight x^$a * (1-x)^$b * ($t-x)^$c")
+    print(io, "SemiclassicalJacobi with weight x^$a * (1-x)^$b * ($t-x)^$c on 0..1")
 end
+
 
 jacobimatrix(P::SemiclassicalJacobi) = P.X
 
