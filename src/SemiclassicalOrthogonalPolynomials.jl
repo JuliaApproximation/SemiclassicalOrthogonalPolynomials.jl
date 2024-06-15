@@ -292,22 +292,33 @@ end
 semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi) = semijacobi_ldiv(Q.t, Q.a, Q.b, Q.c, P)
 function semijacobi_ldiv(Qt, Qa, Qb, Qc, P::SemiclassicalJacobi)
     @assert Qt ≈ P.t
-    (Qt ≈ P.t) && (Qa ≈ P.a) && (Qb ≈ P.b) && (Qc ≈ P.c) && return SymTridiagonal(Ones(∞),Zeros(∞))
-    Δa = Qa-P.a
-    Δb = Qb-P.b
-    Δc = Qc-P.c
+    (Qt ≈ P.t) && (Qa ≈ P.a) && (Qb ≈ P.b) && (Qc ≈ P.c) && return SymTridiagonal(Ones(∞), Zeros(∞))
+    Δa = Qa - P.a
+    Δb = Qb - P.b
+    Δc = Qc - P.c
     if isinteger(Δa) && isinteger(Δb) && isinteger(Δc) # (Δa,Δb,Δc) are integers -> use QR/Cholesky iteratively
-        if ((isone(Δa)||isone(Δa/2)) && iszero(Δb) && iszero(Δc)) || (iszero(Δa) && (isone(Δb)||isone(Δb/2)) && iszero(Δc))  || (iszero(Δa) && iszero(Δb) && (isone(Δc)||isone(Δc/2)))
+        if Δa < 0
+            R = ApplyArray(inv, semijacobi_ldiv(P.t, P.a, P.b, P.c, SemiclassicalJacobi(P.t, Qa, P.b, P.c)))
+            M = ApplyArray(*, semijacobi_ldiv(Qt, Qa, Qb, Qc, SemiclassicalJacobi(P.t, Qa, P.b, P.c)), R)
+        elseif Δb < 0
+            R = ApplyArray(inv, semijacobi_ldiv(P.t, P.a, P.b, P.c, SemiclassicalJacobi(P.t, P.a, Qb, P.c)))
+            M = ApplyArray(*, semijacobi_ldiv(Qt, Qa, Qb, Qc, SemiclassicalJacobi(P.t, P.a, Qb, P.c)), R)
+        elseif Δc < 0
+            R = ApplyArray(inv, semijacobi_ldiv(P.t, P.a, P.b, P.c, SemiclassicalJacobi(P.t, P.a, P.b, Qc)))
+            M = ApplyArray(*, semijacobi_ldiv(Qt, Qa, Qb, Qc, SemiclassicalJacobi(P.t, P.a, P.b, Qc)), R)
+        elseif ((isone(Δa) || isone(Δa / 2)) && iszero(Δb) && iszero(Δc)) || (iszero(Δa) && (isone(Δb) || isone(Δb / 2)) && iszero(Δc)) || (iszero(Δa) && iszero(Δb) && (isone(Δc) || isone(Δc / 2)))
             M = semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, P)
         elseif Δa > 0  # iterative modification by 1
-            M = ApplyArray(*,semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa-1-iseven(Δa), Qb, Qc, P)),semijacobi_ldiv(Qt, Qa-1-iseven(Δa), Qb, Qc, P))
+            M = ApplyArray(*, semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa - 1 - iseven(Δa), Qb, Qc, P)), semijacobi_ldiv(Qt, Qa - 1 - iseven(Δa), Qb, Qc, P))
         elseif Δb > 0
-            M = ApplyArray(*,semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa, Qb-1-iseven(Δb), Qc, P)),semijacobi_ldiv(Qt, Qa, Qb-1-iseven(Δb), Qc, P))
+            M = ApplyArray(*, semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa, Qb - 1 - iseven(Δb), Qc, P)), semijacobi_ldiv(Qt, Qa, Qb - 1 - iseven(Δb), Qc, P))
         elseif Δc > 0
-            M = ApplyArray(*,semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa, Qb, Qc-1-iseven(Δc), P)),semijacobi_ldiv(Qt, Qa, Qb, Qc-1-iseven(Δc), P))
+            M = ApplyArray(*, semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa, Qb, Qc - 1 - iseven(Δc), P)), semijacobi_ldiv(Qt, Qa, Qb, Qc - 1 - iseven(Δc), P))
+        else
+            throw("Missing implementation.")
         end
     else # fallback to Lancos
-        R = SemiclassicalJacobi(P.t, mod(P.a,-1), mod(P.b,-1), mod(P.c,-1))
+        R = SemiclassicalJacobi(P.t, mod(P.a, -1), mod(P.b, -1), mod(P.c, -1))
         R̃ = toclassical(R)
         return (P \ R) * _p0(R̃) * (R̃ \ SemiclassicalJacobi(Qt, Qa, Qb, Qc))
     end

@@ -619,5 +619,56 @@ end
     @test sprint(show, W) == "Weighted(SemiclassicalJacobi with weight x^2.3 * (1-x)^5.3 * (2.0-x)^0.4 on 0..1)"
 end
 
+@testset "Issue #105" begin 
+    global t, a, b, c = 2.0, 3.0, 4.0, 5.0
+
+    @testset "Decrementing a" begin
+        A = SemiclassicalJacobi(t, a, b, c)
+        B = SemiclassicalJacobi(t, a + 1, b, c)
+        @test (A \ B)[1:100, 1:100] ≈ ApplyArray(inv, B \ A)[1:100, 1:100]
+        A = SemiclassicalJacobi(t, 2.15, 2.05, 3.0111) # check fractions (but integer difference)
+        B = SemiclassicalJacobi(t, 3.15, 2.05, 3.0111)
+        @test (A \ B)[1:100, 1:100] ≈ ApplyArray(inv, B \ A)[1:100, 1:100]
+        A = SemiclassicalJacobi(t, 0.0, 5.0, 2.0) # simultaneous changes
+        B = SemiclassicalJacobi(t, 1.0, 4.0, 2.0)
+        @test (A \ B)[1:100, 1:100] ≈ ApplyArray(inv, B \ A)[1:100, 1:100]
+    end
+
+    @testset "Decrementing b" begin 
+        A = SemiclassicalJacobi(t, a, b, c)
+        B = SemiclassicalJacobi(t, a, b + 1, c)
+        @test (A \ B)[1:100, 1:100] ≈ ApplyArray(inv, B \ A)[1:100, 1:100]
+        A = SemiclassicalJacobi(t, 2.15, 2.05, 3.0111) 
+        B = SemiclassicalJacobi(t, 2.15, 3.05, 3.0111)
+        @test (A \ B)[1:100, 1:100] ≈ ApplyArray(inv, B \ A)[1:100, 1:100]
+        A = SemiclassicalJacobi(t, 2.0, 5.0, 2.0) 
+        B = SemiclassicalJacobi(t, 1.0, 6.0, 1.0)
+        @test (A \ B)[1:100, 1:100] ≈ ApplyArray(inv, B \ A)[1:100, 1:100]
+        A = SemiclassicalJacobi(2.0, 1.0, 0.0, 1.0)
+        B = SemiclassicalJacobi(2.0, 1.0, 1.0, 1.0)
+        @test (A \ B)[1:100, 1:100] ≈ ApplyArray(inv, B \ A)[1:100, 1:100]
+    end
+
+    @testset "Decrementing c" begin
+        A = SemiclassicalJacobi(t, a, b, c)
+        B = SemiclassicalJacobi(t, a, b, c + 1)
+        @test (A \ B)[1:100, 1:100] ≈ ApplyArray(inv, B \ A)[1:100, 1:100]
+        A = SemiclassicalJacobi(t, 2.15, 2.05, 3.0111) 
+        B = SemiclassicalJacobi(t, 2.15, 2.05, 4.0111)
+        @test (A \ B)[1:100, 1:100] ≈ ApplyArray(inv, B \ A)[1:100, 1:100]
+        A = SemiclassicalJacobi(t, 2.0, 5.0, 2.0) 
+        B = SemiclassicalJacobi(t, 1.0, 2.0, 4.0)
+        @test (A \ B)[1:100, 1:100] ≈ ApplyArray(inv, B \ A)[1:100, 1:100]
+    end
+
+    @testset "Simultaneous" begin 
+        A = SemiclassicalJacobi(t, a, b, c)
+        BB = SemiclassicalJacobi.(t, a .+ (-2:2), b .+ (-2:2), c .+ (-2:2))
+        for B in BB 
+            @test (A \ B)[1:100, 1:100] ≈ ApplyArray(inv, B \ A)[1:100, 1:100]
+        end
+    end
+end 
+
 include("test_derivative.jl")
 include("test_neg1c.jl")
