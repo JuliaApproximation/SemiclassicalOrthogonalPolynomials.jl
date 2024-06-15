@@ -44,9 +44,25 @@ function divdiff(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     _BandedMatrix(Vcat(((1:∞) .* d)', (((1:∞) .* (v1 .+ B[2:end]./A[2:end]) .- (2:∞) .* (α .* v2 .+ β ./ α)) .* v3)'), ∞, 2,-1)'
 end
 
-function diff(P::SemiclassicalJacobi; dims=1)
-    Q = SemiclassicalJacobi(P.t, P.a+1,P.b+1,P.c+1,P)
-    Q * divdiff(Q, P)
+function diff(P::SemiclassicalJacobi{T}; dims=1) where {T}
+    if P.b ≠ -1 
+        Q = SemiclassicalJacobi(P.t, P.a+1,P.b+1,P.c+1,P)
+        Q * divdiff(Q, P)
+    elseif P.b == -1
+        Pᵗᵃ⁰ᶜ = SemiclassicalJacobi(P.t, P.a, zero(P.b), P.c)
+        Pᵗᵃ¹ᶜ = SemiclassicalJacobi(P.t, P.a, one(P.b), P.c, Pᵗᵃ⁰ᶜ)
+        Rᵦₐ₁ᵪᵗᵃ⁰ᶜ = Weighted(Pᵗᵃ⁰ᶜ) \ Weighted(Pᵗᵃ¹ᶜ)
+        Dₐ₀ᵪᵃ⁺¹¹ᶜ⁺¹ = diff(Pᵗᵃ⁰ᶜ)
+        Pᵗᵃ⁺¹¹ᶜ⁺¹ = Dₐ₀ᵪᵃ⁺¹¹ᶜ⁺¹.args[1]
+        Pᵗᵃ⁺¹⁰ᶜ⁺¹ = SemiclassicalJacobi(P.t, P.a + 1, zero(P.b), P.c + 1, Pᵗᵃ⁰ᶜ)
+        Rₐ₊₁₁ᵪ₊₁ᵗᵃ⁺¹⁰ᶜ⁺¹ = ApplyArray(inv, Pᵗᵃ⁺¹¹ᶜ⁺¹ \ Pᵗᵃ⁺¹⁰ᶜ⁺¹)
+        Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹ = Rₐ₊₁₁ᵪ₊₁ᵗᵃ⁺¹⁰ᶜ⁺¹ * coefficients(Dₐ₀ᵪᵃ⁺¹¹ᶜ⁺¹) * Rᵦₐ₁ᵪᵗᵃ⁰ᶜ
+        b2 = Vcat(zero(T), zero(T), Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹[band(1)])
+        b1 = Vcat(zero(T), Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹[band(0)])
+        data = Hcat(b2, b1)'
+        D = _BandedMatrix(data, ∞, -1, 2)
+        return Pᵗᵃ⁺¹⁰ᶜ⁺¹ * D
+    end
 end
 
 

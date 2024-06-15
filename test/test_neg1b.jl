@@ -39,30 +39,69 @@ end
     end
 end
 
-# Differentiation
-t, a, b, c = 2.0, 1.0, -1.0, 1.0
-P = SemiclassicalJacobi(t, a, b, c)
-Pb = SemiclassicalJacobi(t, a, -b, c)
-PL = SemiclassicalJacobi(t, a, -b - 1, c)
-Weighted(PL) \ Weighted(Pb)
+@testset "Families" begin 
+    # Not implemented efficiently currently. 
+    # TODO: Fix cholesky_jacobimatrix when Δb == 0 and b == -1 so that building families works (currently, it would return a "Polynomials must be orthonormal" error)
+    t = 2.0 
+    P = SemiclassicalJacobi.(t, -1//2:13//2, -1.0, -1//2:13//2) # // so that we get a UnitRange, else broadcasting into a Family fails
+    for (i, p) in enumerate(P)
+        @test jacobimatrix(p)[1:100, 1:100] == jacobimatrix(SemiclassicalJacobi(t, (-1//2:13//2)[i], -1.0, (-1//2:13//2)[i]))[1:100, 1:100]
+    end
+end
 
-A = SemiclassicalJacobi(t, a + 1, 0, c + 1)
-B = SemiclassicalJacobi(t, a + 1, 1, c + 1)
+@testset "Expansions" begin
+    Ps = SemiclassicalJacobi.(2, -1//2:5//2, -1.0, -1//2:5//2)
+    for P in Ps
+        @show 1
+        for (idx, g) in enumerate((x -> exp(x) + sin(x), x -> (1 - x) * cos(x^3), x -> 5.0 + (1 - x)))
+            f = expand(P, g)
+            for x in LinRange(0, 1, 100)
+                @test f[x] ≈ g(x) atol=1e-9
+            end
+            x = axes(P, 1)
+            @test P[:, 1:20] \ g.(x) ≈ coefficients(f)[1:20]
+            if idx == 2 
+                @test coefficients(f)[1] ≈ 0 atol = 1e-9
+            elseif idx == 3 
+                @test coefficients(f)[1:2] ≈ [5.0, 1.0]
+                @test coefficients(f)[3:1000] ≈ zeros(1000-3+1)
+            end
+        end
+    end 
+end
+
+A = SemiclassicalJacobi(2.0, -0.5, -0.0, -0.5)
+B = SemiclassicalJacobi(2.0, 0.5, 0.0, 0.5)
+A \ B
 Q, P = A, B 
-Qt, Qa, Qb, Qc = Q.t, Q.a, Q.b, Q.c
+Qt, Qa, Qb, Qc = Q.t, Q.a, Q.b, Q.c 
 Δa = Qa-P.a
 Δb = Qb-P.b
 Δc = Qc-P.c
-M = cholesky(Symmetric(P.X^(Δa)*(I-P.X)^(Δb)*(Qt*I-P.X)^(Δc))).U
 
-SemiclassicalOrthogonalPolynomials.semijacobi_ldiv(Q.t, Q.a, Q.b, Q.c, P)
+@testset "Differentiation" begin
+    t, a, b, c = 2.0, 1.0, -1.0, 1.0
+    Rᵦₐ₁ᵪᵗᵃ⁰ᶜ = Weighted(SemiclassicalJacobi(t, a, 0.0, c)) \ Weighted(SemiclassicalJacobi(t, a, 1.0, c))
+    Dₐ₀ᵪᵃ⁺¹¹ᶜ⁺¹ = diff(SemiclassicalJacobi(t, a, 0.0, c))
+    Rₐ₊₁₁ᵪ₊₁ᵗᵃ⁺¹⁰ᶜ⁺¹ = ApplyArray(inv, SemiclassicalJacobi(t, a+1, 1.0, c+1) \ SemiclassicalJacobi(t, a+1, 0.0, c + 1))
+    Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹ = Rₐ₊₁₁ᵪ₊₁ᵗᵃ⁺¹⁰ᶜ⁺¹ * Dₐ₀ᵪᵃ⁺¹¹ᶜ⁺¹.args[2] * Rᵦₐ₁ᵪᵗᵃ⁰ᶜ
+    b2 = Vcat(0.0, 0.0, Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹[band(1)])
+    b1 = Vcat(0.0, Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹[band(0)])
+    data = Hcat(b2, b1)'
+    D = _BandedMatrix(data, ∞, -1, 2)
+    @test Hcat(Zeros(∞), Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹)[1:100, 1:100] ≈ D[1:100, 1:100] 
+    P = SemiclassicalJacobi(t, a, b, c)
+    DP = diff(P)
+    @test DP.args[2][1:100, 1:100] ≈ D[1:100, 1:100]
+    @test DP.args[1] == SemiclassicalJacobi(t, a + 1, b + 1, c + 1)
 
-
-Qt, Qa, Qb, Qc = Q.t, Q.a, Q.a, Q.c 
-Δa = Qa-P.a
-Δb = Qb-P.b
-Δc = Qc-P.c
-isinteger(Δa) && isinteger(Δb) && isinteger(Δc)
-((isone(Δa)||isone(Δa/2)) && iszero(Δb) && iszero(Δc)) || (iszero(Δa) && (isone(Δb)||isone(Δb/2)) && iszero(Δc))  || (iszero(Δa) && iszero(Δb) && (isone(Δc)||isone(Δc/2)))
-
-SemiclassicalOrthogonalPolynomials.semijacobi_ldiv(Qt, Qa, Qb, Qc, P)
+    gs = (x -> exp(x) + sin(x), x -> (1 - x) * cos(x^3), x -> 5.0 + (1 - x))
+    dgs = (x -> exp(x) + cos(x), x -> -3x^2 * sin(x^3) * (1 - x), x -> -1.0)
+    for (idx, (g, dg)) in enumerate(zip(gs, dgs))
+        f = expand(P, g)
+        df = expand(P, dg)
+        for x in LinRange(0, 1, 100)
+            @test df[x] ≈ dg[x]
+        end
+    end
+end

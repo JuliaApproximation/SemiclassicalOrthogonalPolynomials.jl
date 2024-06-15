@@ -119,16 +119,13 @@ end
 const WeightedSemiclassicalJacobi{T} = WeightedBasis{T,<:SemiclassicalJacobiWeight,<:SemiclassicalJacobi}
 
 function SemiclassicalJacobi(t, a, b, c, X::AbstractMatrix)
-    _validate_ab(a, b)
     T = float(promote_type(typeof(t), typeof(a), typeof(b), typeof(c), eltype(X)))
     SemiclassicalJacobi{T}(T(t), T(a), T(b), T(c), convert(AbstractMatrix{T},X))
 end
 
-_validate_ab(a, b) = (a > -1 && b ≥ -1) || throw(ArgumentError("The provided values of a and b, $a and $b, do not satisfy a > -1, b ≥ -1."))
-
-SemiclassicalJacobi(t, a, b, c, P::SemiclassicalJacobi) = (_validate_ab(a, b); SemiclassicalJacobi(t, a, b, c, semiclassical_jacobimatrix(P, a, b, c)))
-SemiclassicalJacobi(t, a, b, c) = (_validate_ab(a, b); SemiclassicalJacobi(t, a, b, c, semiclassical_jacobimatrix(t, a, b, c)))
-SemiclassicalJacobi{T}(t, a, b, c) where T = (_validate_ab(a, b); SemiclassicalJacobi(convert(T,t), convert(T,a), convert(T,b), convert(T,c)))
+SemiclassicalJacobi(t, a, b, c, P::SemiclassicalJacobi) = SemiclassicalJacobi(t, a, b, c, semiclassical_jacobimatrix(P, a, b, c))
+SemiclassicalJacobi(t, a, b, c) = SemiclassicalJacobi(t, a, b, c, semiclassical_jacobimatrix(t, a, b, c))
+SemiclassicalJacobi{T}(t, a, b, c) where T = SemiclassicalJacobi(convert(T,t), convert(T,a), convert(T,b), convert(T,c))
 
 WeightedSemiclassicalJacobi{T}(t, a, b, c, P...) where T = SemiclassicalJacobiWeight{T}(convert(T,t), convert(T,a), convert(T,b), convert(T,c)) .* SemiclassicalJacobi{T}(convert(T,t), convert(T,a), convert(T,b), convert(T,c), P...)
 
@@ -177,7 +174,9 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
         return jacobimatrix(Normalized(jacobi(b, a, UnitInterval{eltype(Q.t)}())))
     elseif iszero(Δa) && iszero(Δb) && iszero(Δc) # same basis
         return Q.X
-    end
+    elseif b == -one(eltype(Q.t))
+        return semiclassical_jacobimatrix(Q.t, a, b, c)
+    end # TODO: Fix cholesky_jacobimatrix when Δb == 0 and b == -1 so that building families works (currently, it would return a "Polynomials must be orthonormal" error)
 
     if isone(Δa/2) && iszero(Δb) && iszero(Δc)  # raising by 2
         qr_jacobimatrix(Q.X,Q)
@@ -274,7 +273,7 @@ end
 # returns conversion operator from SemiclassicalJacobi P to SemiclassicalJacobi Q in a single step via decomposition.
 semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi) = semijacobi_ldiv_direct(Q.t, Q.a, Q.b, Q.c, P)
 function semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, P::SemiclassicalJacobi)
-    (Qt ≈ P.t) && (Qa ≈ P.a) && (Qb ≈ P.b) && (Qc ≈ P.c) && return SymTridiagonal(Ones(∞),Zeros(∞))
+    (Qt ≈ P.t) && (Qa ≈ P.a) && (Qb ≈ P.b) && (Qc ≈ P.c) && return I
     Δa = Qa-P.a
     Δb = Qb-P.b
     Δc = Qc-P.c
@@ -303,7 +302,7 @@ end
 semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi) = semijacobi_ldiv(Q.t, Q.a, Q.b, Q.c, P)
 function semijacobi_ldiv(Qt, Qa, Qb, Qc, P::SemiclassicalJacobi)
     @assert Qt ≈ P.t
-    (Qt ≈ P.t) && (Qa ≈ P.a) && (Qb ≈ P.b) && (Qc ≈ P.c) && return SymTridiagonal(Ones(∞),Zeros(∞))
+    (Qt ≈ P.t) && (Qa ≈ P.a) && (Qb ≈ P.b) && (Qc ≈ P.c) && return I
     Δa = Qa-P.a
     Δb = Qb-P.b
     Δc = Qc-P.c
@@ -356,7 +355,26 @@ function copy(L::Ldiv{SemiclassicalJacobiLayout,SemiclassicalJacobiLayout})
     (inv(M_Q) * L') * M_P
 end
 
-\(A::SemiclassicalJacobi, B::SemiclassicalJacobi) = semijacobi_ldiv(A, B)
+function \(A::SemiclassicalJacobi, B::SemiclassicalJacobi{T}) where {T} 
+    if A.b == -1 && B.b ≠ -1
+        return ApplyArray(inv, B \ A)
+    elseif B.b == -1 && A.b ≠ -1
+        # First convert Bᵗᵃ⁻¹ᶜ into Bᵗᵃ⁰ᶜ
+        Bᵗᵃ⁰ᶜ = SemiclassicalJacobi(B.t, B.a, zero(B.b), B.c) 
+        Bᵗᵃ¹ᶜ = SemiclassicalJacobi(B.t, B.a, one(B.a), B.c)
+        Rᵦₐ₁ᵪᵗᵃ⁰ᶜ = Weighted(Bᵗᵃ⁰ᶜ) \ Weighted(Bᵗᵃ¹ᶜ)
+        b1 = Rᵦₐ₁ᵪᵗᵃ⁰ᶜ[band(0)]
+        b0 = Vcat(one(T), Rᵦₐ₁ᵪᵗᵃ⁰ᶜ[band(-1)])
+        Rᵦₐ₋₁ᵪᵗᵃ⁰ᶜ = Bidiagonal(b0, b1, :U)
+        # Then convert Bᵗᵃ⁰ᶜ into A and complete 
+        Rₐ₀ᵪᴬ = A \ Bᵗᵃ⁰ᶜ 
+        @show A 
+        @show Bᵗᵃ⁰ᶜ 
+        return Rₐ₀ᵪᴬ * Rᵦₐ₋₁ᵪᵗᵃ⁰ᶜ
+    else
+        return semijacobi_ldiv(A, B)
+    end
+end
 \(A::LanczosPolynomial, B::SemiclassicalJacobi) = semijacobi_ldiv(A, B)
 \(A::SemiclassicalJacobi, B::LanczosPolynomial) = semijacobi_ldiv(A, B)
 function \(w_A::WeightedSemiclassicalJacobi{T}, w_B::WeightedSemiclassicalJacobi{T}) where T
