@@ -615,8 +615,8 @@ end
     P = SemiclassicalJacobi(2.0, 2.3, 5.3, 0.4)
     W = Weighted(P)
     @test sprint(show, w) == "x^2.3 * (1-x)^5.3 * (2.0-x)^0.4 on 0..1"
-    @test sprint(show, P) == "SemiclassicalJacobi with weight x^2.3 * (1-x)^5.3 * (2.0-x)^0.4"
-    @test sprint(show, W) == "Weighted(SemiclassicalJacobi with weight x^2.3 * (1-x)^5.3 * (2.0-x)^0.4)"
+    @test sprint(show, P) == "SemiclassicalJacobi with weight x^2.3 * (1-x)^5.3 * (2.0-x)^0.4 on 0..1"
+    @test sprint(show, W) == "Weighted(SemiclassicalJacobi with weight x^2.3 * (1-x)^5.3 * (2.0-x)^0.4 on 0..1)"
 end
 
 include("test_derivative.jl")

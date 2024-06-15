@@ -223,7 +223,7 @@ orthogonalityweight(P::SemiclassicalJacobi) = SemiclassicalJacobiWeight(P.t, P.a
 show(io::IO, P::SemiclassicalJacobi) = summary(io, P)
 function summary(io::IO, P::SemiclassicalJacobi)
     t,a,b,c = P.t,P.a,P.b,P.c
-    print(io, "SemiclassicalJacobi with weight x^$a * (1-x)^$b * ($t-x)^$c")
+    print(io, "SemiclassicalJacobi with weight x^$a * (1-x)^$b * ($t-x)^$c on 0..1")
 end
 
 
