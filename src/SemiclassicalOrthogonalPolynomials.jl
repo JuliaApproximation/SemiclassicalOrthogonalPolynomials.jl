@@ -275,31 +275,57 @@ function semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, P::SemiclassicalJacobi)
     Δa = Qa-P.a
     Δb = Qb-P.b
     Δc = Qc-P.c
-    M = Diagonal(Ones(∞))
-    if iseven(Δa) && iseven(Δb) && iseven(Δc) && (Δa > 0) && (Δb > 0) && (Δc > 0)
-        M = qr(P.X^(Δa÷2)*(I-P.X)^(Δb÷2)*(Qt*I-P.X)^(Δc÷2)).R
+    # special case (Δa,Δb,Δc) = (2,0,0)
+    if isone(Δa÷2) && iszero(Δb) && iszero(Δc)
+        M = qr(P.X^(Δa÷2)).R
+        return ApplyArray(*, Diagonal(sign.(view(M,band(0))).*Fill(abs.(1/M[1]),∞)), M) # match normalization choice P_0(x) = 1
+    # special case (Δa,Δb,Δc) = (0,2,0)
+    elseif iszero(Δa) && isone(Δb÷2) && iszero(Δc)
+        M = qr((I-P.X)^(Δb÷2)).R
         return ApplyArray(*, Diagonal(sign.(view(M,band(0))).*Fill(abs.(1/M[1]),∞)), M)
-    elseif isone(Δa) && iszero(Δb) && iszero(Δc) # special case (Δa,Δb,Δc) = (1,0,0)
+    # special case (Δa,Δb,Δc) = (0,0,2)
+    elseif iszero(Δa) && iszero(Δb) && isone(Δc÷2)
+        M = qr((Qt*I-P.X)^(Δc÷2)).R
+        return ApplyArray(*, Diagonal(sign.(view(M,band(0))).*Fill(abs.(1/M[1]),∞)), M)
+    # special case (Δa,Δb,Δc) = (-2,0,0)
+    elseif isone(Δa÷2) && iszero(Δb) && iszero(Δc)
+        M = qr(P.X^(Δa÷2)).R
+        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0))).*Fill(abs.(M[1]),∞)))
+    # special case (Δa,Δb,Δc) = (0,-2,0)
+    elseif iszero(Δa) && isone(Δb÷2) && iszero(Δc)
+        M = qr((I-P.X)^(Δb÷2)).R
+        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0))).*Fill(abs.(M[1]),∞)))
+    # special case (Δa,Δb,Δc) = (0,0,-2)
+    elseif iszero(Δa) && iszero(Δb) && isone(Δc÷2)
+        M = qr((Qt*I-P.X)^(Δc÷2)).R
+        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0))).*Fill(abs.(M[1]),∞)))
+    # special case (Δa,Δb,Δc) = (1,0,0)
+    elseif isone(Δa) && iszero(Δb) && iszero(Δc)
         M = cholesky(P.X).U
         return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
-    elseif iszero(Δa) && isone(Δb) && iszero(Δc) # special case (Δa,Δb,Δc) = (0,1,0)
+    # special case (Δa,Δb,Δc) = (0,1,0)
+    elseif iszero(Δa) && isone(Δb) && iszero(Δc)
         M = cholesky(I-P.X).U
         return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
-    elseif iszero(Δa) && iszero(Δb) && isone(Δc) # special case (Δa,Δb,Δc) = (0,0,1)
+    # special case (Δa,Δb,Δc) = (0,0,1)
+    elseif iszero(Δa) && iszero(Δb) && isone(Δc)
         M = cholesky(Qt*I-P.X).U
         return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
-    elseif isone(-Δa) && iszero(Δb) && iszero(Δc) # special case (Δa,Δb,Δc) = (-1,0,0)
+    # special case (Δa,Δb,Δc) = (-1,0,0)
+    elseif isone(-Δa) && iszero(Δb) && iszero(Δc)
         M = cholesky(semiclassical_jacobimatrix(P, Qa, Qb, Qc)).U
         return ApplyArray(\, M, Diagonal(Fill(M[1],∞)))
-    elseif iszero(Δa) && isone(-Δb) && iszero(Δc) # special case (Δa,Δb,Δc) = (0,-1,0)
+    # special case (Δa,Δb,Δc) = (0,-1,0)
+    elseif iszero(Δa) && isone(-Δb) && iszero(Δc)
         M = cholesky(I-semiclassical_jacobimatrix(P, Qa, Qb, Qc)).U
         return ApplyArray(\, M, Diagonal(Fill(M[1],∞)))
-    elseif iszero(Δa) && iszero(Δb) && isone(-Δc) # special case (Δa,Δb,Δc) = (0,0,-1)
+    # special case (Δa,Δb,Δc) = (0,0,-1)
+    elseif iszero(Δa) && iszero(Δb) && isone(-Δc)
         M = cholesky(Qt*I-semiclassical_jacobimatrix(P, Qa, Qb, Qc)).U
         return ApplyArray(\, M, Diagonal(Fill(M[1],∞)))
     elseif isinteger(Δa) && isinteger(Δb) && isinteger(Δc) && (Δa > 0) && (Δb > 0) && (Δc > 0)
         M = cholesky(Symmetric(P.X^(Δa)*(I-P.X)^(Δb)*(Qt*I-P.X)^(Δc))).U
-        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M) # match normalization choice P_0(x) = 1
+        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
     else
         error("Implement")
     end
