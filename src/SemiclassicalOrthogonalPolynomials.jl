@@ -144,7 +144,7 @@ function semiclassical_jacobimatrix(t, a, b, c)
     iszero(c) && return jacobimatrix(P)
     if isone(c)
         return cholesky_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), P)
-    elseif isone(c/2)
+    elseif c == 2
         return qr_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), P)
     elseif isinteger(c) && c ≥ 0 # reduce other integer c cases to hierarchy
         return SemiclassicalJacobi.(t, a, b, 0:Int(c))[end].X
@@ -280,29 +280,29 @@ function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     Δb = Q.b-P.b
     Δc = Q.c-P.c
     # special case (Δa,Δb,Δc) = (2,0,0)
-    if isone(Δa/2) && iszero(Δb) && iszero(Δc)
-        M = qr(P.X^(Δa÷2)).R
-        return ApplyArray(*, Diagonal(sign.(view(M,band(0))).*Fill(abs.(1/M[1]),∞)), M) # match normalization choice P_0(x) = 1
+    if (Δa == 2) && iszero(Δb) && iszero(Δc)
+        M = qr(P.X).R
+        return ApplyArray(*, Diagonal(sign.(view(M,band(0)))/abs(M[1])), M)
     # special case (Δa,Δb,Δc) = (0,2,0)
-    elseif iszero(Δa) && isone(Δb/2) && iszero(Δc)
-        M = qr((I-P.X)^(Δb÷2)).R
-        return ApplyArray(*, Diagonal(sign.(view(M,band(0))).*Fill(abs.(1/M[1]),∞)), M)
+    elseif iszero(Δa) && (Δb == 2) && iszero(Δc)
+        M = qr(I-P.X).R
+        return ApplyArray(*, Diagonal(sign.(view(M,band(0)))/abs(M[1])), M)
     # special case (Δa,Δb,Δc) = (0,0,2)
-    elseif iszero(Δa) && iszero(Δb) && isone(Δc/2)
-        M = qr((Q.t*I-P.X)^(Δc÷2)).R
-        return ApplyArray(*, Diagonal(sign.(view(M,band(0))).*Fill(abs.(1/M[1]),∞)), M)
+    elseif iszero(Δa) && iszero(Δb) && (Δc == 2)
+        M = qr(Q.t*I-P.X).R
+        return ApplyArray(*, Diagonal(sign.(view(M,band(0)))/abs(M[1])), M)
     # special case (Δa,Δb,Δc) = (-2,0,0)
-    elseif isone(-Δa/2) && iszero(Δb) && iszero(Δc)
-        M = qr(Q.X^(-Δa÷2)).R
-        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0))).*Fill(abs.(M[1]),∞)))
+    elseif (Δa == -2) && iszero(Δb) && iszero(Δc)
+        M = qr(Q.X).R
+        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0)))*abs.(M[1])))
     # special case (Δa,Δb,Δc) = (0,-2,0)
-    elseif iszero(Δa) && isone(-Δb/2) && iszero(Δc)
-        M = qr((I-Q.X)^(-Δb÷2)).R
-        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0))).*Fill(abs.(M[1]),∞)))
+    elseif iszero(Δa) && (Δb == -2) && iszero(Δc)
+        M = qr(I-Q.X).R
+        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0)))*abs.(M[1])))
     # special case (Δa,Δb,Δc) = (0,0,-2)
-    elseif iszero(Δa) && iszero(Δb) && isone(-Δc/2)
-        M = qr((Q.t*I-Q.X)^(-Δc÷2)).R
-        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0))).*Fill(abs.(M[1]),∞)))
+    elseif iszero(Δa) && iszero(Δb) && (Δc == -2)
+        M = qr(Q.t*I-Q.X).R
+        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0)))*abs.(M[1])))
     # special case (Δa,Δb,Δc) = (1,0,0)
     elseif isone(Δa) && iszero(Δb) && iszero(Δc)
         M = cholesky(P.X).U
@@ -327,7 +327,7 @@ function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     elseif iszero(Δa) && iszero(Δb) && isone(-Δc)
         M = cholesky(Q.t*I-Q.X).U
         return ApplyArray(\, M, Diagonal(Fill(M[1],∞)))
-    elseif isinteger(Δa) && isinteger(Δb) && isinteger(Δc) && (Δa >= 0) && (Δb >= 0) && (Δc >= 0)
+    elseif isinteger(Δa) && isinteger(Δb) && isinteger(Δc) && (Δa ≥ 0) && (Δb ≥ 0) && (Δc ≥ 0)
         M = cholesky(Symmetric(P.X^(Δa)*(I-P.X)^(Δb)*(Q.t*I-P.X)^(Δc))).U
         return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
     else
@@ -347,7 +347,7 @@ function semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     Δb = Q.b-P.b
     Δc = Q.c-P.c
     if isinteger(Δa) && isinteger(Δb) && isinteger(Δc) # (Δa,Δb,Δc) are integers -> use QR/Cholesky iteratively
-        if ((isone(abs(Δa))||isone(Δa/2)) && iszero(Δb) && iszero(Δc)) || (iszero(Δa) && (isone(abs(Δb))||isone(Δb/2)) && iszero(Δc))  || (iszero(Δa) && iszero(Δb) && (isone(abs(Δc))||isone(Δc/2)))
+        if ((isone(abs(Δa))||(Δa == 2)) && iszero(Δb) && iszero(Δc)) || (iszero(Δa) && (isone(abs(Δb))||(Δb == 2)) && iszero(Δc))  || (iszero(Δa) && iszero(Δb) && (isone(abs(Δc))||(Δc == 2)))
             return semijacobi_ldiv_direct(Q, P)
         elseif Δa > 0  # iterative raising by 1
             QQ = SemiclassicalJacobi(Q.t, Q.a-1-iseven(Δa), Q.b, Q.c, P)
