@@ -620,6 +620,25 @@ end
 end
 
 @testset "Lowering" begin
+    @testset "Constructing Lowered Polynomials" begin
+        t = 1.3184
+        P = SemiclassicalJacobi(t, 3, 3, 3)
+        Q_1 = SemiclassicalJacobi(t, 2, 3, 3, P)
+        Q_2 = SemiclassicalJacobi(t, 3, 3, 2, P)
+        Q_3 = SemiclassicalJacobi(t, 3, 2, 3, P)
+        Q_4 = SemiclassicalJacobi(t, 1, 2, 3, P)
+        Q_5 = SemiclassicalJacobi(t, 3, 2, 1, P)
+        Q_6 = SemiclassicalJacobi(t, 2, 2, 2, P)
+        Q_7 = SemiclassicalJacobi(t, 1, 1, 1, P)
+
+        @test Q_1.X[1:20,1:20] ≈ SemiclassicalJacobi(t, 2, 3, 3).X[1:20,1:20]
+        @test Q_2.X[1:20,1:20] ≈ SemiclassicalJacobi(t, 3, 3, 2).X[1:20,1:20]
+        @test Q_3.X[1:20,1:20] ≈ SemiclassicalJacobi(t, 3, 2, 3).X[1:20,1:20]
+        @test Q_4.X[1:20,1:20] ≈ SemiclassicalJacobi(t, 1, 2, 3).X[1:20,1:20]
+        @test Q_5.X[1:20,1:20] ≈ SemiclassicalJacobi(t, 3, 2, 1).X[1:20,1:20]
+        @test Q_6.X[1:20,1:20] ≈ SemiclassicalJacobi(t, 2, 2, 2).X[1:20,1:20] 
+        @test Q_7.X[1:20,1:20] ≈ SemiclassicalJacobi(t, 1, 1, 1).X[1:20,1:20] 
+    end
     @testset "Decrements of 1 via Cholesky" begin
         # Cholesky lowering
         t = 2.2
@@ -656,3 +675,4 @@ end
 
 include("test_derivative.jl")
 include("test_neg1c.jl")
+
