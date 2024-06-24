@@ -294,23 +294,23 @@ function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     # special case (Δa,Δb,Δc) = (-2,0,0)
     elseif (Δa == -2) && iszero(Δb) && iszero(Δc)
         M = qr(Q.X).R
-        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0)))*abs.(M[1])))
+        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0)))*abs(M[1])))
     # special case (Δa,Δb,Δc) = (0,-2,0)
     elseif iszero(Δa) && (Δb == -2) && iszero(Δc)
         M = qr(I-Q.X).R
-        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0)))*abs.(M[1])))
+        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0)))*abs(M[1])))
     # special case (Δa,Δb,Δc) = (0,0,-2)
     elseif iszero(Δa) && iszero(Δb) && (Δc == -2)
         M = qr(Q.t*I-Q.X).R
-        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0)))*abs.(M[1])))
+        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0)))*abs(M[1])))
     # special case (Δa,Δb,Δc) = (1,0,0)
     elseif isone(Δa) && iszero(Δb) && iszero(Δc)
         M = cholesky(P.X).U
-        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
+        return M/M[1]
     # special case (Δa,Δb,Δc) = (0,1,0)
     elseif iszero(Δa) && isone(Δb) && iszero(Δc)
         M = cholesky(I-P.X).U
-        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
+        return M/M[1]
     # special case (Δa,Δb,Δc) = (0,0,1)
     elseif iszero(Δa) && iszero(Δb) && isone(Δc)
         M = cholesky(Q.t*I-P.X).U
