@@ -275,7 +275,7 @@ Returns conversion operator from SemiclassicalJacobi `P` to SemiclassicalJacobi 
 Numerically unstable if the parameter modification is large. Typically one should instead use `P \\ Q` which is equivalent to `semijacobi_ldiv(P,Q)` and proceeds step by step.
 """
 function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
-    (Q.t ≈ P.t) && (Q.a ≈ P.a) && (Q.b ≈ P.b) && (Q.c ≈ P.c) && return SymTridiagonal(Ones(∞),Zeros(∞))
+    (Q.t ≈ P.t) && (Q.a ≈ P.a) && (Q.b ≈ P.b) && (Q.c ≈ P.c) && return SquareEye{eltype(Q.t)}((axes(P,2),))
     Δa = Q.a-P.a
     Δb = Q.b-P.b
     Δc = Q.c-P.c
@@ -318,15 +318,15 @@ function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     # special case (Δa,Δb,Δc) = (-1,0,0)
     elseif isone(-Δa) && iszero(Δb) && iszero(Δc)
         M = cholesky(Q.X).U
-        return ApplyArray(\, M, Diagonal(Fill(M[1],∞)))
+        return UpperTriangular(ApplyArray(inv,M/M[1]))
     # special case (Δa,Δb,Δc) = (0,-1,0)
     elseif iszero(Δa) && isone(-Δb) && iszero(Δc)
         M = cholesky(I-Q.X).U
-        return ApplyArray(\, M, Diagonal(Fill(M[1],∞)))
+        return UpperTriangular(ApplyArray(inv,M/M[1]))
     # special case (Δa,Δb,Δc) = (0,0,-1)
     elseif iszero(Δa) && iszero(Δb) && isone(-Δc)
         M = cholesky(Q.t*I-Q.X).U
-        return ApplyArray(\, M, Diagonal(Fill(M[1],∞)))
+        return UpperTriangular(ApplyArray(inv,M/M[1]))
     elseif isinteger(Δa) && isinteger(Δb) && isinteger(Δc) && (Δa ≥ 0) && (Δb ≥ 0) && (Δc ≥ 0)
         M = cholesky(Symmetric(P.X^(Δa)*(I-P.X)^(Δb)*(Q.t*I-P.X)^(Δc))).U
         return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
@@ -343,7 +343,7 @@ Returns conversion operator from SemiclassicalJacobi `P` to SemiclassicalJacobi 
 function semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     @assert Q.t ≈ P.t
     T = promote_type(eltype(Q), eltype(P))
-    (Q.t ≈ P.t) && (Q.a ≈ P.a) && (Q.b ≈ P.b) && (Q.c ≈ P.c) && return SquareEye{T}(∞)
+    (Q.t ≈ P.t) && (Q.a ≈ P.a) && (Q.b ≈ P.b) && (Q.c ≈ P.c) && return return SquareEye{eltype(Q.t)}((axes(P,2),))
     Δa = Q.a-P.a
     Δb = Q.b-P.b
     Δc = Q.c-P.c
