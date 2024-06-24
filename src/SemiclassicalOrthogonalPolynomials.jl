@@ -342,7 +342,8 @@ Returns conversion operator from SemiclassicalJacobi `P` to SemiclassicalJacobi 
 """
 function semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     @assert Q.t ≈ P.t
-    (Q.t ≈ P.t) && (Q.a ≈ P.a) && (Q.b ≈ P.b) && (Q.c ≈ P.c) && return SymTridiagonal(Ones(∞),Zeros(∞))
+    T = promote_type(eltype(Q), eltype(P))
+    (Q.t ≈ P.t) && (Q.a ≈ P.a) && (Q.b ≈ P.b) && (Q.c ≈ P.c) && return SquareEye{T}(∞)
     Δa = Q.a-P.a
     Δb = Q.b-P.b
     Δc = Q.c-P.c
