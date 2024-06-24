@@ -314,7 +314,7 @@ function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     # special case (Δa,Δb,Δc) = (0,0,1)
     elseif iszero(Δa) && iszero(Δb) && isone(Δc)
         M = cholesky(Q.t*I-P.X).U
-        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
+        return M/M[1]
     # special case (Δa,Δb,Δc) = (-1,0,0)
     elseif isone(-Δa) && iszero(Δb) && iszero(Δc)
         M = cholesky(Q.X).U
