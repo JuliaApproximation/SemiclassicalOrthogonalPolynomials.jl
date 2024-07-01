@@ -431,8 +431,6 @@ function \(A::SemiclassicalJacobi, B::SemiclassicalJacobi{T}) where {T}
         Rᵦₐ₋₁ᵪᵗᵃ⁰ᶜ = Bidiagonal(b0, b1, :U)
         # Then convert Bᵗᵃ⁰ᶜ into A and complete 
         Rₐ₀ᵪᴬ = A \ Bᵗᵃ⁰ᶜ 
-        @show A 
-        @show Bᵗᵃ⁰ᶜ 
         return Rₐ₀ᵪᴬ * Rᵦₐ₋₁ᵪᵗᵃ⁰ᶜ
     else
         return semijacobi_ldiv(A, B)
