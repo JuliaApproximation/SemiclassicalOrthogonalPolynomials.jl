@@ -160,18 +160,6 @@ function semiclassical_jacobimatrix(t, a, b, c)
             return jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), jacobi(b, a, UnitInterval{T}())))
         end
     end
-    P = Normalized(jacobi(b, a, UnitInterval{T}()))
-    iszero(c) && return jacobimatrix(P)
-    if isone(c)
-        return cholesky_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), P)
-    elseif c == 2
-        return qr_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), P)
-    elseif isinteger(c) && c ≥ 0 # reduce other integer c cases to hierarchy
-        return SemiclassicalJacobi.(t, a, b, 0:Int(c))[end].X
-    else # if c is not an integer, use Lanczos
-        x = axes(P,1)
-        return jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), jacobi(b, a, UnitInterval{T}())))
-    end
 end
 
 function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
