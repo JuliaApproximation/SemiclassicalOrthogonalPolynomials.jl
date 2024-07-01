@@ -160,6 +160,18 @@ function semiclassical_jacobimatrix(t, a, b, c)
             return jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), jacobi(b, a, UnitInterval{T}())))
         end
     end
+    P = Normalized(jacobi(b, a, UnitInterval{T}()))
+    iszero(c) && return jacobimatrix(P)
+    if isone(c)
+        return cholesky_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), P)
+    elseif c == 2
+        return qr_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), P)
+    elseif isinteger(c) && c ≥ 0 # reduce other integer c cases to hierarchy
+        return SemiclassicalJacobi.(t, a, b, 0:Int(c))[end].X
+    else # if c is not an integer, use Lanczos
+        x = axes(P,1)
+        return jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), jacobi(b, a, UnitInterval{T}())))
+    end
 end
 
 function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
@@ -190,19 +202,27 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
         cholesky_jacobimatrix(I-Q.X,Q)
     elseif iszero(Δa) && iszero(Δb) && isone(Δc)
         cholesky_jacobimatrix(Q.t*I-Q.X,Q)
+    elseif isone(-Δa) && iszero(Δb) && iszero(Δc) # in these cases we currently have to reconstruct
+        # TODO: This is re-constructing. It should instead use reverse Cholesky (or an alternative)!
+        semiclassical_jacobimatrix(Q.t,a,b,c)
+    elseif iszero(Δa) && isone(-Δb) && iszero(Δc)
+        # TODO: This is re-constructing. It should instead use reverse Cholesky (or an alternative)!
+        semiclassical_jacobimatrix(Q.t,a,b,c)
+    elseif iszero(Δa) && iszero(Δb) && isone(-Δc)
+        # TODO: This is re-constructing. It should instead use reverse Cholesky (or an alternative)!
+        semiclassical_jacobimatrix(Q.t,a,b,c)
     elseif a > Q.a  # iterative raising by 1
         semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a+1, Q.b, Q.c, Q), a, b, c)
     elseif b > Q.b
         semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b+1, Q.c, Q), a, b, c)
     elseif c > Q.c
         semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c+1, Q), a, b, c)
-    # TODO: Implement lowering via QL/reverse Cholesky or via inverting R?
-    # elseif b < Q.b  # iterative lowering by 1
-    #    semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b-1, Q.c, Q), a, b, c)
-    # elseif c < Q.c
-    #    semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c-1, Q), a, b, c)
-    # elseif a < Q.a 
-    #    semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a-1, Q.b, Q.c, Q), a, b, c)
+    elseif a < Q.a  # iterative lowering by 1
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a-1, Q.b, Q.c, Q), a, b, c)
+    elseif b < Q.b
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b-1, Q.c, Q), a, b, c)
+    elseif c < Q.c
+        semiclassical_jacobimatrix(SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c-1, Q), a, b, c)
     else
         error("Not Implemented")
     end
@@ -216,7 +236,6 @@ LanczosPolynomial(P::SemiclassicalJacobi{T}) where T =
 
 gives either a mapped `Jacobi` or `LanczosPolynomial` version of `P`.
 """
-# TODO: Use ConvertedOPs for integer special cases?
 toclassical(P::SemiclassicalJacobi{T}) where T = iszero(P.c) ? Normalized(jacobi(P.b, P.a, UnitInterval{T}())) : LanczosPolynomial(P)
 
 copy(P::SemiclassicalJacobi) = P
@@ -241,6 +260,7 @@ jacobimatrix(P::SemiclassicalJacobi) = P.X
 
 """
     op_lowering(Q, y)
+
 Gives the Lowering operator from OPs w.r.t. (x-y)*w(x) to Q
 as constructed from Chistoffel–Darboux
 """
@@ -270,56 +290,111 @@ function semijacobi_ldiv(P::SemiclassicalJacobi, Q)
     (P \ R) * _p0(R̃) * (R̃ \ Q)
 end
 
-# returns conversion operator from SemiclassicalJacobi P to SemiclassicalJacobi Q in a single step via decomposition.
-semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi) = semijacobi_ldiv_direct(Q.t, Q.a, Q.b, Q.c, P)
-function semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, P::SemiclassicalJacobi)
-    (Qt ≈ P.t) && (Qa ≈ P.a) && (Qb ≈ P.b) && (Qc ≈ P.c) && return I
-    Δa = Qa-P.a
-    Δb = Qb-P.b
-    Δc = Qc-P.c
-    M = Diagonal(Ones(∞))
-    if iseven(Δa) && iseven(Δb) && iseven(Δc)
-        M = qr(P.X^(Δa÷2)*(I-P.X)^(Δb÷2)*(Qt*I-P.X)^(Δc÷2)).R
-        return ApplyArray(*, Diagonal(sign.(view(M,band(0))).*Fill(abs.(1/M[1]),∞)), M)
-    elseif isone(Δa) && iszero(Δb) && iszero(Δc) # special case (Δa,Δb,Δc) = (1,0,0)
+"""
+    semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
+
+Returns conversion operator from SemiclassicalJacobi `P` to SemiclassicalJacobi `Q` in a single step via decomposition. 
+Numerically unstable if the parameter modification is large. Typically one should instead use `P \\ Q` which is equivalent to `semijacobi_ldiv(P,Q)` and proceeds step by step.
+"""
+function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
+    (Q.t ≈ P.t) && (Q.a ≈ P.a) && (Q.b ≈ P.b) && (Q.c ≈ P.c) && return SquareEye{eltype(Q.t)}((axes(P,2),))
+    Δa = Q.a-P.a
+    Δb = Q.b-P.b
+    Δc = Q.c-P.c
+    # special case (Δa,Δb,Δc) = (2,0,0)
+    if (Δa == 2) && iszero(Δb) && iszero(Δc)
+        M = qr(P.X).R
+        return ApplyArray(*, Diagonal(sign.(view(M,band(0)))/abs(M[1])), M)
+    # special case (Δa,Δb,Δc) = (0,2,0)
+    elseif iszero(Δa) && (Δb == 2) && iszero(Δc)
+        M = qr(I-P.X).R
+        return ApplyArray(*, Diagonal(sign.(view(M,band(0)))/abs(M[1])), M)
+    # special case (Δa,Δb,Δc) = (0,0,2)
+    elseif iszero(Δa) && iszero(Δb) && (Δc == 2)
+        M = qr(Q.t*I-P.X).R
+        return ApplyArray(*, Diagonal(sign.(view(M,band(0)))/abs(M[1])), M)
+    # special case (Δa,Δb,Δc) = (-2,0,0)
+    elseif (Δa == -2) && iszero(Δb) && iszero(Δc)
+        M = qr(Q.X).R
+        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0)))*abs(M[1])))
+    # special case (Δa,Δb,Δc) = (0,-2,0)
+    elseif iszero(Δa) && (Δb == -2) && iszero(Δc)
+        M = qr(I-Q.X).R
+        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0)))*abs(M[1])))
+    # special case (Δa,Δb,Δc) = (0,0,-2)
+    elseif iszero(Δa) && iszero(Δb) && (Δc == -2)
+        M = qr(Q.t*I-Q.X).R
+        return ApplyArray(\, M, Diagonal(sign.(view(M,band(0)))*abs(M[1])))
+    # special case (Δa,Δb,Δc) = (1,0,0)
+    elseif isone(Δa) && iszero(Δb) && iszero(Δc)
         M = cholesky(P.X).U
-        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
-    elseif iszero(Δa) && isone(Δb) && iszero(Δc) # special case (Δa,Δb,Δc) = (0,1,0)
+        return M/M[1]
+    # special case (Δa,Δb,Δc) = (0,1,0)
+    elseif iszero(Δa) && isone(Δb) && iszero(Δc)
         M = cholesky(I-P.X).U
+        return M/M[1]
+    # special case (Δa,Δb,Δc) = (0,0,1)
+    elseif iszero(Δa) && iszero(Δb) && isone(Δc)
+        M = cholesky(Q.t*I-P.X).U
+        return M/M[1]
+    # special case (Δa,Δb,Δc) = (-1,0,0)
+    elseif isone(-Δa) && iszero(Δb) && iszero(Δc)
+        M = cholesky(Q.X).U
+        return UpperTriangular(ApplyArray(inv,M/M[1]))
+    # special case (Δa,Δb,Δc) = (0,-1,0)
+    elseif iszero(Δa) && isone(-Δb) && iszero(Δc)
+        M = cholesky(I-Q.X).U
+        return UpperTriangular(ApplyArray(inv,M/M[1]))
+    # special case (Δa,Δb,Δc) = (0,0,-1)
+    elseif iszero(Δa) && iszero(Δb) && isone(-Δc)
+        M = cholesky(Q.t*I-Q.X).U
+        return UpperTriangular(ApplyArray(inv,M/M[1]))
+    elseif isinteger(Δa) && isinteger(Δb) && isinteger(Δc) && (Δa ≥ 0) && (Δb ≥ 0) && (Δc ≥ 0)
+        M = cholesky(Symmetric(P.X^(Δa)*(I-P.X)^(Δb)*(Q.t*I-P.X)^(Δc))).U
         return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
-    elseif iszero(Δa) && iszero(Δb) && isone(Δc) # special case (Δa,Δb,Δc) = (0,0,1)
-        M = cholesky(Qt*I-P.X).U
-        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M)
-    elseif isinteger(Δa) && isinteger(Δb) && isinteger(Δc)
-        M = cholesky(Symmetric(P.X^(Δa)*(I-P.X)^(Δb)*(Qt*I-P.X)^(Δc))).U
-        return ApplyArray(*, Diagonal(Fill(1/M[1],∞)), M) # match normalization choice P_0(x) = 1
     else
-        error("Implement")
+        error("Implement modification by ($Δa,$Δb,$Δc)")
     end
 end
 
-# returns conversion operator from SemiclassicalJacobi P to SemiclassicalJacobi Q.
-semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi) = semijacobi_ldiv(Q.t, Q.a, Q.b, Q.c, P)
-function semijacobi_ldiv(Qt, Qa, Qb, Qc, P::SemiclassicalJacobi)
-    @assert Qt ≈ P.t
-    (Qt ≈ P.t) && (Qa ≈ P.a) && (Qb ≈ P.b) && (Qc ≈ P.c) && return I
-    Δa = Qa-P.a
-    Δb = Qb-P.b
-    Δc = Qc-P.c
+"""
+    semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
+
+Returns conversion operator from SemiclassicalJacobi `P` to SemiclassicalJacobi `Q`. Integer distances are covered by decomposition methods, for non-integer cases a Lanczos fallback is attempted.
+"""
+function semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
+    @assert Q.t ≈ P.t
+    T = promote_type(eltype(Q), eltype(P))
+    (Q.t ≈ P.t) && (Q.a ≈ P.a) && (Q.b ≈ P.b) && (Q.c ≈ P.c) && return return SquareEye{eltype(Q.t)}((axes(P,2),))
+    Δa = Q.a-P.a
+    Δb = Q.b-P.b
+    Δc = Q.c-P.c
     if isinteger(Δa) && isinteger(Δb) && isinteger(Δc) # (Δa,Δb,Δc) are integers -> use QR/Cholesky iteratively
-        if ((isone(Δa)||isone(Δa/2)) && iszero(Δb) && iszero(Δc)) || (iszero(Δa) && (isone(Δb)||isone(Δb/2)) && iszero(Δc))  || (iszero(Δa) && iszero(Δb) && (isone(Δc)||isone(Δc/2)))
-            M = semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, P)
-        elseif Δa > 0  # iterative modification by 1
-            M = ApplyArray(*,semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa-1-iseven(Δa), Qb, Qc, P)),semijacobi_ldiv(Qt, Qa-1-iseven(Δa), Qb, Qc, P))
+        if ((isone(abs(Δa))||(Δa == 2)) && iszero(Δb) && iszero(Δc)) || (iszero(Δa) && (isone(abs(Δb))||(Δb == 2)) && iszero(Δc))  || (iszero(Δa) && iszero(Δb) && (isone(abs(Δc))||(Δc == 2)))
+            return semijacobi_ldiv_direct(Q, P)
+        elseif Δa > 0  # iterative raising by 1
+            QQ = SemiclassicalJacobi(Q.t, Q.a-1-iseven(Δa), Q.b, Q.c, P)
+            return ApplyArray(*,semijacobi_ldiv_direct(Q, QQ),semijacobi_ldiv(QQ, P))
         elseif Δb > 0
-            M = ApplyArray(*,semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa, Qb-1-iseven(Δb), Qc, P)),semijacobi_ldiv(Qt, Qa, Qb-1-iseven(Δb), Qc, P))
+            QQ = SemiclassicalJacobi(Q.t, Q.a, Q.b-1-iseven(Δb), Q.c, P)
+            return ApplyArray(*,semijacobi_ldiv_direct(Q, QQ),semijacobi_ldiv(QQ, P))
         elseif Δc > 0
-            M = ApplyArray(*,semijacobi_ldiv_direct(Qt, Qa, Qb, Qc, SemiclassicalJacobi(Qt, Qa, Qb, Qc-1-iseven(Δc), P)),semijacobi_ldiv(Qt, Qa, Qb, Qc-1-iseven(Δc), P))
+            QQ = SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c-1-iseven(Δc), P)
+            return ApplyArray(*,semijacobi_ldiv_direct(Q, QQ),semijacobi_ldiv(QQ, P))
+        elseif Δa < 0  # iterative lowering by 1
+            QQ = SemiclassicalJacobi(Q.t, Q.a+1+iseven(Δa), Q.b, Q.c, P)
+            return ApplyArray(*,semijacobi_ldiv_direct(Q, QQ),semijacobi_ldiv(QQ, P))
+        elseif Δb < 0
+            QQ = SemiclassicalJacobi(Q.t, Q.a, Q.b+1+iseven(Δb), Q.c, P)
+            return ApplyArray(*,semijacobi_ldiv_direct(Q, QQ),semijacobi_ldiv(QQ, P))
+        elseif Δc < 0
+            QQ = SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c+1+iseven(Δc), P)
+            return ApplyArray(*,semijacobi_ldiv_direct(Q, QQ),semijacobi_ldiv(QQ, P))
         end
     else # fallback to Lancos
         R = SemiclassicalJacobi(P.t, mod(P.a,-1), mod(P.b,-1), mod(P.c,-1))
         R̃ = toclassical(R)
-        return (P \ R) * _p0(R̃) * (R̃ \ SemiclassicalJacobi(Qt, Qa, Qb, Qc))
+        return (P \ R) * _p0(R̃) * (R̃ \ Q)
     end
 end
 
@@ -625,5 +700,6 @@ function sumquotient(wP::SemiclassicalJacobiWeight{T},wQ::SemiclassicalJacobiWei
 end
 
 include("neg1c.jl")
+include("deprecated.jl")
 
 end

@@ -619,6 +619,60 @@ end
     @test sprint(show, W) == "Weighted(SemiclassicalJacobi with weight x^2.3 * (1-x)^5.3 * (2.0-x)^0.4 on 0..1)"
 end
 
+@testset "Lowering" begin
+    @testset "Constructing Lowered Polynomials" begin
+        t = 1.3184
+        P = SemiclassicalJacobi(t, 3, 3, 3)
+        Q_1 = SemiclassicalJacobi(t, 2, 3, 3, P)
+        Q_2 = SemiclassicalJacobi(t, 3, 3, 2, P)
+        Q_3 = SemiclassicalJacobi(t, 3, 2, 3, P)
+        Q_4 = SemiclassicalJacobi(t, 1, 2, 3, P)
+        Q_5 = SemiclassicalJacobi(t, 3, 2, 1, P)
+        Q_6 = SemiclassicalJacobi(t, 2, 2, 2, P)
+        Q_7 = SemiclassicalJacobi(t, 1, 1, 1, P)
+
+        @test Q_1.X[1:20,1:20] ≈ SemiclassicalJacobi(t, 2, 3, 3).X[1:20,1:20]
+        @test Q_2.X[1:20,1:20] ≈ SemiclassicalJacobi(t, 3, 3, 2).X[1:20,1:20]
+        @test Q_3.X[1:20,1:20] ≈ SemiclassicalJacobi(t, 3, 2, 3).X[1:20,1:20]
+        @test Q_4.X[1:20,1:20] ≈ SemiclassicalJacobi(t, 1, 2, 3).X[1:20,1:20]
+        @test Q_5.X[1:20,1:20] ≈ SemiclassicalJacobi(t, 3, 2, 1).X[1:20,1:20]
+        @test Q_6.X[1:20,1:20] ≈ SemiclassicalJacobi(t, 2, 2, 2).X[1:20,1:20] 
+        @test Q_7.X[1:20,1:20] ≈ SemiclassicalJacobi(t, 1, 1, 1).X[1:20,1:20] 
+    end
+    @testset "Decrements of 1 via Cholesky" begin
+        # Cholesky lowering
+        t = 2.2
+        P = SemiclassicalJacobi(t, 2, 2, 2)
+        R_0 = SemiclassicalJacobi(t, 1, 2, 2) \ P
+        R_1 = SemiclassicalJacobi(t, 2, 1, 2) \ P
+        R_t = SemiclassicalJacobi(t, 2, 2, 1) \ P
+
+        R_0inv = P \ SemiclassicalJacobi(t, 1, 2, 2)
+        R_1inv = P \ SemiclassicalJacobi(t, 2, 1, 2)
+        R_tinv = P \ SemiclassicalJacobi(t, 2, 2, 1)
+
+        @test ApplyArray(inv,R_0inv)[1:20,1:20] ≈ R_0[1:20,1:20] 
+        @test ApplyArray(inv,R_1inv)[1:20,1:20] ≈ R_1[1:20,1:20] 
+        @test ApplyArray(inv,R_tinv)[1:20,1:20] ≈ R_t[1:20,1:20] 
+    end
+    @testset "Decrements of 2 via QR" begin
+        # Cholesky lowering
+        t = 2.2
+        P = SemiclassicalJacobi(t, 3, 3, 3)
+        R_0 = SemiclassicalJacobi(t, 1, 3, 3) \ P
+        R_1 = SemiclassicalJacobi(t, 3, 1, 3) \ P
+        R_t = SemiclassicalJacobi(t, 3, 3, 1) \ P
+
+        R_0inv = P \ SemiclassicalJacobi(t, 1, 3, 3)
+        R_1inv = P \ SemiclassicalJacobi(t, 3, 1, 3)
+        R_tinv = P \ SemiclassicalJacobi(t, 3, 3, 1)
+
+        @test ApplyArray(inv,R_0inv)[1:20,1:20] ≈ R_0[1:20,1:20] 
+        @test ApplyArray(inv,R_1inv)[1:20,1:20] ≈ R_1[1:20,1:20] 
+        @test ApplyArray(inv,R_tinv)[1:20,1:20] ≈ R_t[1:20,1:20] 
+    end
+end
+
 include("test_derivative.jl")
 include("test_neg1c.jl")
 include("test_neg1b.jl")
