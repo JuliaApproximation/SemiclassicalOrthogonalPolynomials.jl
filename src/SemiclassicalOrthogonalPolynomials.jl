@@ -420,11 +420,23 @@ end
 
 function \(A::SemiclassicalJacobi, B::SemiclassicalJacobi{T}) where {T} 
     if A.b == -1 && B.b ≠ -1
-        return ApplyArray(inv, B \ A)
+        #=
+        Too many memory layout issues - colsupport(inv(B \ A), 1) == 1:∞ without wrapping UpperTriangulation since 
+            LazyArrays.applylayout(typeof(*), 
+                TriangularLayout{'U', 'N', LazyArrays.LazyLayout}(), 
+                TriangularLayout{'U', 'N', LazyArrays.LazyLayout}(), 
+                BidiagonalLayout{LazyArrays.LazyLayout, LazyArrays.LazyLayout}()
+            ) = LazyArrays.ApplyLayout{typeof(*)}().
+        Additionally, since there's a method ambiguity (that could be fixed using 
+            ext = Base.get_extension(LazyArrays, :LazyArraysBandedMatricesExt)
+            Base.copy(L::Ldiv{<:ext.BandedLazyLayouts,<:LazyArrays.AbstractLazyLayout}) = LazyArrays.lazymaterialize(\, L.A, L.B)
+        ), we use ApplyArray instead of inv(B \ A).
+        =#
+        return UpperTriangular(ApplyArray(inv, B \ A)) 
     elseif B.b == -1 && A.b ≠ -1
         # First convert Bᵗᵃ⁻¹ᶜ into Bᵗᵃ⁰ᶜ
-        Bᵗᵃ⁰ᶜ = SemiclassicalJacobi(B.t, B.a, zero(B.b), B.c) 
-        Bᵗᵃ¹ᶜ = SemiclassicalJacobi(B.t, B.a, one(B.a), B.c)
+        Bᵗᵃ⁰ᶜ = SemiclassicalJacobi(B.t, B.a, zero(B.b), B.c, A) 
+        Bᵗᵃ¹ᶜ = SemiclassicalJacobi(B.t, B.a, one(B.a), B.c, A)
         Rᵦₐ₁ᵪᵗᵃ⁰ᶜ = Weighted(Bᵗᵃ⁰ᶜ) \ Weighted(Bᵗᵃ¹ᶜ)
         b1 = Rᵦₐ₁ᵪᵗᵃ⁰ᶜ[band(0)]
         b0 = Vcat(one(T), Rᵦₐ₁ᵪᵗᵃ⁰ᶜ[band(-1)])

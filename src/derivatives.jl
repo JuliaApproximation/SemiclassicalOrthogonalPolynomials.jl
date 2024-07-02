@@ -55,7 +55,8 @@ function diff(P::SemiclassicalJacobi{T}; dims=1) where {T}
         Dₐ₀ᵪᵃ⁺¹¹ᶜ⁺¹ = diff(Pᵗᵃ⁰ᶜ)
         Pᵗᵃ⁺¹¹ᶜ⁺¹ = Dₐ₀ᵪᵃ⁺¹¹ᶜ⁺¹.args[1]
         Pᵗᵃ⁺¹⁰ᶜ⁺¹ = SemiclassicalJacobi(P.t, P.a + 1, zero(P.b), P.c + 1, Pᵗᵃ⁰ᶜ)
-        Rₐ₊₁₁ᵪ₊₁ᵗᵃ⁺¹⁰ᶜ⁺¹ = ApplyArray(inv, Pᵗᵃ⁺¹¹ᶜ⁺¹ \ Pᵗᵃ⁺¹⁰ᶜ⁺¹) #  
+        # Rₐ₊₁₁ᵪ₊₁ᵗᵃ⁺¹⁰ᶜ⁺¹ = ApplyArray(inv, Pᵗᵃ⁺¹¹ᶜ⁺¹ \ Pᵗᵃ⁺¹⁰ᶜ⁺¹) #  
+        Rₐ₊₁₁ᵪ₊₁ᵗᵃ⁺¹⁰ᶜ⁺¹ = Pᵗᵃ⁺¹⁰ᶜ⁺¹ \ Pᵗᵃ⁺¹¹ᶜ⁺¹ 
         Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹ = Rₐ₊₁₁ᵪ₊₁ᵗᵃ⁺¹⁰ᶜ⁺¹ * coefficients(Dₐ₀ᵪᵃ⁺¹¹ᶜ⁺¹) * Rᵦₐ₁ᵪᵗᵃ⁰ᶜ # bidigaonalconjugation data and avoid inv
         b2 = Vcat(zero(T), zero(T), Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹[band(1)])
         b1 = Vcat(zero(T), Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹[band(0)])
@@ -64,9 +65,6 @@ function diff(P::SemiclassicalJacobi{T}; dims=1) where {T}
         return Pᵗᵃ⁺¹⁰ᶜ⁺¹ * D
     end
 end
-
-
-
 
 function divdiff(wP::Weighted{<:Any,<:SemiclassicalJacobi}, wQ::Weighted{<:Any,<:SemiclassicalJacobi})
     Q,P = wQ.P,wP.P
