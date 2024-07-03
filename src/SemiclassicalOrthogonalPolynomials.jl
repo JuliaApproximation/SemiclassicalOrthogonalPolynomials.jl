@@ -18,6 +18,7 @@ import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid, plotgrid, equals_layout, ExpansionLayout
 import FillArrays: SquareEye
 import HypergeometricFunctions: _₂F₁general2
+import InfiniteLinearAlgebra: BidiagonalConjugation
 
 export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio
 
@@ -442,8 +443,8 @@ function \(A::SemiclassicalJacobi, B::SemiclassicalJacobi{T}) where {T}
         b0 = Vcat(one(T), Rᵦₐ₁ᵪᵗᵃ⁰ᶜ[band(-1)])
         Rᵦₐ₋₁ᵪᵗᵃ⁰ᶜ = Bidiagonal(b0, b1, :U)
         # Then convert Bᵗᵃ⁰ᶜ into A and complete 
-        Rₐ₀ᵪᴬ = A \ Bᵗᵃ⁰ᶜ 
-        return Rₐ₀ᵪᴬ * Rᵦₐ₋₁ᵪᵗᵃ⁰ᶜ
+        Rₐ₀ᵪᴬ = UpperTriangular(A \ Bᵗᵃ⁰ᶜ) 
+        return ApplyArray(*, Rₐ₀ᵪᴬ, Rᵦₐ₋₁ᵪᵗᵃ⁰ᶜ)
     else
         return semijacobi_ldiv(A, B)
     end
