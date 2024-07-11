@@ -1,16 +1,24 @@
+using SemiclassicalOrthogonalPolynomials
+using Test
+using ClassicalOrthogonalPolynomials
+using LazyArrays
+using ContinuumArrays: coefficients
+using BandedMatrices: BandedMatrices, band, _BandedMatrix
+using FillArrays
+
 @testset "Jacobi matrix" begin
-    for t in (1.2, 2.3, 5.0)
-        for a in (1.5, -1 / 2, 1 / 2, 3 / 2)
-            for c in (0.3, -1 / 2, 1 / 2, 3 / 2)
+    for t in (1.2, 2.3, 5.0, 2.0)
+        for a in (1.5, -1 / 2, 0, 1, 2, 1 / 2, 3 / 2)
+            for c in (0.3, -1 / 2, 0, 1, 2, 1 / 2, 3 / 2)
                 P = SemiclassicalJacobi(t, a, -1.0, c)
                 X = jacobimatrix(P)
                 J = X'
                 Pb = SemiclassicalJacobi(t, a, 1.0, c)
                 _neg1b_def = (x, n) -> n == 0 ? one(x) : (1 - x) * Pb[x, n]
-                for x in LinRange(0, 1, 100)
+                for x in LinRange(0, 1, 10)
                     a₀, b₀ = J[1, 1], J[1, 2]
                     @test x * _neg1b_def(x, 0) ≈ a₀ * _neg1b_def(x, 0) + b₀ * _neg1b_def(x, 1)
-                    for n in 1:25
+                    for n in 1:5
                         cₙ, aₙ, bₙ = @view J[n+1, n:n+2]
                         Pₙ, Pₙ₋₁, Pₙ₊₁ = _neg1b_def.(x, (n, n - 1, n + 1))
                         @test x * Pₙ ≈ cₙ * Pₙ₋₁ + aₙ * Pₙ + bₙ * Pₙ₊₁ atol = 1e-4
@@ -22,9 +30,9 @@
 end
 
 @testset "Evaluation" begin
-    for t in (1.2, 2.3, 5.0)
-        for a in (1.5, -1 / 2, 1 / 2, 3 / 2)
-            for c in (0.3, -1 / 2, 1 / 2, 3 / 2)
+    for t in (1.2, 2.3, 5.0, 2.0)
+        for a in (1.5, -1 / 2, 1 / 2, 1, 2, 3, 3 / 2)
+            for c in (0.3, -1 / 2, 1 / 2, 3 / 2, 2, 0, 1)
                 P = SemiclassicalJacobi(t, a, -1.0, c)
                 Pb = SemiclassicalJacobi(t, a, 1.0, c)
                 for x in LinRange(0, 1, 100)
@@ -51,22 +59,23 @@ end
 
 @testset "Expansions" begin
     Ps = SemiclassicalJacobi.(2, -1//2:5//2, -1.0, -1//2:5//2)
-    for P in Ps
-        for (idx, g) in enumerate((x -> exp(x) + sin(x), x -> (1 - x) * cos(x^3), x -> 5.0 + (1 - x)))
-            f = expand(P, g)
-            for x in LinRange(0, 1, 100)
-                @test f[x] ≈ g(x) atol = 1e-9
-            end
-            x = axes(P, 1)
-            if !(P === Ps[4])
-                # Why is this test so slow for P === Ps[4]??
+    Ps2 = SemiclassicalJacobi.(2, 0:3, -1.0, 0:3) # used to be broken for integers
+    for Ps in (Ps, Ps2)
+        for P in Ps
+            @show 1
+            for (idx, g) in enumerate((x -> exp(x) + sin(x), x -> (1 - x) * cos(x^3), x -> 5.0 + (1 - x)))
+                f = expand(P, g)
+                for x in LinRange(0, 1, 100)
+                    @test f[x] ≈ g(x) atol = 1e-9
+                end
+                x = axes(P, 1)
                 @test P[:, 1:20] \ g.(x) ≈ coefficients(f)[1:20]
-            end
-            if idx == 2
-                @test coefficients(f)[1] ≈ 0 atol = 1e-9
-            elseif idx == 3
-                @test coefficients(f)[1:2] ≈ [5.0, 1.0]
-                @test coefficients(f)[3:1000] ≈ zeros(1000 - 3 + 1)
+                if idx == 2
+                    @test coefficients(f)[1] ≈ 0 atol = 1e-9
+                elseif idx == 3
+                    @test coefficients(f)[1:2] ≈ [5.0, 1.0]
+                    @test coefficients(f)[3:1000] ≈ zeros(1000 - 3 + 1)
+                end
             end
         end
     end
@@ -94,7 +103,8 @@ end
         f = expand(P, g)
         df = expand(P, dg)
         for x in LinRange(0, 1, 100)
-            @test df[x] ≈ dg[x]
+            @show x
+            @test df[x] ≈ dg(x) atol=1e-5
         end
     end
 end

@@ -443,7 +443,7 @@ function \(A::SemiclassicalJacobi, B::SemiclassicalJacobi{T}) where {T}
         b0 = Vcat(one(T), Rᵦₐ₁ᵪᵗᵃ⁰ᶜ[band(-1)])
         Rᵦₐ₋₁ᵪᵗᵃ⁰ᶜ = Bidiagonal(b0, b1, :U)
         # Then convert Bᵗᵃ⁰ᶜ into A and complete 
-        Rₐ₀ᵪᴬ = UpperTriangular(A \ Bᵗᵃ⁰ᶜ) 
+        Rₐ₀ᵪᴬ = UpperTriangular(A \ Bᵗᵃ⁰ᶜ)
         return ApplyArray(*, Rₐ₀ᵪᴬ, Rᵦₐ₋₁ᵪᵗᵃ⁰ᶜ)
     else
         return semijacobi_ldiv(A, B)
@@ -512,9 +512,11 @@ function ldiv(Q::SemiclassicalJacobi, f::AbstractQuasiVector)
         R = legendre(zero(T)..one(T))
         B = neg1c_tolegendre(Q.t)
         return (B \ (R \ f))
-    elseif isinteger(Q.a) && isinteger(Q.b) && isinteger(Q.c) # (a,b,c) are integers -> use QR/Cholesky
+    elseif isinteger(Q.a) && (isinteger(Q.b) && Q.b ≥ 0) && isinteger(Q.c) # (a,b,c) are integers -> use QR/Cholesky
         R̃ = Normalized(jacobi(Q.b, Q.a, UnitInterval{T}()))
         return (Q \ SemiclassicalJacobi(Q.t, Q.a, Q.b, 0)) *  _p0(R̃) * (R̃ \ f)
+    elseif isinteger(Q.a) && isone(-Q.b) && isinteger(Q.c) 
+        return semijacobi_ldiv(Q, f) # jacobi(< 0, Q.a) fails in the method above. jacobi(-1, 0) also leads to NaNs in coefficients 
     else # fallback to Lanzcos
         R̃ = toclassical(SemiclassicalJacobi(Q.t, mod(Q.a,-1), mod(Q.b,-1), mod(Q.c,-1)))
         return (Q \ R̃) * (R̃ \ f)
