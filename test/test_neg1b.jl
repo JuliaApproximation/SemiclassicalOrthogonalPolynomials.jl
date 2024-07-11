@@ -15,10 +15,10 @@ using FillArrays
                 J = X'
                 Pb = SemiclassicalJacobi(t, a, 1.0, c)
                 _neg1b_def = (x, n) -> n == 0 ? one(x) : (1 - x) * Pb[x, n]
-                for x in LinRange(0, 1, 10)
+                for x in LinRange(0, 1, 100)
                     a₀, b₀ = J[1, 1], J[1, 2]
                     @test x * _neg1b_def(x, 0) ≈ a₀ * _neg1b_def(x, 0) + b₀ * _neg1b_def(x, 1)
-                    for n in 1:5
+                    for n in 1:25
                         cₙ, aₙ, bₙ = @view J[n+1, n:n+2]
                         Pₙ, Pₙ₋₁, Pₙ₊₁ = _neg1b_def.(x, (n, n - 1, n + 1))
                         @test x * Pₙ ≈ cₙ * Pₙ₋₁ + aₙ * Pₙ + bₙ * Pₙ₊₁ atol = 1e-4
@@ -61,6 +61,7 @@ end
     Ps = SemiclassicalJacobi.(2, -1//2:5//2, -1.0, -1//2:5//2)
     Ps2 = SemiclassicalJacobi.(2, 0:3, -1.0, 0:3) # used to be broken for integers
     for Ps in (Ps, Ps2)
+        # Why does this take SO long for Ps[4]?
         for P in Ps
             @show 1
             for (idx, g) in enumerate((x -> exp(x) + sin(x), x -> (1 - x) * cos(x^3), x -> 5.0 + (1 - x)))
