@@ -171,6 +171,9 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     # special cases 
     if iszero(a) && iszero(b) && c == -one(eltype(Q.t)) # (a,b,c) = (0,0,-1) special case
         return semiclassical_jacobimatrix(Q.t, zero(Q.t), zero(Q.t), c)
+    elseif iszero(Δa) && iszero(Δc) && Δb == 2 && b == 1
+        # When going from P[t, a, -1, c] to P[t, a, 1, c], you can just take 
+        return SymTridiagonal(Q.X.d[2:end], Q.X.du[2:end])
     elseif iszero(c) # classical Jacobi polynomial special case
         return jacobimatrix(Normalized(jacobi(b, a, UnitInterval{eltype(Q.t)}())))
     elseif iszero(Δa) && iszero(Δb) && iszero(Δc) # same basis
@@ -421,18 +424,6 @@ end
 
 function \(A::SemiclassicalJacobi, B::SemiclassicalJacobi{T}) where {T} 
     if A.b == -1 && B.b ≠ -1
-        #=
-        Too many memory layout issues - colsupport(inv(B \ A), 1) == 1:∞ without wrapping UpperTriangulation since 
-            LazyArrays.applylayout(typeof(*), 
-                TriangularLayout{'U', 'N', LazyArrays.LazyLayout}(), 
-                TriangularLayout{'U', 'N', LazyArrays.LazyLayout}(), 
-                BidiagonalLayout{LazyArrays.LazyLayout, LazyArrays.LazyLayout}()
-            ) = LazyArrays.ApplyLayout{typeof(*)}().
-        Additionally, since there's a method ambiguity (that could be fixed using 
-            ext = Base.get_extension(LazyArrays, :LazyArraysBandedMatricesExt)
-            Base.copy(L::Ldiv{<:ext.BandedLazyLayouts,<:LazyArrays.AbstractLazyLayout}) = LazyArrays.lazymaterialize(\, L.A, L.B)
-        ), we use ApplyArray instead of inv(B \ A).
-        =#
         return UpperTriangular(ApplyArray(inv, B \ A)) 
     elseif B.b == -1 && A.b ≠ -1
         # First convert Bᵗᵃ⁻¹ᶜ into Bᵗᵃ⁰ᶜ
@@ -445,6 +436,17 @@ function \(A::SemiclassicalJacobi, B::SemiclassicalJacobi{T}) where {T}
         # Then convert Bᵗᵃ⁰ᶜ into A and complete 
         Rₐ₀ᵪᴬ = UpperTriangular(A \ Bᵗᵃ⁰ᶜ)
         return ApplyArray(*, Rₐ₀ᵪᴬ, Rᵦₐ₋₁ᵪᵗᵃ⁰ᶜ)
+    elseif A.b == B.b == -1
+        Bᵗᵃ¹ᶜ = SemiclassicalJacobi(B.t, B.a, one(B.b), B.c, B)
+        Aᵗᵃ¹ᶜ = SemiclassicalJacobi(A.t, A.a, one(A.b), A.c, A)
+        Rₐ₁ᵪᵗᵘ¹ᵛ = Aᵗᵃ¹ᶜ \ Bᵗᵃ¹ᶜ
+        # Make 1 ⊕ Rₐ₁ᵪᵗᵘ¹ᵛ 
+        V = eltype(Rₐ₁ᵪᵗᵘ¹ᵛ)
+        Rₐ₋₁ᵪᵗᵘ⁻¹ᵛ = Vcat(
+            Hcat(one(V), Zeros{V}(1, ∞)),
+            Hcat(Zeros{V}(∞), Rₐ₁ᵪᵗᵘ¹ᵛ)
+        )
+        return Rₐ₋₁ᵪᵗᵘ⁻¹ᵛ
     else
         return semijacobi_ldiv(A, B)
     end

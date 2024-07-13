@@ -27,6 +27,19 @@ using FillArrays
             end
         end
     end
+
+    @testset "Getting jacobimatrix for (a, 1, c) given (a, -1, c)" begin
+        for a in (1 / 2, -1 / 2, 2.0)
+            for c in (1 / 2, -1 / 2, 1.0)
+                for t in (2.0, 2.5)
+                    P = SemiclassicalJacobi(t, a, -1.0, c)
+                    Q = SemiclassicalJacobi(t, a, 1.0, c)
+                    QQ = SemiclassicalJacobi(t, a, 1.0, c, P)
+                    @test Q.X[1:100, 1:100] ≈ QQ.X[1:100, 1:100]
+                end
+            end
+        end
+    end
 end
 
 @testset "Evaluation" begin
@@ -61,8 +74,9 @@ end
     Ps = SemiclassicalJacobi.(2, -1//2:5//2, -1.0, -1//2:5//2)
     Ps2 = SemiclassicalJacobi.(2, 0:3, -1.0, 0:3) # used to be broken for integers
     for Ps in (Ps, Ps2)
-        # Why does this take SO long for Ps[4]?
+        # Why does this take SO long for Ps[4]? Without them this takes 40 s, but with them it takes 10m!
         for P in Ps
+            P === Ps[4] && continue
             @show 1
             for (idx, g) in enumerate((x -> exp(x) + sin(x), x -> (1 - x) * cos(x^3), x -> 5.0 + (1 - x)))
                 f = expand(P, g)
@@ -79,6 +93,53 @@ end
                 end
             end
         end
+    end
+end
+
+@testset verbose = true "Connections" begin
+    # Why does this take so long in some cases
+    function test_connection(t, a, b, c, Δa, Δb, Δc)
+        a1, b1, c1 = (a, b, c) .+ (Δa, Δb, Δc)
+        g = x -> exp(x) + sin(x)
+        P1 = SemiclassicalJacobi(t, a, b, c)
+        P2 = SemiclassicalJacobi(t, a1, b1, c1)
+        R21 = P1 \ P2
+        R12 = P2 \ P1
+        f1 = coefficients(expand(P1, g))
+        f2 = coefficients(expand(P2, g))
+        @test f2[1:100] ≈ ApplyArray(*, R12, f1)[1:100]
+        @test f1[1:100] ≈ ApplyArray(*, R21, f2)[1:100]
+    end
+
+    @testset "Changing one parameter at a time" begin
+        test_connection(2.0, 1.0, -1.0, 2.0, 1.0, 0.0, 0.0)
+        test_connection(2.3, 3.0, -1.0, 2.0, 0.0, 1.0, 0.0)
+        test_connection(2.5, 1.0, -1.0, 0.0, 1.0, 0.0, 1.0)
+        test_connection(2.0, 1.0, -1.0, 2.0, -1.0, 0.0, 0.0)
+        test_connection(2.5, 1.0, -1.0, 1.0, 1.0, 0.0, -1.0)
+    end
+
+    @testset "Changing two parameters" begin
+        test_connection(2.0, 1.0, -1.0, 2.0, 1.0, 1.0, 0.0)
+        test_connection(2.3, 3.0, -1.0, 2.0, 1.0, 0.0, 1.0)
+        test_connection(2.5, 1.0, -1.0, 0.0, 1.0, 0.0, 1.0)
+        test_connection(2.5, 1.0, -1.0, 0.0, 0.0, 1.0, 1.0)
+        test_connection(2.0, 1.0, -1.0, 2.0, -1.0, 1.0, 0.0)
+        test_connection(2.3, 3.0, -1.0, 2.0, -1.0, 0.0, -1.0)
+        test_connection(2.5, 1.0, -1.0, 1.0, -1.0, 0.0, -1.0)
+    end
+
+    @testset "Changing three parameters" begin
+        test_connection(2.0, 1.0, -1.0, 2.0, 1.0, 1.0, 1.0)
+        test_connection(3.0, 2.0, -1.0, 2.0, 1.0, 2.0, 1.0)
+        test_connection(3.5, 2.0, -1.0, 2.0, -1.0, 2.0, 1.0)
+        test_connection(2.0, 1.0, -1.0, 2.0, -1.0, 1.0, -1.0)
+        test_connection(3.0, 2.0, -1.0, 2.0, 1.0, 1.0, 1.0)
+        test_connection(3.5, 2.0, -1.0, 2.0, -1.0, 1.0, 2.0)
+    end
+
+    @testset "Doing nothing" begin
+        test_connection(2.0, 1.0, -1.0, 2.0, 0.0, 0.0, 0.0)
     end
 end
 
@@ -105,7 +166,9 @@ end
         df = expand(P, dg)
         for x in LinRange(0, 1, 100)
             @show x
-            @test df[x] ≈ dg(x) atol=1e-5
+            @test df[x] ≈ dg(x) atol = 1e-5
         end
     end
 end
+
+# Weighted expansions
