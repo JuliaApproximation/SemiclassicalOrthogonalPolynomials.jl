@@ -154,15 +154,24 @@ end
     @test DP.args[2][1:100, 1:100] ≈ D[1:100, 1:100]
     @test DP.args[1] == SemiclassicalJacobi(t, a + 1, b + 1, c + 1)
 
+    # Evaluation
     gs = (x -> exp(x) + sin(x), x -> (1 - x) * cos(x^3), x -> 5.0 + (1 - x))
-    dgs = (x -> exp(x) + cos(x), x -> -3x^2 * sin(x^3) * (1 - x), x -> -1.0)
+    dgs = (x -> exp(x) + cos(x), x -> 3(x - 1) * x^2 * sin(x^3) - cos(x^3), x -> -1.0)
     for (idx, (g, dg)) in enumerate(zip(gs, dgs))
         f = expand(P, g)
-        df = expand(P, dg)
+        df = diff(f)
         for x in LinRange(0, 1, 100)
             @show x
             @test df[x] ≈ dg(x) atol = 1e-5
         end
+    end
+
+    # Test the matrix itself
+    dP = SemiclassicalJacobi(t, a + 1, b + 1, c + 1) 
+    for (g, dg) in zip(gs, dgs)
+        f = expand(P, g)
+        df = expand(dP, dg)
+        @test (coefficients(diff(P)) * coefficients(f))[1:100] ≈ coefficients(df)[1:100]
     end
 end
 
