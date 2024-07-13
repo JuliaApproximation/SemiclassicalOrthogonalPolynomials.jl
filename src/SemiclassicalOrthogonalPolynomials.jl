@@ -499,6 +499,18 @@ end
 
 \(w_A::Weighted{<:Any,<:SemiclassicalJacobi}, w_B::Weighted{<:Any,<:SemiclassicalJacobi}) = convert(WeightedBasis, w_A) \ convert(WeightedBasis, w_B)
 
+function \(w_A::HalfWeighted{lr, T, <:SemiclassicalJacobi}, B::AbstractQuasiArray{V}) where {lr, T, V}
+    WP = convert(WeightedBasis, w_A) 
+    w_A.P.b  ≠ -1 && return WP \ B # no need to special case here 
+    !iszero(WP.args[1].b) && throw(ArgumentError("Cannot expand in a weighted basis including 1/(1-x)."))
+    w, P = WP.args 
+    f₀ = B[end] / w[end] 
+    C = B - w * f₀
+    Q = SemiclassicalJacobiWeight(w.t, w.a, one(w.b), w.c) .* SemiclassicalJacobi(P.t, P.a, one(P.b), P.c, P)
+    f = Q \ C 
+    return Vcat(f₀, f)
+end
+
 weightedgrammatrix(P::SemiclassicalJacobi) = Diagonal(Fill(sum(orthogonalityweight(P)),∞))
 
 @simplify function *(Ac::QuasiAdjoint{<:Any,<:SemiclassicalJacobi}, wB::WeightedBasis{<:Any,<:SemiclassicalJacobiWeight,<:SemiclassicalJacobi})
@@ -574,7 +586,7 @@ mutable struct SemiclassicalJacobiFamily{T, A, B, C} <: AbstractCachedVector{Sem
     datasize::Tuple{Int}
 end
 
-isnormalized(J::SemiclassicalJacobi) = J.b ≠ -1 # there is no normalisation for 
+isnormalized(J::SemiclassicalJacobi) = J.b ≠ -1 # there is no normalisation for b == -1
 size(P::SemiclassicalJacobiFamily) = (max(length(P.a), length(P.b), length(P.c)),)
 
 _checkrangesizes() = ()

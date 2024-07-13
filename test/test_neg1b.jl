@@ -1,6 +1,6 @@
 using SemiclassicalOrthogonalPolynomials
 using Test
-using ClassicalOrthogonalPolynomials
+using ClassicalOrthogonalPolynomials: ClassicalOrthogonalPolynomials, HalfWeighted, jacobimatrix, expand, Weighted, ∞
 using LazyArrays
 using ContinuumArrays: coefficients
 using BandedMatrices: BandedMatrices, band, _BandedMatrix
@@ -167,12 +167,45 @@ end
     end
 
     # Test the matrix itself
-    dP = SemiclassicalJacobi(t, a + 1, b + 1, c + 1) 
+    dP = SemiclassicalJacobi(t, a + 1, b + 1, c + 1)
     for (g, dg) in zip(gs, dgs)
         f = expand(P, g)
         df = expand(dP, dg)
-        @test (coefficients(diff(P)) * coefficients(f))[1:100] ≈ coefficients(df)[1:100]
+        @test (coefficients(diff(P))*coefficients(f))[1:100] ≈ coefficients(df)[1:100]
     end
 end
 
-# Weighted expansions
+@testset "Weighted expansions" begin
+    t, a, b, c = 2.0, 3.5, -1.0, 1.0
+    P = SemiclassicalJacobi(t, a, b, c)
+    aP = HalfWeighted{:a}(P)
+    cP = HalfWeighted{:c}(P)
+    acP = HalfWeighted{:ac}(P)
+
+    # :a 
+    g = let a = a
+        x -> x^a * exp(x)
+    end # Use let to avoid eltype = Any which causes errors in expand from zero(Any)
+    f = expand(aP, g)
+    @test all(x -> f[x] ≈ g(x), LinRange(0, 1, 100))
+    @test coefficients(f)[1] == g(1)
+
+    # :c 
+    g = let c = c, t = t
+        x -> (t - x)^c * exp(x)
+    end
+    f = expand(cP, g)
+    @test all(x -> f[x] ≈ g(x), LinRange(0, 1, 100))
+    @test coefficients(f)[1] ≈ g(1) / (t - 1)^c
+
+    # :ac 
+    g = let a = a, c = c, t = t
+        x -> x^a * (t - x)^c * exp(x)
+    end
+    f = expand(acP, g)
+    @test all(x -> f[x] ≈ g(x), LinRange(0, 1, 100))
+    @test coefficients(f)[1] ≈ g(1) / (t - 1)^c
+
+    # :b 
+    @test_throws ArgumentError expand(HalfWeighted{:b}(P), g)
+end
