@@ -77,7 +77,6 @@ end
         # Why does this take SO long for Ps[4]? Without them this takes 40 s, but with them it takes 10m!
         for P in Ps
             P === Ps[4] && continue
-            @show 1
             for (idx, g) in enumerate((x -> exp(x) + sin(x), x -> (1 - x) * cos(x^3), x -> 5.0 + (1 - x)))
                 f = expand(P, g)
                 for x in LinRange(0, 1, 100)
@@ -161,7 +160,6 @@ end
         f = expand(P, g)
         df = diff(f)
         for x in LinRange(0, 1, 100)
-            @show x
             @test df[x] ≈ dg(x) atol = 1e-5
         end
     end
