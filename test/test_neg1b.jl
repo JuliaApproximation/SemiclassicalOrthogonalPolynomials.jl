@@ -175,7 +175,7 @@ end
     end
 end
 
-@testset "Weighted expansions" begin
+@testset "Weighted expansions and derivatives" begin
     t, a, b, c = 2.0, 3.5, -1.0, 1.0
     P = SemiclassicalJacobi(t, a, b, c)
     aP = HalfWeighted{:a}(P)
@@ -189,6 +189,9 @@ end
     f = expand(aP, g)
     @test all(x -> f[x] ≈ g(x), LinRange(0, 1, 100))
     @test coefficients(f)[1] == g(1)
+    df = diff(f)
+    dg = x -> x^(a - 1) * exp(x) * (a + x)
+    @test all(x -> df[x] ≈ dg(x), LinRange(0, 1, 100))
 
     # :c 
     g = let c = c, t = t
@@ -197,6 +200,9 @@ end
     f = expand(cP, g)
     @test all(x -> f[x] ≈ g(x), LinRange(0, 1, 100))
     @test coefficients(f)[1] ≈ g(1) / (t - 1)^c
+    df = diff(f)
+    dg = x -> -exp(x) * (t - x)^(c - 1) * (c - t + x)
+    @test all(x -> isapprox(df[x], dg(x), atol=1e-9), LinRange(0, 1, 100))
 
     # :ac 
     g = let a = a, c = c, t = t
@@ -205,7 +211,11 @@ end
     f = expand(acP, g)
     @test all(x -> f[x] ≈ g(x), LinRange(0, 1, 100))
     @test coefficients(f)[1] ≈ g(1) / (t - 1)^c
+    df = diff(f)
+    dg = x -> -exp(x) * x^(a - 1) * (t - x)^(c - 1) * (a * (x - t) + x * (c - t + x))
+    @test all(x -> isapprox(df[x], dg(x), atol=1e-9), LinRange(0, 1, 100))
 
     # :b 
     @test_throws ArgumentError expand(HalfWeighted{:b}(P), g)
 end
+
