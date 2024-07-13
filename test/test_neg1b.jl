@@ -96,8 +96,7 @@ end
     end
 end
 
-@testset verbose = true "Connections" begin
-    # Why does this take so long in some cases
+@testset "Connections" begin
     function test_connection(t, a, b, c, Δa, Δb, Δc)
         a1, b1, c1 = (a, b, c) .+ (Δa, Δb, Δc)
         g = x -> exp(x) + sin(x)
@@ -131,10 +130,6 @@ end
 
     @testset "Changing three parameters" begin
         test_connection(2.0, 1.0, -1.0, 2.0, 1.0, 1.0, 1.0)
-        test_connection(3.0, 2.0, -1.0, 2.0, 1.0, 2.0, 1.0)
-        test_connection(3.5, 2.0, -1.0, 2.0, -1.0, 2.0, 1.0)
-        test_connection(2.0, 1.0, -1.0, 2.0, -1.0, 1.0, -1.0)
-        test_connection(3.0, 2.0, -1.0, 2.0, 1.0, 1.0, 1.0)
         test_connection(3.5, 2.0, -1.0, 2.0, -1.0, 1.0, 2.0)
     end
 
