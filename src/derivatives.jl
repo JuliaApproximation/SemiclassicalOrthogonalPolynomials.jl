@@ -44,13 +44,26 @@ function divdiff(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     _BandedMatrix(Vcat(((1:∞) .* d)', (((1:∞) .* (v1 .+ B[2:end]./A[2:end]) .- (2:∞) .* (α .* v2 .+ β ./ α)) .* v3)'), ∞, 2,-1)'
 end
 
-function diff(P::SemiclassicalJacobi; dims=1)
-    Q = SemiclassicalJacobi(P.t, P.a+1,P.b+1,P.c+1,P)
-    Q * divdiff(Q, P)
+function diff(P::SemiclassicalJacobi{T}; dims=1) where {T}
+    if P.b ≠ -1
+        Q = SemiclassicalJacobi(P.t, P.a+1,P.b+1,P.c+1,P)
+        Q * divdiff(Q, P)
+    elseif P.b == -1
+        Pᵗᵃ⁰ᶜ = SemiclassicalJacobi(P.t, P.a, zero(P.b), P.c)
+        Pᵗᵃ¹ᶜ = SemiclassicalJacobi(P.t, P.a, one(P.b), P.c, Pᵗᵃ⁰ᶜ)
+        Rᵦₐ₁ᵪᵗᵃ⁰ᶜ = Weighted(Pᵗᵃ⁰ᶜ) \ Weighted(Pᵗᵃ¹ᶜ)
+        Dₐ₀ᵪᵃ⁺¹¹ᶜ⁺¹ = diff(Pᵗᵃ⁰ᶜ)
+        Pᵗᵃ⁺¹¹ᶜ⁺¹ = Dₐ₀ᵪᵃ⁺¹¹ᶜ⁺¹.args[1]
+        Pᵗᵃ⁺¹⁰ᶜ⁺¹ = SemiclassicalJacobi(P.t, P.a + 1, zero(P.b), P.c + 1, Pᵗᵃ⁰ᶜ)
+        Rₐ₊₁₀ᵪ₊₁ᵗᵃ⁺¹¹ᶜ⁺¹ = Pᵗᵃ⁺¹¹ᶜ⁺¹ \ Pᵗᵃ⁺¹⁰ᶜ⁺¹
+        Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹ = BidiagonalConjugation(Rₐ₊₁₀ᵪ₊₁ᵗᵃ⁺¹¹ᶜ⁺¹, coefficients(Dₐ₀ᵪᵃ⁺¹¹ᶜ⁺¹), Rᵦₐ₁ᵪᵗᵃ⁰ᶜ, 'U')
+        b2 = Vcat(zero(T), zero(T), supdiagonaldata(Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹))
+        b1 = Vcat(zero(T), diagonaldata(Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹))
+        data = Hcat(b2, b1)'
+        D = _BandedMatrix(data, ∞, -1, 2)
+        return Pᵗᵃ⁺¹⁰ᶜ⁺¹ * D
+    end
 end
-
-
-
 
 function divdiff(wP::Weighted{<:Any,<:SemiclassicalJacobi}, wQ::Weighted{<:Any,<:SemiclassicalJacobi})
     Q,P = wQ.P,wP.P
@@ -80,8 +93,8 @@ function divdiff(HQ::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi}, HP::HalfWeigh
 
     _BandedMatrix(
         Vcat(
-        ((a:∞) .* v2 .- ((a+1):∞) .* Vcat(1,v1[2:end] .* d))',
-        (((a+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
+            ((a:∞) .* v2 .- ((a+1):∞) .* Vcat(1,v1[2:end] .* d))',
+            (((a+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
 end
 
 function divdiff(HQ::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi}, HP::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi})
@@ -98,8 +111,8 @@ function divdiff(HQ::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi}, HP::HalfWeigh
 
     _BandedMatrix(
         Vcat(
-        (-(b:∞) .* v2 .+ ((b+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(1:∞) .* d2))',
-        (-((b+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
+            (-(b:∞) .* v2 .+ ((b+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(1:∞) .* d2))',
+            (-((b+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
 end
 
 function divdiff(HQ::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi}, HP::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi})
@@ -115,8 +128,8 @@ function divdiff(HQ::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi}, HP::HalfWeigh
     v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
     _BandedMatrix(
         Vcat(
-        (-(c:∞) .* v2 .+ ((c+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(t:t:∞) .* d2))',
-        (-((c+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
+            (-(c:∞) .* v2 .+ ((c+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(t:t:∞) .* d2))',
+            (-((c+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
 end
 
 function diff(HP::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi}; dims=1)
@@ -156,7 +169,7 @@ function divdiff(HQ::HalfWeighted{:ab}, HP::HalfWeighted{:ab})
     f = MulAddAccumulate(Vcat(0,0,A[2:end] ./ α[2:end]), Vcat(0, (B./ α) .* e))
     g = cumsum(β ./ α)
     _BandedMatrix(Vcat((((a+1):∞) .* e .- ((b+a+1):∞).*f .+ ((a+b+2):∞) .* e .* g )',
-                           (-((a+b+2):∞)  .* d)'),ℵ₀,1,0)
+            (-((a+b+2):∞)  .* d)'),ℵ₀,1,0)
 end
 
 
@@ -173,7 +186,7 @@ function divdiff(HQ::HalfWeighted{:bc}, HP::HalfWeighted{:bc})
     f = MulAddAccumulate(Vcat(0,0,A[2:end] ./ α[2:end]), Vcat(0, (B./ α) .* e))
     g = cumsum(β ./ α)
     _BandedMatrix(Vcat((-((t+1)* (0:∞) .+ (t*(b+1) + c+1)) .* e .+ ((c+b+1):∞).*f .- ((b+c+2):∞) .* e .* g )',
-                        (((b+c+2):∞)  .* d)'),ℵ₀,1,0)
+            (((b+c+2):∞)  .* d)'),ℵ₀,1,0)
 end
 
 function divdiff(HQ::HalfWeighted{:ac}, HP::HalfWeighted{:ac})
