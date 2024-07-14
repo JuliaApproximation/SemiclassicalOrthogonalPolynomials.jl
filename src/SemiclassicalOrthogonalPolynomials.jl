@@ -180,7 +180,7 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
         return Q.X
     elseif b == -one(eltype(Q.t))
         return semiclassical_jacobimatrix(Q.t, a, b, c)
-    end # TODO: Fix cholesky_jacobimatrix when Δb == 0 and b == -1 so that building families works (currently, it would return a "Polynomials must be orthonormal" error)
+    end 
 
     if isone(Δa/2) && iszero(Δb) && iszero(Δc)  # raising by 2
         qr_jacobimatrix(Q.X,Q)
@@ -628,8 +628,12 @@ _broadcast_getindex(a::Number,k) = a
 
 function LazyArrays.cache_filldata!(P::SemiclassicalJacobiFamily, inds::AbstractUnitRange)
     t,a,b,c = P.t,P.a,P.b,P.c
+    isrange = P.b isa AbstractUnitRange
     for k in inds
-        P.data[k] = SemiclassicalJacobi(t, _broadcast_getindex(a,k), _broadcast_getindex(b,k), _broadcast_getindex(c,k), P.data[k-2])
+        # If P.data[k-2] is not normalised (aka b = -1), cholesky fails. With the current design, this is only a problem if P.b 
+        # is a range since we can translate between polynomials that both have b = -1.
+        Pprev = (isrange && P.b[k-2] == -1) ? P.data[k-1] : P.data[k-2] # isrange && P.b[k-2] == -1 could also be !isnormalized(P.data[k-2])
+        P.data[k] = SemiclassicalJacobi(t, _broadcast_getindex(a,k), _broadcast_getindex(b,k), _broadcast_getindex(c,k), Pprev)
     end
     P
 end

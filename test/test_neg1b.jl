@@ -61,12 +61,29 @@ end
 end
 
 @testset "Families" begin
-    # Not implemented efficiently currently. 
-    # TODO: Fix cholesky_jacobimatrix when Δb == 0 and b == -1 so that building families works (currently, it would return a "Polynomials must be orthonormal" error)
     t = 2.0
-    P = SemiclassicalJacobi.(t, -1//2:13//2, -1.0, -1//2:13//2) # // so that we get a UnitRange, else broadcasting into a Family fails
+    P = SemiclassicalJacobi.(t, -1//2:13//2, -1.0, -1//2:13//2)
+    @test P isa SemiclassicalOrthogonalPolynomials.SemiclassicalJacobiFamily
     for (i, p) in enumerate(P)
         @test jacobimatrix(p)[1:100, 1:100] == jacobimatrix(SemiclassicalJacobi(t, (-1//2:13//2)[i], -1.0, (-1//2:13//2)[i]))[1:100, 1:100]
+    end
+
+    P = SemiclassicalJacobi.(t, -1 / 2, -1:4, -1 / 2)
+    @test P isa SemiclassicalOrthogonalPolynomials.SemiclassicalJacobiFamily
+    for (i, p) in enumerate(P)
+        @test jacobimatrix(p)[1:100, 1:100] ≈ jacobimatrix(SemiclassicalJacobi(t, -1 / 2, -2 + i, -1 / 2))[1:100, 1:100]
+    end
+
+    P = SemiclassicalJacobi.(t, 0:4, -1, 0:4)
+    @test P isa SemiclassicalOrthogonalPolynomials.SemiclassicalJacobiFamily
+    for (i, p) in enumerate(P)
+        @test jacobimatrix(p)[1:100, 1:100] ≈ jacobimatrix(SemiclassicalJacobi(t, i - 1, -1, i - 1))[1:100, 1:100]
+    end
+
+    P = SemiclassicalJacobi.(t, -1//2:13//2, -1:6, -1//2:13//2)
+    @test P isa SemiclassicalOrthogonalPolynomials.SemiclassicalJacobiFamily
+    for (i, p) in enumerate(P)
+        @test jacobimatrix(p)[1:100, 1:100] ≈ jacobimatrix(SemiclassicalJacobi(t, (-1//2:13//2)[i], (-1:6)[i], (-1//2:13//2)[i]))[1:100, 1:100]
     end
 end
 
