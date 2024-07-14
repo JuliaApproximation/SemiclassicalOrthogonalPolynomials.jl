@@ -503,6 +503,11 @@ function \(w_A::HalfWeighted{lr, T, <:SemiclassicalJacobi}, B::AbstractQuasiArra
     WP = convert(WeightedBasis, w_A) 
     w_A.P.b  ≠ -1 && return WP \ B # no need to special case here 
     !iszero(WP.args[1].b) && throw(ArgumentError("Cannot expand in a weighted basis including 1/(1-x)."))
+    # To expand f(x) = w(x)P(x)𝐟, note that P = [1 (1-x)Q] so 
+    #   f(x) = w(x)[1 (1-x)Q(x)][f₀; 𝐟₁] = w(x)f₀ + w(x)(1-x)Q(x)𝐟₁. Thus,
+    #   f(1) = w(1)f₀ ⟹ f₀ = f(1) / w(1) 
+    #   Then, f(x) - w(x)f₀ = w(x)(1-x)Q(x)𝐟₁, so that 𝐟₁ is just the expansion of 
+    #   f(x) - w(x)f₀ in the w(x)(1-x)Q(x) basis.
     w, P = WP.args 
     f₀ = B[end] / w[end] 
     C = B - w * f₀
