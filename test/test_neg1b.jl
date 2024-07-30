@@ -238,10 +238,10 @@ end
     P = SemiclassicalJacobi(2.0, -1/2, -1.0, -1/2)
     Q1 = SemiclassicalJacobi(2.0, -1/2, 0.0, -1/2, P)
     R1 = SemiclassicalJacobi(2.0, -1/2, 0.0, -1/2)
-    Q2 = SemiclassicalJacobi(2.5, 3/2, 3.0, 5.0, P)
-    R2 = SemiclassicalJacobi(2.5, 3/2, 3.0, 5.0)
-    Q3 = SemiclassicalJacobi(3.0, 5.0, 5.5, -1/2, P)
-    R3 = SemiclassicalJacobi(3.0, 5.0, 5.5, -1/2)
+    Q2 = SemiclassicalJacobi(2.0, 3/2, 2.0, 3/2, P)
+    R2 = SemiclassicalJacobi(2.0, 3/2, 2.0, 3/2)
+    Q3 = SemiclassicalJacobi(2.0, 5/2, 3.0, 0.0, P)
+    R3 = SemiclassicalJacobi(2.0, 5/2, 3.0, 0.0)
     @test Q1.X[1:100, 1:100] ≈ R1.X[1:100, 1:100]
     @test Q2.X[1:100, 1:100] ≈ R2.X[1:100, 1:100]
     @test Q3.X[1:100, 1:100] ≈ R3.X[1:100, 1:100]
