@@ -181,7 +181,7 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     elseif b == -one(eltype(Q.t))
         return semiclassical_jacobimatrix(Q.t, a, b, c)
     elseif Q.b == -one(eltype(Q.t))
-        newQ = SemiclassicalJacobi(Q.t, Q.a, one(Q.b), Q.c)
+        newQ = SemiclassicalJacobi(Q.t, Q.a, one(Q.b), Q.c, Q)
         return semiclassical_jacobimatrix(newQ, a, b, c)
     end
 
