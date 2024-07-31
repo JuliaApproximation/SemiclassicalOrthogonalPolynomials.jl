@@ -234,3 +234,17 @@ end
     @test_throws ArgumentError expand(HalfWeighted{:b}(P), g)
 end
 
+@testset "Weighted conversion between b=-1" begin
+    t, a, b, c = 2.0, 1 / 2, -1.0, 1 / 2
+    Q = SemiclassicalJacobi(t, a, b, c)
+    P = SemiclassicalJacobi(t, a - 1, b, c - 1)
+    L = Weighted(P) \ Weighted(Q)
+    wP = SemiclassicalJacobiWeight(t, a - 1, b, c - 1)
+    wQ = SemiclassicalJacobiWeight(t, a, b, c)
+    lhs = wQ .* Q
+    rhs = wP .* (P * L)
+    x = LinRange(eps(), 1 - eps(), 250)
+    lhs_vals = lhs[x, 1:20]
+    rhs_vals = rhs[x, 1:20]
+    @test lhs_vals ≈ rhs_vals
+end

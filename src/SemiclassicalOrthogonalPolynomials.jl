@@ -465,6 +465,22 @@ function \(w_A::WeightedSemiclassicalJacobi{T}, w_B::WeightedSemiclassicalJacobi
         # k = (A \ SemiclassicalJacobiWeight(A.t,Δa,Δb,Δc))[1]
         k = sumquotient(SemiclassicalJacobiWeight(B.t,B.a,B.b,B.c),SemiclassicalJacobiWeight(A.t,A.a,A.b,A.c))
         return (ApplyArray(*,Diagonal(Fill(k,∞)),(B \ A)))'
+    elseif isone(-wA.b) && isone(-wB.b)
+        @assert A.a + 1 == B.a && A.c + 1 == B.c
+        Q = SemiclassicalJacobi(B.t, B.a, one(B.b), B.c, B)
+        P = SemiclassicalJacobi(A.t, A.a, one(A.b), A.c, A)
+        wP = Weighted(P) 
+        wQ = Weighted(Q)
+        R22 = wP \ wQ
+        r11 = A.t - 1 
+        qw0 = SemiclassicalJacobiWeight(Q.t, Q.a, zero(Q.b), Q.c)
+        pw0 = SemiclassicalJacobiWeight(P.t, P.a, zero(P.b), P.c)
+        r21 = wP[:, 1:2] \ (qw0 .- r11 .* pw0)
+        d0 = Vcat(r11, R22[band(0)])
+        d1 = Vcat(r21[begin], R22[band(-1)])
+        d2 = Vcat(r21[begin+1], R22[band(-2)])
+        data = Hcat(d0, d1, d2)
+        return _BandedMatrix(data', 1:∞, 2, 0)
     elseif wA.a == wB.a && wA.b == wB.b && wA.c == wB.c # fallback to Christoffel–Darboux
         A \ B
     elseif wA.a+1 == wB.a && wA.b == wB.b && wA.c == wB.c
