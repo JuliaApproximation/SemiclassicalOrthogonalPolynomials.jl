@@ -610,7 +610,7 @@ end
     end
 end
 
-@testset "Issue #103" begin 
+@testset "Issue #103: Missing show method for SemiclassicalJacobi" begin 
     w = SemiclassicalJacobiWeight(2.0, 2.3, 5.3, 0.4)
     P = SemiclassicalJacobi(2.0, 2.3, 5.3, 0.4)
     W = Weighted(P)
