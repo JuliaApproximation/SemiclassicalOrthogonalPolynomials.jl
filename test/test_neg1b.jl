@@ -234,7 +234,7 @@ end
     @test_throws ArgumentError expand(HalfWeighted{:b}(P), g)
 end
 
-@testset "Issue #115" begin
+@testset "Issue #115: Constructing from b = -1" begin
     P = SemiclassicalJacobi(2.0, -1/2, -1.0, -1/2)
     Q1 = SemiclassicalJacobi(2.0, -1/2, 0.0, -1/2, P)
     R1 = SemiclassicalJacobi(2.0, -1/2, 0.0, -1/2)
