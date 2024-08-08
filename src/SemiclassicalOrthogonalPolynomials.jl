@@ -180,7 +180,10 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
         return Q.X
     elseif b == -one(eltype(Q.t))
         return semiclassical_jacobimatrix(Q.t, a, b, c)
-    end 
+    elseif Q.b == -one(eltype(Q.t))
+        newQ = SemiclassicalJacobi(Q.t, Q.a, one(Q.b), Q.c, Q) # Constructing first b = 1 from b = -1 is efficient since b = -1 is defined directly in terms of b = 1.
+        return semiclassical_jacobimatrix(newQ, a, b, c)
+    end
 
     if isone(Δa/2) && iszero(Δb) && iszero(Δc)  # raising by 2
         qr_jacobimatrix(Q.X,Q)

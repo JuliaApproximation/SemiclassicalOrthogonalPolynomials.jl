@@ -234,6 +234,18 @@ end
     @test_throws ArgumentError expand(HalfWeighted{:b}(P), g)
 end
 
+@testset "Issue #115: Constructing from b = -1" begin
+    P = SemiclassicalJacobi(2.0, -1/2, -1.0, -1/2)
+    Q1 = SemiclassicalJacobi(2.0, -1/2, 0.0, -1/2, P)
+    R1 = SemiclassicalJacobi(2.0, -1/2, 0.0, -1/2)
+    Q2 = SemiclassicalJacobi(2.0, 3/2, 2.0, 3/2, P)
+    R2 = SemiclassicalJacobi(2.0, 3/2, 2.0, 3/2)
+    Q3 = SemiclassicalJacobi(2.0, 5/2, 3.0, 0.0, P)
+    R3 = SemiclassicalJacobi(2.0, 5/2, 3.0, 0.0)
+    @test Q1.X[1:100, 1:100] ≈ R1.X[1:100, 1:100]
+    @test Q2.X[1:100, 1:100] ≈ R2.X[1:100, 1:100]
+    @test Q3.X[1:100, 1:100] ≈ R3.X[1:100, 1:100]
+end
 @testset "Weighted conversion between b=-1" begin
     for (t, a, b, c) in ((2.0, 1 / 2, -1.0, 1 / 2), (2.5, 3 / 2, -1.0, 1 / 2), (2.5, 1.0, -1.0, 2.0))
         Q = SemiclassicalJacobi(t, a, b, c)
