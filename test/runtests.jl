@@ -673,6 +673,13 @@ end
     end
 end
 
+@testset "_linear_coefficients" begin
+    t, a, b, c = 1.2, 2.3, 0.5, 0.2
+    P = SemiclassicalJacobi(t, a, b, c)
+    α, β = SemiclassicalOrthogonalPolynomials._linear_coefficients(t, a, b, c)
+    @test P[0.2, 2] ≈ β * (0.2 - α)
+end
+
 include("test_derivative.jl")
 include("test_neg1c.jl")
 include("test_neg1b.jl")

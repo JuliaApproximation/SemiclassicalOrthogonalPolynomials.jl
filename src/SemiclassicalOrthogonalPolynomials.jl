@@ -17,8 +17,9 @@ import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficie
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid, plotgrid, equals_layout, ExpansionLayout
 import FillArrays: SquareEye
-import HypergeometricFunctions: _₂F₁general2
+import HypergeometricFunctions: _₂F₁general2, _₂F₁
 import InfiniteLinearAlgebra: BidiagonalConjugation
+import SpecialFunctions: beta
 
 export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio
 
@@ -129,6 +130,19 @@ SemiclassicalJacobi(t, a, b, c) = SemiclassicalJacobi(t, a, b, c, semiclassical_
 SemiclassicalJacobi{T}(t, a, b, c) where T = SemiclassicalJacobi(convert(T,t), convert(T,a), convert(T,b), convert(T,c))
 
 WeightedSemiclassicalJacobi{T}(t, a, b, c, P...) where T = SemiclassicalJacobiWeight{T}(convert(T,t), convert(T,a), convert(T,b), convert(T,c)) .* SemiclassicalJacobi{T}(convert(T,t), convert(T,a), convert(T,b), convert(T,c), P...)
+
+# Returns α, β such that P1(x) = β(x-α)
+function _linear_coefficients(t, a, b, c)
+    Γ = let t=t,b=b,c=c
+        _a -> beta(_a + 1, b + 1) * t^c * _₂F₁(_a + 1, -c, _a + b + 2, 1/t)
+    end # This is the integral ∫₀¹ wᵗ⁽ᵃᵇᶜ⁾(x) dx 
+    Γᵃ = Γ(a)
+    Γᵃ⁺¹ = Γ(a+1)
+    Γᵃ⁺² = Γ(a+2)
+    α = Γᵃ⁺¹/Γᵃ
+    β = sqrt(Γᵃ / (Γᵃ⁺² - 2α*Γᵃ⁺¹ + α^2*Γᵃ))
+    return α, β
+end
 
 function semiclassical_jacobimatrix(t, a, b, c)
     T = float(promote_type(typeof(t), typeof(a), typeof(b), typeof(c)))
@@ -472,13 +486,13 @@ function \(w_A::WeightedSemiclassicalJacobi{T}, w_B::WeightedSemiclassicalJacobi
         wP = Weighted(P) 
         wQ = Weighted(Q)
         R22 = wP \ wQ
-        r11 = A.t - 1 
-        qw0 = SemiclassicalJacobiWeight(Q.t, Q.a, zero(Q.b), Q.c)
-        pw0 = SemiclassicalJacobiWeight(P.t, P.a, zero(P.b), P.c)
-        r21 = wP[:, 1:2] \ (qw0 .- r11 .* pw0)
-        d0 = Vcat(r11, R22[band(0)])
-        d1 = Vcat(r21[begin], R22[band(-1)])
-        d2 = Vcat(r21[begin+1], R22[band(-2)])
+        α, β = _linear_coefficients(P.t, P.a, P.b, P.c)
+        ℓ₁ = A.t - 1 
+        ℓ₂ = 1 + α - A.t 
+        ℓ₃ = inv(β)
+        d0 = Vcat(ℓ₁, R22[band(0)])
+        d1 = Vcat(ℓ₂, R22[band(-1)])
+        d2 = Vcat(ℓ₃, R22[band(-2)])
         data = Hcat(d0, d1, d2)
         return _BandedMatrix(data', 1:∞, 2, 0)
     elseif (wA.a == A.a) && (wA.b == A.b) && (wA.c == A.c) && (wB.a == B.a) && (wB.b == B.b) && (wB.c == B.c) && isinteger(A.a) && isinteger(A.b) && isinteger(A.c) && isinteger(B.a) && isinteger(B.b) && isinteger(B.c)
