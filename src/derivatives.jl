@@ -49,8 +49,7 @@ function diff(P::SemiclassicalJacobi{T}; dims=1) where {T}
         Q = SemiclassicalJacobi(P.t, P.a+1,P.b+1,P.c+1,P)
         Q * divdiff(Q, P)
     elseif P.b == -1
-        P0 = SemiclassicalJacobi(P.t, P.a, zero(P.b), P.c)
-        P1 = SemiclassicalJacobi(P.t, P.a, one(P.b), P.c, P0)
+        P1 = SemiclassicalJacobi(P.t, P.a, one(P.b), P.c, P)
         WP1 = HalfWeighted{:b}(P1)
         D = diff(WP1)
         Pᵗᵃ⁺¹⁰ᶜ⁺¹ = D.args[1].P
