@@ -49,16 +49,13 @@ function diff(P::SemiclassicalJacobi{T}; dims=1) where {T}
         Q = SemiclassicalJacobi(P.t, P.a+1,P.b+1,P.c+1,P)
         Q * divdiff(Q, P)
     elseif P.b == -1
-        Pᵗᵃ⁰ᶜ = SemiclassicalJacobi(P.t, P.a, zero(P.b), P.c)
-        Pᵗᵃ¹ᶜ = SemiclassicalJacobi(P.t, P.a, one(P.b), P.c, Pᵗᵃ⁰ᶜ)
-        Rᵦₐ₁ᵪᵗᵃ⁰ᶜ = Weighted(Pᵗᵃ⁰ᶜ) \ Weighted(Pᵗᵃ¹ᶜ)
-        Dₐ₀ᵪᵃ⁺¹¹ᶜ⁺¹ = diff(Pᵗᵃ⁰ᶜ)
-        Pᵗᵃ⁺¹¹ᶜ⁺¹ = Dₐ₀ᵪᵃ⁺¹¹ᶜ⁺¹.args[1]
-        Pᵗᵃ⁺¹⁰ᶜ⁺¹ = SemiclassicalJacobi(P.t, P.a + 1, zero(P.b), P.c + 1, Pᵗᵃ⁰ᶜ)
-        Rₐ₊₁₀ᵪ₊₁ᵗᵃ⁺¹¹ᶜ⁺¹ = Pᵗᵃ⁺¹¹ᶜ⁺¹ \ Pᵗᵃ⁺¹⁰ᶜ⁺¹
-        Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹ = BidiagonalConjugation(Rₐ₊₁₀ᵪ₊₁ᵗᵃ⁺¹¹ᶜ⁺¹, coefficients(Dₐ₀ᵪᵃ⁺¹¹ᶜ⁺¹), Rᵦₐ₁ᵪᵗᵃ⁰ᶜ, 'U')
-        b2 = Vcat(zero(T), zero(T), supdiagonaldata(Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹))
-        b1 = Vcat(zero(T), diagonaldata(Dₐ₋₁ᵪᵃ⁺¹⁰ᶜ⁺¹))
+        P1 = SemiclassicalJacobi(P.t, P.a, one(P.b), P.c, P)
+        WP1 = HalfWeighted{:b}(P1)
+        D = diff(WP1)
+        Pᵗᵃ⁺¹⁰ᶜ⁺¹ = D.args[1].P
+        Dmat = D.args[2]
+        b2 = Vcat(zero(T), zero(T), Dmat[band(1)])
+        b1 = Vcat(zero(T), Dmat[band(0)])
         data = Hcat(b2, b1)'
         D = _BandedMatrix(data, ∞, -1, 2)
         return Pᵗᵃ⁺¹⁰ᶜ⁺¹ * D
