@@ -132,12 +132,10 @@ WeightedSemiclassicalJacobi{T}(t, a, b, c, P...) where T = SemiclassicalJacobiWe
 
 # Returns α, β such that P1(x) = β(x-α)
 function _linear_coefficients(t, a, b, c)
-    Γ = let t=t,b=b,c=c
-        _a -> beta(_a + 1, b + 1) * t^c * _₂F₁(_a + 1, -c, _a + b + 2, 1/t)
-    end # This is the integral ∫₀¹ wᵗ⁽ᵃᵇᶜ⁾(x) dx 
-    Γᵃ = Γ(a)
-    Γᵃ⁺¹ = Γ(a+1)
-    Γᵃ⁺² = Γ(a+2)
+    # beta(a + 1, b + 1) * t^c * _₂F₁(a + 1, -c, a + b + 2, 1/t) is the integral ∫₀¹ wᵗ⁽ᵃᵇᶜ⁾(x) dx 
+    Γᵃ = beta(a + 1, b + 1) * _₂F₁(a + 1, -c, a + b + 2, 1/t)
+    Γᵃ⁺¹ = beta(a + 2, b + 1) * _₂F₁(a + 2, -c, a + b + 3, 1/t)
+    Γᵃ⁺² = beta(a + 3, b + 1) * _₂F₁(a + 3, -c, a + b + 4, 1/t)
     α = Γᵃ⁺¹/Γᵃ
     β = sqrt(Γᵃ / (Γᵃ⁺² - 2α*Γᵃ⁺¹ + α^2*Γᵃ))
     return α, β
