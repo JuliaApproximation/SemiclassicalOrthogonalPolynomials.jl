@@ -81,9 +81,8 @@ equals_layout(::ExpansionLayout, ::AbstractWeightLayout, A, B::SemiclassicalJaco
 """
    RaisedOP(P, y)
 
-gives the OPs w.r.t. (y - x) .* w based on lowering to Q.
+Gives the OPs w.r.t. (y - x) .* w based on lowering to Q.
 """
-
 struct RaisedOP{T, QQ, LL<:OrthogonalPolynomialRatio} <: OrthogonalPolynomial{T}
     Q::QQ
     ℓ::LL
