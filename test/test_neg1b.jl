@@ -83,7 +83,7 @@ end
     P = SemiclassicalJacobi.(t, -1//2:13//2, -1:6, -1//2:13//2)
     @test P isa SemiclassicalOrthogonalPolynomials.SemiclassicalJacobiFamily
     for (i, p) in enumerate(P)
-        @test jacobimatrix(p)[1:100, 1:100] ≈ jacobimatrix(SemiclassicalJacobi(t, (-1//2:13//2)[i], (-1:6)[i], (-1//2:13//2)[i]))[1:100, 1:100]
+        @test jacobimatrix(p)[1:100, 1:100] ≈ jacobimatrix(SemiclassicalJacobi(t, (-1/2:13/2)[i], (-1:6)[i], (-1/2:13/2)[i]))[1:100, 1:100]
     end
 end
 
