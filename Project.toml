@@ -1,7 +1,7 @@
 name = "SemiclassicalOrthogonalPolynomials"
 uuid = "291c01f3-23f6-4eb6-aeb0-063a639b53f2"
 authors = ["Sheehan Olver <solver@mac.com>"]
-version = "0.5.10"
+version = "0.5.11"
 
 [deps]
 ArrayLayouts = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
