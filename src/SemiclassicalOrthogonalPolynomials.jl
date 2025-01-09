@@ -707,7 +707,7 @@ end
 Base.broadcasted(::Type{SemiclassicalJacobiWeight}, t::Number, a::Number, b::Number, c::Union{AbstractUnitRange,Number}) = 
 SemiclassicalJacobiCWeightFamily(t, a, b, c)
 
-_unweightedsemiclassicalsum = (a,b,c,t) -> pFq((a+1,-c),(a+b+2, ), 1/t)
+_unweightedsemiclassicalsum(a,b,c,t) = pFq((a+1,-c),(a+b+2, ), 1/t)
 
 function Base.broadcasted(::typeof(sum), W::SemiclassicalJacobiCWeightFamily{T}) where T
     a = W.a; b = W.b; c = W.c; t = W.t;
