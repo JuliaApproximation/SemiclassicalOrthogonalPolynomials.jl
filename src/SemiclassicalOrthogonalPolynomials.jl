@@ -168,7 +168,7 @@ function semiclassical_jacobimatrix(t, a, b, c)
             return SemiclassicalJacobi.(t, a, b, 0:Int(c))[end].X
         else # if c is not an integer, use Lanczos
             x = axes(P,1)
-            return jacobimatrix(LanczosPolynomial(@.(x^a * (1-x)^b * (t-x)^c), jacobi(b, a, UnitInterval{T}())))
+            return cholesky_jacobimatrix(@.(x^a * (1-x)^b * (t-x)^c), P)
         end
     end
 end
