@@ -12,7 +12,7 @@ import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAb
 import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedOPLayout, MappedOPLayout,
                                         Bidiagonal, Tridiagonal, SymTridiagonal, symtridiagonalize, normalizationconstant, LanczosPolynomial,
                                         OrthogonalPolynomialRatio, Weighted, AbstractWeightLayout, UnionDomain, oneto, WeightedBasis, HalfWeighted,
-                                        golubwelsch, AbstractOPLayout, weight, cholesky_jacobimatrix, qr_jacobimatrix, isnormalized
+                                        golubwelsch, AbstractOPLayout, weight, cholesky_jacobimatrix, qr_jacobimatrix, isnormalized, ConvertedOrthogonalPolynomial, AbstractNormalizedOPLayout
 
 import InfiniteArrays: OneToInf, InfUnitRange
 import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayout, MappedBasisLayout, grid, plotgrid, equals_layout, ExpansionLayout
@@ -20,7 +20,7 @@ import FillArrays: SquareEye
 import HypergeometricFunctions: _₂F₁general2, _₂F₁
 import SpecialFunctions: beta
 
-export LanczosPolynomial, Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio
+export Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio
 
 """"
     SemiclassicalJacobiWeight(t, a, b, c)
@@ -233,15 +233,14 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     end
 end
 
-LanczosPolynomial(P::SemiclassicalJacobi{T}) where T =
-    LanczosPolynomial(orthogonalityweight(P), Normalized(jacobi(P.b, P.a, UnitInterval{T}())), P.X.dv.data)
+ConvertedOrthogonalPolynomial(P::SemiclassicalJacobi{T}) where T = ConvertedOrthogonalPolynomial(orthogonalityweight(P), P.X, parent(P.X.dv).U, parent(P.X.dv).P)
 
 """
     toclassical(P::SemiclassicalJacobi)
 
-gives either a mapped `Jacobi` or `LanczosPolynomial` version of `P`.
+gives either a mapped `Jacobi` or `CholeskyPolynomial` version of `P`.
 """
-toclassical(P::SemiclassicalJacobi{T}) where T = iszero(P.c) ? Normalized(jacobi(P.b, P.a, UnitInterval{T}())) : LanczosPolynomial(P)
+toclassical(P::SemiclassicalJacobi{T}) where T = iszero(P.c) ? Normalized(jacobi(P.b, P.a, UnitInterval{T}())) : ConvertedOrthogonalPolynomial(P)
 
 copy(P::SemiclassicalJacobi) = P
 axes(P::SemiclassicalJacobi{T}) where T = (Inclusion(UnitInterval{T}()),OneToInf())
@@ -365,7 +364,7 @@ end
 """
     semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
 
-Returns conversion operator from SemiclassicalJacobi `P` to SemiclassicalJacobi `Q`. Integer distances are covered by decomposition methods, for non-integer cases a Lanczos fallback is attempted.
+Returns conversion operator from SemiclassicalJacobi `P` to SemiclassicalJacobi `Q`. Integer distances are covered by decomposition methods.
 """
 function semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     @assert Q.t ≈ P.t
@@ -396,7 +395,7 @@ function semijacobi_ldiv(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
             QQ = SemiclassicalJacobi(Q.t, Q.a, Q.b, Q.c+1+iseven(Δc), P)
             return ApplyArray(*,semijacobi_ldiv_direct(Q, QQ),semijacobi_ldiv(QQ, P))
         end
-    else # fallback to Lancos
+    else # fallback
         R = SemiclassicalJacobi(P.t, mod(P.a,-1), mod(P.b,-1), mod(P.c,-1))
         R̃ = toclassical(R)
         return (P \ R) * _p0(R̃) * (R̃ \ Q)
@@ -420,6 +419,7 @@ copy(L::Ldiv{SemiclassicalJacobiLayout,WeightedOPLayout}) = copy(Ldiv{BasisLayou
 
 
 copy(L::Ldiv{SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
+copy(L::Ldiv{SemiclassicalJacobiLayout,<:AbstractNormalizedOPLayout}) = semijacobi_ldiv(L.A, L.B)
 copy(L::Ldiv{SemiclassicalJacobiLayout,<:AbstractBasisLayout}) = semijacobi_ldiv(L.A, L.B)
 copy(L::Ldiv{SemiclassicalJacobiLayout,BroadcastLayout{typeof(*)}}) = semijacobi_ldiv(L.A, L.B)
 copy(L::Ldiv{<:Any,SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
