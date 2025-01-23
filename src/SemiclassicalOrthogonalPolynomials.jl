@@ -464,8 +464,8 @@ function \(A::SemiclassicalJacobi, B::SemiclassicalJacobi{T}) where {T}
         return semijacobi_ldiv(A, B)
     end
 end
-\(A::LanczosPolynomial, B::SemiclassicalJacobi) = semijacobi_ldiv(A, B)
-\(A::SemiclassicalJacobi, B::LanczosPolynomial) = semijacobi_ldiv(A, B)
+\(A::ConvertedOrthogonalPolynomial, B::SemiclassicalJacobi) = semijacobi_ldiv(A, B)
+\(A::SemiclassicalJacobi, B::ConvertedOrthogonalPolynomial) = semijacobi_ldiv(A, B)
 function \(w_A::WeightedSemiclassicalJacobi{T}, w_B::WeightedSemiclassicalJacobi{T}) where T
     wA,A = w_A.args
     wB,B = w_B.args

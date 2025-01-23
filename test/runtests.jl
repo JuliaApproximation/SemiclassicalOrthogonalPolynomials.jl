@@ -274,7 +274,7 @@ end
         U = SemiclassicalJacobi(2, 1/2, 0, 1/2, T)
         x = axes(T,1)
 
-        ucfs = (T \ exp.(x))
+        ucfs = T \ exp.(x)
         u = T * ucfs
         @test u[0.1] ≈ exp(0.1)
         @test T[:,1:20] \ exp.(x) ≈ ucfs[1:20]
