@@ -8,7 +8,7 @@ import Base: getindex, axes, size, \, /, *, +, -, summary, show, ==, copy, sum, 
 import ArrayLayouts: MemoryLayout, ldiv, diagonaldata, subdiagonaldata, supdiagonaldata
 import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout, _BandedMatrix
 import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAbstractVector, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector, ApplyArray,
-                    AccumulateAbstractVector, LazyVector, AbstractCachedMatrix, BroadcastLayout
+                    AccumulateAbstractVector, LazyVector, AbstractCachedMatrix, BroadcastLayout, simplifiable
 import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedOPLayout, MappedOPLayout,
                                         Bidiagonal, Tridiagonal, SymTridiagonal, symtridiagonalize, normalizationconstant, LanczosPolynomial,
                                         OrthogonalPolynomialRatio, Weighted, AbstractWeightLayout, UnionDomain, oneto, WeightedBasis, HalfWeighted,
@@ -131,7 +131,7 @@ WeightedSemiclassicalJacobi{T}(t, a, b, c, P...) where T = SemiclassicalJacobiWe
 
 # Returns α, β such that P1(x) = β(x-α)
 function _linear_coefficients(t, a, b, c)
-    # beta(a + 1, b + 1) * t^c * _₂F₁(a + 1, -c, a + b + 2, 1/t) is the integral ∫₀¹ wᵗ⁽ᵃᵇᶜ⁾(x) dx 
+    # beta(a + 1, b + 1) * t^c * _₂F₁(a + 1, -c, a + b + 2, 1/t) is the integral ∫₀¹ wᵗ⁽ᵃᵇᶜ⁾(x) dx
     Γᵃ = beta(a + 1, b + 1) * _₂F₁(a + 1, -c, a + b + 2, 1/t)
     Γᵃ⁺¹ = beta(a + 2, b + 1) * _₂F₁(a + 2, -c, a + b + 3, 1/t)
     Γᵃ⁺² = beta(a + 3, b + 1) * _₂F₁(a + 3, -c, a + b + 4, 1/t)
@@ -150,7 +150,7 @@ function semiclassical_jacobimatrix(t, a, b, c)
         C = -(N)./(N.*4 .- 2)
         B = Vcat((α[1]^2*3-α[1]*α[2]*2-1)/6 , -(N)./(N.*4 .+ 2).*α[2:end]./α)
         return SymTridiagonal(A, sqrt.(B.*C)) # if J is Tridiagonal(c,a,b) then for norm. OPs it becomes SymTridiagonal(a, sqrt.( b.* c))
-    elseif b == -one(T) 
+    elseif b == -one(T)
         J′ = semiclassical_jacobimatrix(t, a, one(b), c)
         J′a, J′b = diagonaldata(J′), supdiagonaldata(J′)
         A = Vcat(one(T), J′a[1:end])
@@ -178,11 +178,11 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     Δb = b-Q.b
     Δc = c-Q.c
 
-    # special cases 
+    # special cases
     if iszero(a) && iszero(b) && c == -one(eltype(Q.t)) # (a,b,c) = (0,0,-1) special case
         return semiclassical_jacobimatrix(Q.t, zero(Q.t), zero(Q.t), c)
     elseif iszero(Δa) && iszero(Δc) && Δb == 2 && b == 1
-        # When going from P[t, a, -1, c] to P[t, a, 1, c], you can just take 
+        # When going from P[t, a, -1, c] to P[t, a, 1, c], you can just take
         return SymTridiagonal(Q.X.d[2:end], Q.X.du[2:end])
     elseif iszero(c) # classical Jacobi polynomial special case
         return jacobimatrix(Normalized(jacobi(b, a, UnitInterval{eltype(Q.t)}())))
@@ -297,7 +297,7 @@ end
 """
     semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
 
-Returns conversion operator from SemiclassicalJacobi `P` to SemiclassicalJacobi `Q` in a single step via decomposition. 
+Returns conversion operator from SemiclassicalJacobi `P` to SemiclassicalJacobi `Q` in a single step via decomposition.
 Numerically unstable if the parameter modification is large. Typically one should instead use `P \\ Q` which is equivalent to `semijacobi_ldiv(P,Q)` and proceeds step by step.
 """
 function semijacobi_ldiv_direct(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
@@ -418,6 +418,7 @@ copy(L::Ldiv{WeightedOPLayout,SemiclassicalJacobiLayout}) = copy(Ldiv{WeightedOP
 copy(L::Ldiv{SemiclassicalJacobiLayout,WeightedOPLayout}) = copy(Ldiv{BasisLayout,WeightedOPLayout}(L.A, L.B))
 
 
+simplifiable(L::Ldiv{SemiclassicalJacobiLayout,<:AbstractBasisLayout}) = Val(true)
 copy(L::Ldiv{SemiclassicalJacobiLayout}) = semijacobi_ldiv(L.A, L.B)
 copy(L::Ldiv{SemiclassicalJacobiLayout,<:AbstractNormalizedOPLayout}) = semijacobi_ldiv(L.A, L.B)
 copy(L::Ldiv{SemiclassicalJacobiLayout,<:AbstractBasisLayout}) = semijacobi_ldiv(L.A, L.B)
@@ -435,25 +436,25 @@ function copy(L::Ldiv{SemiclassicalJacobiLayout,SemiclassicalJacobiLayout})
     (inv(M_Q) * L') * M_P
 end
 
-function \(A::SemiclassicalJacobi, B::SemiclassicalJacobi{T}) where {T} 
+function \(A::SemiclassicalJacobi, B::SemiclassicalJacobi{T}) where {T}
     if A.b == -1 && B.b ≠ -1
-        return UpperTriangular(ApplyArray(inv, B \ A)) 
+        return UpperTriangular(ApplyArray(inv, B \ A))
     elseif B.b == -1 && A.b ≠ -1
         # First convert Bᵗᵃ⁻¹ᶜ into Bᵗᵃ⁰ᶜ
-        Bᵗᵃ⁰ᶜ = SemiclassicalJacobi(B.t, B.a, zero(B.b), B.c, A) 
+        Bᵗᵃ⁰ᶜ = SemiclassicalJacobi(B.t, B.a, zero(B.b), B.c, A)
         Bᵗᵃ¹ᶜ = SemiclassicalJacobi(B.t, B.a, one(B.a), B.c, A)
         Rᵦₐ₁ᵪᵗᵃ⁰ᶜ = Weighted(Bᵗᵃ⁰ᶜ) \ Weighted(Bᵗᵃ¹ᶜ)
         b1 = Rᵦₐ₁ᵪᵗᵃ⁰ᶜ[band(0)]
         b0 = Vcat(one(T), Rᵦₐ₁ᵪᵗᵃ⁰ᶜ[band(-1)])
         Rᵦₐ₋₁ᵪᵗᵃ⁰ᶜ = Bidiagonal(b0, b1, :U)
-        # Then convert Bᵗᵃ⁰ᶜ into A and complete 
+        # Then convert Bᵗᵃ⁰ᶜ into A and complete
         Rₐ₀ᵪᴬ = UpperTriangular(A \ Bᵗᵃ⁰ᶜ)
         return ApplyArray(*, Rₐ₀ᵪᴬ, Rᵦₐ₋₁ᵪᵗᵃ⁰ᶜ)
     elseif A.b == B.b == -1
         Bᵗᵃ¹ᶜ = SemiclassicalJacobi(B.t, B.a, one(B.b), B.c, B)
         Aᵗᵃ¹ᶜ = SemiclassicalJacobi(A.t, A.a, one(A.b), A.c, A)
         Rₐ₁ᵪᵗᵘ¹ᵛ = Aᵗᵃ¹ᶜ \ Bᵗᵃ¹ᶜ
-        # Make 1 ⊕ Rₐ₁ᵪᵗᵘ¹ᵛ 
+        # Make 1 ⊕ Rₐ₁ᵪᵗᵘ¹ᵛ
         V = eltype(Rₐ₁ᵪᵗᵘ¹ᵛ)
         Rₐ₋₁ᵪᵗᵘ⁻¹ᵛ = Vcat(
             Hcat(one(V), Zeros{V}(1, ∞)),
@@ -479,12 +480,12 @@ function \(w_A::WeightedSemiclassicalJacobi{T}, w_B::WeightedSemiclassicalJacobi
         @assert A.a + 1 == B.a && A.c + 1 == B.c
         Q = SemiclassicalJacobi(B.t, B.a, one(B.b), B.c, B)
         P = SemiclassicalJacobi(A.t, A.a, one(A.b), A.c, A)
-        wP = Weighted(P) 
+        wP = Weighted(P)
         wQ = Weighted(Q)
         R22 = wP \ wQ
         α, β = _linear_coefficients(P.t, P.a, P.b, P.c)
-        ℓ₁ = A.t - 1 
-        ℓ₂ = 1 + α - A.t 
+        ℓ₁ = A.t - 1
+        ℓ₂ = 1 + α - A.t
         ℓ₃ = inv(β)
         d0 = Vcat(ℓ₁, R22[band(0)])
         d1 = Vcat(ℓ₂, R22[band(-1)])
@@ -529,19 +530,19 @@ end
 \(w_A::Weighted{<:Any,<:SemiclassicalJacobi}, w_B::Weighted{<:Any,<:SemiclassicalJacobi}) = convert(WeightedBasis, w_A) \ convert(WeightedBasis, w_B)
 
 function \(w_A::HalfWeighted{lr, T, <:SemiclassicalJacobi}, B::AbstractQuasiArray{V}) where {lr, T, V}
-    WP = convert(WeightedBasis, w_A) 
-    w_A.P.b  ≠ -1 && return WP \ B # no need to special case here 
+    WP = convert(WeightedBasis, w_A)
+    w_A.P.b  ≠ -1 && return WP \ B # no need to special case here
     !iszero(WP.args[1].b) && throw(ArgumentError("Cannot expand in a weighted basis including 1/(1-x)."))
-    # To expand f(x) = w(x)P(x)𝐟, note that P = [1 (1-x)Q] so 
+    # To expand f(x) = w(x)P(x)𝐟, note that P = [1 (1-x)Q] so
     #   f(x) = w(x)[1 (1-x)Q(x)][f₀; 𝐟₁] = w(x)f₀ + w(x)(1-x)Q(x)𝐟₁. Thus,
-    #   f(1) = w(1)f₀ ⟹ f₀ = f(1) / w(1) 
-    #   Then, f(x) - w(x)f₀ = w(x)(1-x)Q(x)𝐟₁, so that 𝐟₁ is just the expansion of 
+    #   f(1) = w(1)f₀ ⟹ f₀ = f(1) / w(1)
+    #   Then, f(x) - w(x)f₀ = w(x)(1-x)Q(x)𝐟₁, so that 𝐟₁ is just the expansion of
     #   f(x) - w(x)f₀ in the w(x)(1-x)Q(x) basis.
-    w, P = WP.args 
-    f₀ = B[end] / w[end] 
+    w, P = WP.args
+    f₀ = B[end] / w[end]
     C = B - w * f₀
     Q = SemiclassicalJacobiWeight(w.t, w.a, one(w.b), w.c) .* SemiclassicalJacobi(P.t, P.a, one(P.b), P.c, P)
-    f = Q \ C 
+    f = Q \ C
     return Vcat(f₀, f)
 end
 
@@ -563,8 +564,8 @@ function ldiv(Q::SemiclassicalJacobi, f::AbstractQuasiVector)
     elseif isinteger(Q.a) && (isinteger(Q.b) && Q.b ≥ 0) && isinteger(Q.c) # (a,b,c) are integers -> use QR/Cholesky
         R̃ = Normalized(jacobi(Q.b, Q.a, UnitInterval{T}()))
         return (Q \ SemiclassicalJacobi(Q.t, Q.a, Q.b, 0)) *  _p0(R̃) * (R̃ \ f)
-    elseif isinteger(Q.a) && isone(-Q.b) && isinteger(Q.c) 
-        return semijacobi_ldiv(Q, f) # jacobi(< 0, Q.a) fails in the method above. jacobi(-1, 0) also leads to NaNs in coefficients 
+    elseif isinteger(Q.a) && isone(-Q.b) && isinteger(Q.c)
+        return semijacobi_ldiv(Q, f) # jacobi(< 0, Q.a) fails in the method above. jacobi(-1, 0) also leads to NaNs in coefficients
     else # fallback to Lanzcos
         R̃ = toclassical(SemiclassicalJacobi(Q.t, mod(Q.a,-1), mod(Q.b,-1), mod(Q.c,-1)))
         return (Q \ R̃) * (R̃ \ f)
@@ -639,7 +640,7 @@ function SemiclassicalJacobiFamily{T}(data::Vector, t, a, b, c) where T
 end
 
 function _getsecondifpossible(v)
-    length(v) > 1 && return v[2] 
+    length(v) > 1 && return v[2]
     return v[1]
 end
 
@@ -651,9 +652,9 @@ end
 
 Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Number, b::Number, c::Number) = SemiclassicalJacobi(t, a, b, c)
 Base.broadcasted(::Type{SemiclassicalJacobi{T}}, t::Number, a::Number, b::Number, c::Number) where T = SemiclassicalJacobi{T}(t, a, b, c)
-Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Union{AbstractUnitRange,Number}, b::Union{AbstractUnitRange,Number}, c::Union{AbstractUnitRange,Number}) = 
+Base.broadcasted(::Type{SemiclassicalJacobi}, t::Number, a::Union{AbstractUnitRange,Number}, b::Union{AbstractUnitRange,Number}, c::Union{AbstractUnitRange,Number}) =
     SemiclassicalJacobiFamily(t, a, b, c)
-Base.broadcasted(::Type{SemiclassicalJacobi{T}}, t::Number, a::Union{AbstractUnitRange,Number}, b::Union{AbstractUnitRange,Number}, c::Union{AbstractUnitRange,Number}) where T = 
+Base.broadcasted(::Type{SemiclassicalJacobi{T}}, t::Number, a::Union{AbstractUnitRange,Number}, b::Union{AbstractUnitRange,Number}, c::Union{AbstractUnitRange,Number}) where T =
     SemiclassicalJacobiFamily{T}(t, a, b, c)
 
 
@@ -664,7 +665,7 @@ function LazyArrays.cache_filldata!(P::SemiclassicalJacobiFamily, inds::Abstract
     t,a,b,c = P.t,P.a,P.b,P.c
     isrange = P.b isa AbstractUnitRange
     for k in inds
-        # If P.data[k-2] is not normalised (aka b = -1), cholesky fails. With the current design, this is only a problem if P.b 
+        # If P.data[k-2] is not normalised (aka b = -1), cholesky fails. With the current design, this is only a problem if P.b
         # is a range since we can translate between polynomials that both have b = -1.
         Pprev = (isrange && P.b[k-2] == -1) ? P.data[k-1] : P.data[k-2] # isrange && P.b[k-2] == -1 could also be !isnormalized(P.data[k-2])
         P.data[k] = SemiclassicalJacobi(t, _broadcast_getindex(a,k), _broadcast_getindex(b,k), _broadcast_getindex(c,k), Pprev)
@@ -704,7 +705,7 @@ function SemiclassicalJacobiCWeightFamily{T}(t::Number, a::Number, b::Number, c:
     return SemiclassicalJacobiCWeightFamily{T}(SemiclassicalJacobiWeight.(t,a:a,b:b,c), t, a, b, c)
 end
 
-Base.broadcasted(::Type{SemiclassicalJacobiWeight}, t::Number, a::Number, b::Number, c::Union{AbstractUnitRange,Number}) = 
+Base.broadcasted(::Type{SemiclassicalJacobiWeight}, t::Number, a::Number, b::Number, c::Union{AbstractUnitRange,Number}) =
 SemiclassicalJacobiCWeightFamily(t, a, b, c)
 
 _unweightedsemiclassicalsum(a,b,c,t) = pFq((a+1,-c),(a+b+2, ), 1/t)
@@ -714,7 +715,7 @@ function Base.broadcasted(::typeof(sum), W::SemiclassicalJacobiCWeightFamily{T})
     cmin = minimum(c); cmax = maximum(c);
     @assert isinteger(cmax) && isinteger(cmin)
     # This is needed at high parameter values.
-    # Manually setting setprecision(2048) allows accurate computation even for very high c. 
+    # Manually setting setprecision(2048) allows accurate computation even for very high c.
     t,a,b = convert(BigFloat,t),convert(BigFloat,a),convert(BigFloat,b)
     F = zeros(BigFloat,cmax+1)
     F[1] = _unweightedsemiclassicalsum(a,b,0,t) # c=0
