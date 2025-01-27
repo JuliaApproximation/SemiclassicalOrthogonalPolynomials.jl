@@ -73,8 +73,7 @@ end
     Ralt = semijacobi_ldiv_direct(Q,P)
     @test R[1:20,1:20] ≈ Ralt[1:20,1:20]
 
-    (P \ legendre(0..1))[1:10,1:10] * (legendre(0..1) \ Normalized(legendre(0..1)))[1:10,1:10]
-    (P \ Normalized(legendre(0..1)))[1:10,1:10]
+    @test (P \ legendre(0..1))[1:10,1:10] * (legendre(0..1) \ Normalized(legendre(0..1)))[1:10,1:10] ≈ (P \ Normalized(legendre(0..1)))[1:10,1:10]
 
     # set 2
     P = SemiclassicalJacobi(1.23,4,1,2)
