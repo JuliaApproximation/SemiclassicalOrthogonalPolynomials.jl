@@ -72,6 +72,10 @@ end
     R = Q \ P
     Ralt = semijacobi_ldiv_direct(Q,P)
     @test R[1:20,1:20] ≈ Ralt[1:20,1:20]
+
+    @test (P \ legendre(0..1))[1:10,1:10] * (legendre(0..1) \ Normalized(legendre(0..1)))[1:10,1:10] ≈ (P \ Normalized(legendre(0..1)))[1:10,1:10]
+    @test_broken (Normalized(legendre(0..1)) \ legendre(0..1))[1:10,1:10] * (legendre(0..1) \ P)[1:10,1:10] ≈ (Normalized(legendre(0..1)) \ P)[1:10,1:10]
+
     # set 2
     P = SemiclassicalJacobi(1.23,4,1,2)
     Q = SemiclassicalJacobi(1.23,7,4,6)
@@ -274,7 +278,7 @@ end
         U = SemiclassicalJacobi(2, 1/2, 0, 1/2, T)
         x = axes(T,1)
 
-        ucfs = (T \ exp.(x))
+        ucfs = T \ exp.(x)
         u = T * ucfs
         @test u[0.1] ≈ exp(0.1)
         @test T[:,1:20] \ exp.(x) ≈ ucfs[1:20]

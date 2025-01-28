@@ -1,7 +1,7 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, LazyArrays, Test
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, _BandedMatrix, _p0, Weighted
 import LazyArrays: Accumulate, AccumulateAbstractVector
-import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
+import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted, toclassical
 
 @testset "Derivative" begin
     @testset "basics" begin
@@ -18,7 +18,7 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted
     @testset "Derivation" begin
         t = 2
         P = SemiclassicalJacobi(t, -0.5, -0.5, -0.5)
-        P̃ = LanczosPolynomial(P)
+        P̃ = toclassical(P)
         Q = SemiclassicalJacobi(t,  0.5,  0.5,  0.5, P)
 
         @test (Q \ P̃)[1:10,1:10] ≈ 0.6175596179729587*(Q \ P)[1:10,1:10]
