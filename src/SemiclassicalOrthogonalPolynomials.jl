@@ -280,7 +280,7 @@ function op_lowering(Q, y)
 end
 
 function semijacobi_ldiv(Q, P::SemiclassicalJacobi)
-    if P.a ≤ 0 && P.b ≤ 0 && P.c ≤ 0
+    if P.a ≤ 0 && P.b ≤ 0 && P.c ≤ 0
         P̃ = toclassical(P)
         (Q \ P̃)/_p0(P̃)
     else
@@ -505,13 +505,13 @@ function \(w_A::WeightedSemiclassicalJacobi{T}, w_B::WeightedSemiclassicalJacobi
     elseif wA.a == wB.a && wA.b == wB.b && wA.c+1 == wB.c
         @assert A.a == B.a && A.b == B.b && A.c+1 == B.c
         -op_lowering(A,A.t)
-    elseif wA.a+1 ≤ wB.a
+    elseif wA.a+1 ≤ wB.a
         C = SemiclassicalJacobi(A.t, A.a+1, A.b, A.c, A)
         w_C = SemiclassicalJacobiWeight(wA.t, wA.a+1, wA.b, wA.c) .* C
         L_2 = w_C \ w_B
         L_1 = w_A \ w_C
         L_1 * L_2
-    elseif wA.b+1 ≤ wB.b
+    elseif wA.b+1 ≤ wB.b
         C = SemiclassicalJacobi(A.t, A.a, A.b+1, A.c, A)
         w_C = SemiclassicalJacobiWeight(wA.t, wA.a, wA.b+1, wA.c) .* C
         L_2 = w_C \ w_B
