@@ -20,7 +20,7 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 [compat]
 ArrayLayouts = "1"
 BandedMatrices = "0.17, 1"
-ClassicalOrthogonalPolynomials = "0.14.3"
+ClassicalOrthogonalPolynomials = "0.14.3, 0.15"
 ContinuumArrays = "0.18"
 FillArrays = "1"
 HypergeometricFunctions = "0.3.4"
