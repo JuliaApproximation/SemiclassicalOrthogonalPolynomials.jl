@@ -159,16 +159,17 @@ function semiclassical_jacobimatrix(t, a, b, c)
         return Tridiagonal(B, A, C)
     else
         P = Normalized(jacobi(b, a, UnitInterval{T}()))
-        iszero(c) && return jacobimatrix(P)
+        X = jacobimatrix(P)
+        iszero(c) && return X
         if isone(c)
-            return cholesky_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), P)
+            return cholesky_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), X)[1]
         elseif isone(c/2)
-            return qr_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), P)
+            return qr_jacobimatrix(Symmetric(P \ ((t.-axes(P,1)).*P)), X)[1]
         elseif isinteger(c) && c ≥ 0 # reduce other integer c cases to hierarchy
             return SemiclassicalJacobi.(t, a, b, 0:Int(c))[end].X
         else # if c is not an integer, use Lanczos
             x = axes(P,1)
-            return cholesky_jacobimatrix(@.(x^a * (1-x)^b * (t-x)^c), P)
+            return cholesky_jacobimatrix(@.(x^a * (1-x)^b * (t-x)^c), P)[1]
         end
     end
 end
@@ -195,18 +196,19 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
         return semiclassical_jacobimatrix(newQ, a, b, c)
     end
 
+    X = jacobimatrix(Q)
     if isone(Δa/2) && iszero(Δb) && iszero(Δc)  # raising by 2
-        qr_jacobimatrix(Q.X,Q)
+        qr_jacobimatrix(X,X)[1]
     elseif iszero(Δa) && isone(Δb/2) && iszero(Δc)
-        qr_jacobimatrix(I-Q.X,Q)
+        qr_jacobimatrix(I-X,X)[1]
     elseif iszero(Δa) && iszero(Δb) && isone(Δc/2)
-        qr_jacobimatrix(Q.t*I-Q.X,Q)
+        qr_jacobimatrix(Q.t*I-X,X)[1]
     elseif isone(Δa) && iszero(Δb) && iszero(Δc)  # raising by 1
-        cholesky_jacobimatrix(Q.X,Q)
+        cholesky_jacobimatrix(X,X)[1]
     elseif iszero(Δa) && isone(Δb) && iszero(Δc)
-        cholesky_jacobimatrix(I-Q.X,Q)
+        cholesky_jacobimatrix(I-X,X)[1]
     elseif iszero(Δa) && iszero(Δb) && isone(Δc)
-        cholesky_jacobimatrix(Q.t*I-Q.X,Q)
+        cholesky_jacobimatrix(Q.t*I-X,X)[1]
     elseif isone(-Δa) && iszero(Δb) && iszero(Δc) # in these cases we currently have to reconstruct
         # TODO: This is re-constructing. It should instead use reverse Cholesky (or an alternative)!
         semiclassical_jacobimatrix(Q.t,a,b,c)
@@ -233,7 +235,9 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     end
 end
 
-ConvertedOrthogonalPolynomial(P::SemiclassicalJacobi{T}) where T = ConvertedOrthogonalPolynomial(orthogonalityweight(P), P.X, parent(P.X.dv).U, parent(P.X.dv).P)
+resizedata!(P::SemiclassicalJacobi, ::Colon, n::Int) = resizedata!(P.X.dv, n)
+
+ConvertedOrthogonalPolynomial(P::SemiclassicalJacobi{T}) where T = ConvertedOrthogonalPolynomial(orthogonalityweight(P), P.X, P.X.dv.data.U, jacobi(P.a, P.b, 0..1))
 
 """
     toclassical(P::SemiclassicalJacobi)
