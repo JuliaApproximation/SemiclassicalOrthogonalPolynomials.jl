@@ -235,9 +235,9 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     end
 end
 
-resizedata!(P::SemiclassicalJacobi, ::Colon, n::Int) = resizedata!(P.X.dv, n)
+resizedata!(P::SemiclassicalJacobi, ::Colon, n::Int) = resizedata!(diagonaldata(P.X), n)
 
-ConvertedOrthogonalPolynomial(P::SemiclassicalJacobi{T}) where T = ConvertedOrthogonalPolynomial(orthogonalityweight(P), P.X, P.X.dv.data.U, jacobi(P.a, P.b, 0..1))
+ConvertedOrthogonalPolynomial(P::SemiclassicalJacobi{T}) where T = ConvertedOrthogonalPolynomial(orthogonalityweight(P), P.X, P.X.dv.data.U, Normalized(jacobi(P.b, P.a, 0..1)))
 
 """
     toclassical(P::SemiclassicalJacobi)
