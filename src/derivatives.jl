@@ -30,34 +30,30 @@ end
 
 ########## Structs for representing specific broadcast operators to get around inefficient broadcast machinery 
 ## TODO: Implement something like a CacheStyle for BroadcastStyle that can do all this more generically
-mutable struct CachedBroadcastVector{T,F,A,B} <: AbstractCachedVector{T}
+mutable struct DivDiffData{T,V1,V2,V3,AA,BB,CC,DD} <: AbstractCachedVector{T}
     data::Vector{T}
-    const f::F
-    const A::A
-    const B::B
+    const v1::V1 
+    const v2::V2
+    const v3::V3
+    const A::AA 
+    const B::BB
+    const α::CC
+    const β::DD
     datasize::Tuple{Int}
-    function CachedBroadcastVector{T}(data::Vector{T}, f::F, a::A, b::B, datasize::Tuple{Int}) where {T,F,A,B}
-        length(a) == length(b) || throw(ArgumentError("lengths must match"))
-        new{T,F,A,B}(data,f,a,b,datasize)
+end
+function LazyArrays.cache_filldata!(K::DivDiffData, inds)
+    v1, v2, v3 = K.v1, K.v2, K.v3
+    A, B, α, β = K.A, K.B, K.α, K.β
+    @inbounds for n in inds
+        K.data[n] = (n * (v1[n] + B[n+1]/A[n+1]) - (n+1) * (α[n]*v2[n] + β[n]/α[n])) * v3[n]
     end
 end
-const CBV = CachedBroadcastVector
-
-size(K::CachedBroadcastVector) = size(K.A)
-
-CachedBroadcastVector(data::Vector{T}, f, a::A, b::B, datasize) where {T, A, B} = CachedBroadcastVector{T}(data, f, a, b, datasize)
-CachedBroadcastVector(f, a, b) = CachedBroadcastVector([f(first(a), first(b))], f, a, b, (1,))
-
-function LazyArrays.cache_filldata!(K::CachedBroadcastVector{T, F, A, B}, inds) where {T, F, A, B}
-    @show inds
-    f, a, b = K.f, K.A, K.B
-    resizedata!(a, maximum(inds)) 
-    resizedata!(b, maximum(inds))
-    @inbounds for k in inds
-        K.data[k] = f(a[k], b[k])
-    end
+size(K::DivDiffData) = size(K.v1)
+function DivDiffData(v1, v2, v3, A, B, α, β)
+    T = Base.promote_type(eltype(v1), eltype(v2), eltype(v3), eltype(A), eltype(B), eltype(α), eltype(β))
+    data = zeros(T, 0)
+    return DivDiffData(data, v1, v2, v3, A, B, α, β, size(data))
 end
-
 
 ########## Derivatives
 
@@ -70,22 +66,12 @@ function divdiff(Q::SemiclassicalJacobi, P::SemiclassicalJacobi)
     A,B,_ = recurrencecoefficients(P)
     α,β,_ = recurrencecoefficients(Q)
 
-    d = AccumulateAbstractVector(*, CBV(/, A, Vcat(1,α)))
-    v1 = AccumulateAbstractVector(+, CBV(/, B, A))
-    v2 = MulAddAccumulate(CBV(/, Vcat(0,0,α[2:∞]), α), CBV(/, Vcat(0,CBV(/, β,  α)),  α))
-    v3 = AccumulateAbstractVector(*, Vcat(A[1]A[2], CBV(/, A[3:∞], α)))
-    op1 = CBV(*, 1:∞, d)
-    op2 = CBV(/, B[2:end], A[2:end])
-    op3 = CBV(+, v1, op2)
-    op4 = CBV(*, 1:∞, op3)
-    op5 = CBV(/, β, α)
-    op6 = CBV(*, α, v2)
-    op7 = CBV(+, op5, op6)
-    op8 = CBV(*, 2:∞, op7)
-    op9 = CBV(-, op4, op8)
-    op10 = CBV(*, op9, v3) 
-    return _BandedMatrix(Vcat(op1', op10'), ∞, 2,-1)'
-    # return _BandedMatrix(Vcat(((1:∞) .* d)', (((1:∞) .* (v1 .+ B[2:end]./A[2:end]) .- (2:∞) .* (α .* v2 .+ β ./ α)) .* v3)'), ∞, 2,-1)'
+    d = AccumulateAbstractVector(*, A ./ Vcat(1,α))
+    v1 = AccumulateAbstractVector(+, B ./ A)
+    v2 = MulAddAccumulate(Vcat(0,0,α[2:∞]) ./ α, Vcat(0,β ./ α) ./ α)
+    v3 = AccumulateAbstractVector(*, Vcat(A[1]A[2], A[3:∞] ./ α))
+    data = DivDiffData(v1, v2, v3, A, B, α, β)
+    return _BandedMatrix(Vcat(((1:∞) .* d)', data'), ∞, 2,-1)'
 end
 
 function diff(P::SemiclassicalJacobi{T}; dims=1) where {T}

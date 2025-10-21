@@ -1,31 +1,24 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, LazyArrays, Test
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, _BandedMatrix, _p0, Weighted
 import LazyArrays: Accumulate, AccumulateAbstractVector
-import SemiclassicalOrthogonalPolynomials: CBV, MulAddAccumulate, HalfWeighted, toclassical
+import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted, toclassical
 import LinearAlgebra: norm, triu
 
-@testset "CachedBroadcastVector" begin
-    P, Q = SemiclassicalJacobi(2,-0.5,-0.5,-0.5), SemiclassicalJacobi(2,0.5,0.5,0.5)
-    A, B = recurrencecoefficients(P)
-    α, β = recurrencecoefficients(Q)
-    d = AccumulateAbstractVector(*, CBV(/, A, Vcat(1,α)))
-    v1 = AccumulateAbstractVector(+, CBV(/, B, A))
-    v2 = MulAddAccumulate(CBV(/, Vcat(0,0,α[2:∞]), α), CBV(/, Vcat(0,CBV(/, β,  α)),  α))
-    v3 = AccumulateAbstractVector(*, Vcat(A[1]A[2], CBV(/, A[3:∞], α)))
-    op1 = CBV(*, 1:∞, d)
-    op2 = CBV(*, CBV(-, CBV(*, 1:∞, CBV(+, v1, CBV(/, B[2:end], A[2:end]))), CBV(*, 2:∞, CBV(+, CBV(/, β, α), CBV(*, α, v2)))), v3)
-    dat1 = Vcat(op1', op2')
-    _v1 = AccumulateAbstractVector(+, B ./ A)
-    _v2 = MulAddAccumulate(Vcat(0,0,α[2:∞]) ./ α, Vcat(0,β ./ α) ./ α);
-    _v3 = AccumulateAbstractVector(*, Vcat(A[1]A[2], A[3:∞] ./ α))
-    dat2 = Vcat(((1:∞) .* d)', (((1:∞) .* (_v1 .+ B[2:end]./A[2:end]) .- (2:∞) .* (α .* _v2 .+ β ./ α)) .* _v3)')
-    @test v1[1:100] ≈ _v1[1:100]
-    @test v2[1:100] ≈ _v2[1:100]
-    @test v3[1:100] ≈ _v3[1:100]
-    @test dat1[:, 1:100] ≈ dat2[:, 1:100]
-end
-
 @testset "Derivative" begin
+    @testset "DivDiffData" begin
+        P = SemiclassicalJacobi(2,0,0,0);
+        Q = SemiclassicalJacobi(2,1,1,1,P);
+        D = SemiclassicalOrthogonalPolynomials.divdiff(Q, P);
+        A,B,_ = recurrencecoefficients(P);
+        α,β,_ = recurrencecoefficients(Q);
+        d = AccumulateAbstractVector(*, A ./ Vcat(1,α));
+        v1 = AccumulateAbstractVector(+, B ./ A);
+        v2 = MulAddAccumulate(Vcat(0,0,α[2:∞]) ./ α, Vcat(0,β ./ α) ./ α);
+        v3 = AccumulateAbstractVector(*, Vcat(A[1]A[2], A[3:∞] ./ α));
+        D2 = _BandedMatrix(Vcat(((1:∞) .* d)', (((1:∞) .* (v1 .+ B[2:end]./A[2:end]) .- (2:∞) .* (α .* v2 .+ β ./ α)) .* v3)'), ∞, 2,-1)';
+        @test D[1:100, 1:100] ≈ D2[1:100, 1:100]
+    end
+
     @testset "basics" begin
         t = 2
         P = SemiclassicalJacobi(t, -0.5, -0.5, -0.5)
