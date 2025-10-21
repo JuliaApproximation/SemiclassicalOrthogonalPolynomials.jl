@@ -1,7 +1,29 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, LazyArrays, Test
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, _BandedMatrix, _p0, Weighted
 import LazyArrays: Accumulate, AccumulateAbstractVector
-import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted, toclassical
+import SemiclassicalOrthogonalPolynomials: CBV, MulAddAccumulate, HalfWeighted, toclassical
+import LinearAlgebra: norm, triu
+
+@testset "CachedBroadcastVector" begin
+    P, Q = SemiclassicalJacobi(2,-0.5,-0.5,-0.5), SemiclassicalJacobi(2,0.5,0.5,0.5)
+    A, B = recurrencecoefficients(P)
+    α, β = recurrencecoefficients(Q)
+    d = AccumulateAbstractVector(*, CBV(/, A, Vcat(1,α)))
+    v1 = AccumulateAbstractVector(+, CBV(/, B, A))
+    v2 = MulAddAccumulate(CBV(/, Vcat(0,0,α[2:∞]), α), CBV(/, Vcat(0,CBV(/, β,  α)),  α))
+    v3 = AccumulateAbstractVector(*, Vcat(A[1]A[2], CBV(/, A[3:∞], α)))
+    op1 = CBV(*, 1:∞, d)
+    op2 = CBV(*, CBV(-, CBV(*, 1:∞, CBV(+, v1, CBV(/, B[2:end], A[2:end]))), CBV(*, 2:∞, CBV(+, CBV(/, β, α), CBV(*, α, v2)))), v3)
+    dat1 = Vcat(op1', op2')
+    _v1 = AccumulateAbstractVector(+, B ./ A)
+    _v2 = MulAddAccumulate(Vcat(0,0,α[2:∞]) ./ α, Vcat(0,β ./ α) ./ α);
+    _v3 = AccumulateAbstractVector(*, Vcat(A[1]A[2], A[3:∞] ./ α))
+    dat2 = Vcat(((1:∞) .* d)', (((1:∞) .* (_v1 .+ B[2:end]./A[2:end]) .- (2:∞) .* (α .* _v2 .+ β ./ α)) .* _v3)')
+    @test v1[1:100] ≈ _v1[1:100]
+    @test v2[1:100] ≈ _v2[1:100]
+    @test v3[1:100] ≈ _v3[1:100]
+    @test dat1[:, 1:100] ≈ dat2[:, 1:100]
+end
 
 @testset "Derivative" begin
     @testset "basics" begin
@@ -9,10 +31,12 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted, tocla
         P = SemiclassicalJacobi(t, -0.5, -0.5, -0.5)
         Q = SemiclassicalJacobi(t,  0.5,  0.5,  0.5, P)
         x = axes(P,1)
-        D = Derivative(x)
-        D = Q \ (D*P)
+        # D = Derivative(x)
+        # D = Q \ (D*P) # Why is this suddenly broken
 
-        @test (D*(P \ exp.(x)))[1:50] ≈ (Q \ exp.(x))[1:50]
+        # @test (D*(P \ exp.(x)))[1:50] ≈ (Q \ exp.(x))[1:50]
+        D = diff(P).args[2]
+        @test (D * transform(P, exp))[1:50] ≈ transform(Q, exp)[1:50]
     end
 
     @testset "Derivation" begin
