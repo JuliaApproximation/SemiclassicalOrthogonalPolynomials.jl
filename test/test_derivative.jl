@@ -19,6 +19,118 @@ import LinearAlgebra: norm, triu
         @test D[1:100, 1:100] ≈ D2[1:100, 1:100]
     end
 
+    @testset "WeightedDifffDataA" begin
+        HQ, HP = HalfWeighted{:a}(SemiclassicalJacobi(2.0, 2.0, 1.0, 3.0)), HalfWeighted{:a}(SemiclassicalJacobi(2.0,3.0, 0.0, 2.0))
+        Q = HQ.P
+        P = HP.P
+        t = P.t
+        a = Q.a
+        A,B,C = recurrencecoefficients(P)
+        α,β,γ = recurrencecoefficients(Q)
+        d = AccumulateAbstractVector(*, A ./ α)
+        v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
+        v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
+        D = SemiclassicalOrthogonalPolynomials.divdiff(HQ, HP);
+        D2 = _BandedMatrix(
+            Vcat(
+                ((a:∞) .* v2 .- ((a+1):∞) .* Vcat(1,v1[2:end] .* d))',
+                (((a+1):∞) .* Vcat(1,d))'), SemiclassicalOrthogonalPolynomials.ℵ₀, 0,1)
+        @test D[1:100, 1:100] ≈ D2[1:100, 1:100]
+    end
+
+    @testset "WeightedDiffDataB" begin
+        HQ, HP = HalfWeighted{:b}(SemiclassicalJacobi(2.0, 2.0, 1.0, 3.0)), HalfWeighted{:b}(SemiclassicalJacobi(2.0,1.0,2.0,2.0))
+        Q = HQ.P
+        P = HP.P
+        t = P.t
+        b = Q.b
+        A,B,C = recurrencecoefficients(P)
+        α,β,γ = recurrencecoefficients(Q)
+        d = AccumulateAbstractVector(*, A ./ α)
+        d2 = AccumulateAbstractVector(*, A ./ Vcat(1,α))
+        v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
+        v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
+        D = SemiclassicalOrthogonalPolynomials.divdiff(HQ, HP);
+        D2 = _BandedMatrix(
+            Vcat(
+                (-(b:∞) .* v2 .+ ((b+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(1:∞) .* d2))',
+                (-((b+1):∞) .* Vcat(1,d))'), SemiclassicalOrthogonalPolynomials.ℵ₀, 0,1)
+        @test D[1:100, 1:100] ≈ D2[1:100, 1:100]
+    end
+
+    @testset "WeightedDiffDataC" begin
+        HQ, HP = HalfWeighted{:c}(SemiclassicalJacobi(2.0, 2.0, 1.0, 3.0)), HalfWeighted{:c}(SemiclassicalJacobi(2.0, 1.0, 0.0, 4.0))
+        Q = HQ.P
+        P = HP.P
+        t = P.t
+        c = Q.c
+        A,B,C = recurrencecoefficients(P)
+        α,β,γ = recurrencecoefficients(Q)
+        d = AccumulateAbstractVector(*, A ./ α)
+        d2 = AccumulateAbstractVector(*, A ./ Vcat(1,α))
+        v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
+        v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
+        D = SemiclassicalOrthogonalPolynomials.divdiff(HQ, HP);
+        D2 = _BandedMatrix(
+              Vcat(
+                (-(c:∞) .* v2 .+ ((c+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(t:t:∞) .* d2))',
+                (-((c+1):∞) .* Vcat(1,d))'), SemiclassicalOrthogonalPolynomials.ℵ₀, 0,1)
+        @test D[1:100, 1:100] ≈ D2[1:100, 1:100]
+    end
+
+    @testset "WeightedDiffDataAB" begin
+        HQ, HP = HalfWeighted{:ab}(SemiclassicalJacobi(2.0, 2.0, 1.0, 3.0)), HalfWeighted{:ab}(SemiclassicalJacobi(2.0, 3.0, 2.0, 2.0))
+        Q = HQ.P
+        P = HP.P
+        A,B,_ = recurrencecoefficients(P)
+        α,β,_ = recurrencecoefficients(Q)
+        a,b = Q.a,Q.b
+        d = AccumulateAbstractVector(*, Vcat(1,A) ./ α)
+        e = AccumulateAbstractVector(*, Vcat(1,A ./ α))
+        f = MulAddAccumulate(Vcat(0,0,A[2:end] ./ α[2:end]), Vcat(0, (B./ α) .* e))
+        g = cumsum(β ./ α)
+        D2 = _BandedMatrix(Vcat((((a+1):∞) .* e .- ((b+a+1):∞).*f .+ ((a+b+2):∞) .* e .* g )',
+            (-((a+b+2):∞)  .* d)'),SemiclassicalOrthogonalPolynomials.ℵ₀,1,0)
+        D = SemiclassicalOrthogonalPolynomials.divdiff(HQ, HP);
+        @test D[1:100, 1:100] ≈ D2[1:100, 1:100]
+    end
+
+    @testset "WeightedDiffDataBC" begin
+        HQ, HP = HalfWeighted{:bc}(SemiclassicalJacobi(2.0, 2.0, 1.0, 3.0)), HalfWeighted{:bc}(SemiclassicalJacobi(2.0, 1.0, 2.0, 4.0))
+        Q = HQ.P
+        P = HP.P
+        t = P.t
+        A,B,_ = recurrencecoefficients(P)
+        α,β,_ = recurrencecoefficients(Q)
+        b,c = Q.b,Q.c
+        d = AccumulateAbstractVector(*, Vcat(1,A) ./ α)
+        e = AccumulateAbstractVector(*, Vcat(1,A ./ α))
+        f = MulAddAccumulate(Vcat(0,0,A[2:end] ./ α[2:end]), Vcat(0, (B./ α) .* e))
+        g = cumsum(β ./ α)
+        D = _BandedMatrix(Vcat((-((t+1)* (0:∞) .+ (t*(b+1) + c+1)) .* e .+ ((c+b+1):∞).*f .- ((b+c+2):∞) .* e .* g )',
+                (((b+c+2):∞)  .* d)'),SemiclassicalOrthogonalPolynomials.ℵ₀,1,0)
+        D2 = SemiclassicalOrthogonalPolynomials.divdiff(HQ, HP);
+        @test D2[1:100, 1:100] ≈ D[1:100, 1:100]
+    end
+
+    @testset "WeightedDiffDataAC" begin
+        HQ, HP = HalfWeighted{:ac}(SemiclassicalJacobi(2.0, 2.0, 1.0, 3.0)), HalfWeighted{:ac}(SemiclassicalJacobi(2.0, 3.0, 0.0, 4.0))
+        Q = HQ.P
+        P = HP.P
+        t = P.t
+        A,B,_ = recurrencecoefficients(P)
+        α,β,_ = recurrencecoefficients(Q)
+        a,c = Q.a,Q.c
+        d = AccumulateAbstractVector(*, Vcat(1,A) ./ α)
+        e = AccumulateAbstractVector(*, Vcat(1,A ./ α))
+        f = MulAddAccumulate(Vcat(0,0,A[2:end] ./ α[2:end]), Vcat(0, (B./ α) .* e))
+        g = cumsum(β ./ α)
+        D = _BandedMatrix(Vcat((t* ((a+1):∞) .* e .- ((c+a+1):∞).*f .+ ((a+c+2):∞) .* e .* g )',
+                (-((a+c+2):∞)  .* d)'),SemiclassicalOrthogonalPolynomials.ℵ₀,1,0)
+        D2 = SemiclassicalOrthogonalPolynomials.divdiff(HQ, HP);
+        @test D2[1:100, 1:100] ≈ D[1:100, 1:100]
+    end
+
     @testset "basics" begin
         t = 2
         P = SemiclassicalJacobi(t, -0.5, -0.5, -0.5)
