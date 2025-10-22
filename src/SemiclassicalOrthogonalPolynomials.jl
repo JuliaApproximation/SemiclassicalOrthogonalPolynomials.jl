@@ -19,6 +19,7 @@ import ContinuumArrays: basis, Weight, @simplify, AbstractBasisLayout, BasisLayo
 import FillArrays: SquareEye
 import HypergeometricFunctions: _₂F₁general2, _₂F₁
 import SpecialFunctions: beta
+import LazyBandedMatrices
 
 export Legendre, Normalized, normalize, SemiclassicalJacobi, SemiclassicalJacobiWeight, WeightedSemiclassicalJacobi, OrthogonalPolynomialRatio
 

@@ -80,36 +80,30 @@ end
 function divdiff(HQ::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi}, HP::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi})
     Q = HQ.P
     P = HP.P
-    t = P.t
     a = Q.a
-    A,B,C = recurrencecoefficients(P)
-    α,β,γ = recurrencecoefficients(Q)
+    A,B,_ = recurrencecoefficients(P)
+    α,β,_ = recurrencecoefficients(Q)
     d = AccumulateAbstractVector(*, A ./ α)
-    v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
-    v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
-
-    _BandedMatrix(
-        Vcat(
-            ((a:∞) .* v2 .- ((a+1):∞) .* Vcat(1,v1[2:end] .* d))',
-            (((a+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
+    v1 = MulAddAccumulate(Vcat(0,α[2:∞] ./ α), β)
+    v2 = MulAddAccumulate(Vcat(0,A[2:∞] ./ α), Vcat(B[1], B[2:end] .* d))
+    p = ((a+1):∞) .* v2 .- ((a+2):∞) .* v1 .* d
+    q = ((a+1):∞) .* Vcat(1,d)
+    return LazyBandedMatrices.Bidiagonal(q, p, :U)
 end
 
 function divdiff(HQ::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi}, HP::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi})
     Q = HQ.P
     P = HP.P
-    t = P.t
     b = Q.b
-    A,B,C = recurrencecoefficients(P)
-    α,β,γ = recurrencecoefficients(Q)
+    A,B,_ = recurrencecoefficients(P)
+    α,β,_ = recurrencecoefficients(Q)
     d = AccumulateAbstractVector(*, A ./ α)
     d2 = AccumulateAbstractVector(*, A ./ Vcat(1,α))
-    v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
-    v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
-
-    _BandedMatrix(
-        Vcat(
-            (-(b:∞) .* v2 .+ ((b+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(1:∞) .* d2))',
-            (-((b+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
+    v1 = MulAddAccumulate(Vcat(0,α[2:∞] ./ α), β)
+    v2 = MulAddAccumulate(Vcat(0,A[2:∞] ./ α), Vcat(B[1], B[2:end] .* d))
+    p = -((b+1):∞) .* v2 .+ ((b+2):∞) .* v1 .* d .+ (1:∞) .* d2
+    q = -((b+1):∞) .* Vcat(1,d)
+    return LazyBandedMatrices.Bidiagonal(q, p, :U)
 end
 
 function divdiff(HQ::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi}, HP::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi})
@@ -117,16 +111,15 @@ function divdiff(HQ::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi}, HP::HalfWeigh
     P = HP.P
     t = P.t
     c = Q.c
-    A,B,C = recurrencecoefficients(P)
-    α,β,γ = recurrencecoefficients(Q)
+    A,B,_ = recurrencecoefficients(P)
+    α,β,_ = recurrencecoefficients(Q)
     d = AccumulateAbstractVector(*, A ./ α)
     d2 = AccumulateAbstractVector(*, A ./ Vcat(1,α))
-    v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
-    v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
-    _BandedMatrix(
-        Vcat(
-            (-(c:∞) .* v2 .+ ((c+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(t:t:∞) .* d2))',
-            (-((c+1):∞) .* Vcat(1,d))'), ℵ₀, 0,1)
+    v1 = MulAddAccumulate(Vcat(0,α[2:∞] ./ α), β)
+    v2 = MulAddAccumulate(Vcat(0,A[2:∞] ./ α), Vcat(B[1], B[2:end] .* d))
+    p = -((c+1):∞) .* v2 .+ ((c+2):∞) .* v1 .* d .+ (t:t:∞) .* d2
+    q = -((c+1):∞) .* Vcat(1,d)
+    return LazyBandedMatrices.Bidiagonal(q, p, :U)
 end
 
 function diff(HP::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi}; dims=1)
@@ -165,8 +158,9 @@ function divdiff(HQ::HalfWeighted{:ab}, HP::HalfWeighted{:ab})
     e = AccumulateAbstractVector(*, Vcat(1,A ./ α))
     f = MulAddAccumulate(Vcat(0,0,A[2:end] ./ α[2:end]), Vcat(0, (B./ α) .* e))
     g = cumsum(β ./ α)
-    _BandedMatrix(Vcat((((a+1):∞) .* e .- ((b+a+1):∞).*f .+ ((a+b+2):∞) .* e .* g )',
-            (-((a+b+2):∞)  .* d)'),ℵ₀,1,0)
+    p = ((a+1):∞) .* e .- ((b+a+1):∞).*f .+ ((a+b+2):∞) .* e .* g 
+    q = -((a+b+2):∞)  .* d
+    return LazyBandedMatrices.Bidiagonal(p, q, :L)
 end
 
 
@@ -182,8 +176,9 @@ function divdiff(HQ::HalfWeighted{:bc}, HP::HalfWeighted{:bc})
     e = AccumulateAbstractVector(*, Vcat(1,A ./ α))
     f = MulAddAccumulate(Vcat(0,0,A[2:end] ./ α[2:end]), Vcat(0, (B./ α) .* e))
     g = cumsum(β ./ α)
-    _BandedMatrix(Vcat((-((t+1)* (0:∞) .+ (t*(b+1) + c+1)) .* e .+ ((c+b+1):∞).*f .- ((b+c+2):∞) .* e .* g )',
-            (((b+c+2):∞)  .* d)'),ℵ₀,1,0)
+    p = -((t+1)* (0:∞) .+ (t*(b+1) + c+1)) .* e .+ ((c+b+1):∞).*f .- ((b+c+2):∞) .* e .* g 
+    q = ((b+c+2):∞)  .* d
+    return LazyBandedMatrices.Bidiagonal(p, q, :L)
 end
 
 function divdiff(HQ::HalfWeighted{:ac}, HP::HalfWeighted{:ac})
@@ -198,8 +193,9 @@ function divdiff(HQ::HalfWeighted{:ac}, HP::HalfWeighted{:ac})
     e = AccumulateAbstractVector(*, Vcat(1,A ./ α))
     f = MulAddAccumulate(Vcat(0,0,A[2:end] ./ α[2:end]), Vcat(0, (B./ α) .* e))
     g = cumsum(β ./ α)
-    _BandedMatrix(Vcat((t* ((a+1):∞) .* e .- ((c+a+1):∞).*f .+ ((a+c+2):∞) .* e .* g )',
-            (-((a+c+2):∞)  .* d)'),ℵ₀,1,0)
+    p = t* ((a+1):∞) .* e .- ((c+a+1):∞).*f .+ ((a+c+2):∞) .* e .* g 
+    q = -((a+c+2):∞)  .* d
+    return LazyBandedMatrices.Bidiagonal(p, q, :L)
 end
 
 
