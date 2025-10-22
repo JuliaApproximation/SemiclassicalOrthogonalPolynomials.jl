@@ -118,6 +118,31 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted, tocla
         @test D_M[1:10,1:10] ≈ L[1:10,1:10]
     end
 
+    @testset "BidiagonalConjugation" begin
+        P = SemiclassicalJacobi(t, 0.5, 1, 0.5)
+        Q,D = diff(P).args
+
+        P̃ = jacobi(1, 0.5, 0..1)
+        R = P \ P̃
+        Q̃,D̃ = diff(P̃).args
+        R̃ = Q̃ \ P̃
+        R̄ = Q\P
+        Matrix(R[1:100,1:100]) * inv(R̃[1:100,1:100]) * D̃[1:100,1:100] * inv(Matrix(R[1:100,1:100]))
+
+        # P* R == P̃ 
+        @test P[0.1,1:100]' * R[1:100,1:100] ≈ P̃[0.1,1:100]'
+        # diff(P) == diff(P̃) * R⁻¹
+        @test diff(P)[0.1,1:100]' ≈ diff(P̃)[0.1,1:100]'inv(Matrix(R[1:100,1:100]))
+        # diff(P) == Q̃ * D * R⁻¹
+        @test diff(P)[0.1,1:100]' ≈ Q̃[0.1,1:100]' * D̃[1:100,1:100] * inv(Matrix(R[1:100,1:100]))
+        # Q * D == Q̃ * D̃ * R⁻¹ == P̃ * R̃⁻¹ * D̃ * R⁻¹  == P * R * R̃⁻¹ * D̃ * R⁻¹
+        @test diff(P)[0.1,1:100]' ≈ P̃[0.1,1:100]'inv(Matrix(R̃[1:100,1:100])) * D̃[1:100,1:100] * inv(Matrix(R[1:100,1:100]))
+        @test diff(P)[0.1,1:100]' ≈ P[0.1,1:100]' * R[1:100,1:100] * inv(Matrix(R̃[1:100,1:100])) * D̃[1:100,1:100] * inv(Matrix(R[1:100,1:100]))
+        @test diff(P)[0.1,1:100]' ≈ Q[0.1,1:100]' * R̄[1:100,1:100] * Matrix(R[1:100,1:100]) * inv(Matrix(R̃[1:100,1:100])) * D̃[1:100,1:100] * inv(Matrix(R[1:100,1:100]))
+
+        @test D[1:100,1:100] ≈ R̄[1:100,1:100] * Matrix(R[1:100,1:100]) * inv(Matrix(R̃[1:100,1:100])) * D̃[1:100,1:100] * inv(Matrix(R[1:100,1:100]))
+    end
+
     @testset "Weighted" begin
         t = 2
         P = SemiclassicalJacobi(t, 0, 0, 0)
@@ -159,6 +184,16 @@ import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted, tocla
         # Q = SemiclassicalJacobi(t,a+1,b+1,c)
         HP = HalfWeighted{:c}(P)
         @test (D * HP)[0.1,1:10] ≈ (HP[0.1+h,1:10]-HP[0.1,1:10])/h atol=2000h
+
+
+        @testset "relatiohnship to BidiagonalConjugation" begin
+            t = 2.5
+            P = SemiclassicalJacobi(t, 0.5, 1, 0.5)
+            diff(HalfWeighted{:b}(P)).args[1]
+            diff(HalfWeighted{:b}(P)).args[2]
+            # diff((1-x) * P) == diff((1-x) * Q) * R
+            # == Q̃ * D * R
+        end
     end
 
     @testset "Double-HalfWeighted" begin
