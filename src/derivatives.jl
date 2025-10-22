@@ -84,11 +84,11 @@ function divdiff(HQ::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi}, HP::HalfWeigh
     A,B,_ = recurrencecoefficients(P)
     α,β,_ = recurrencecoefficients(Q)
     d = AccumulateAbstractVector(*, A ./ α)
-    v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
-    v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
-    p = (a:∞) .* v2 .- ((a+1):∞) .* Vcat(1,v1[2:end] .* d)
+    v1 = MulAddAccumulate(Vcat(0,α[2:∞] ./ α), β)
+    v2 = MulAddAccumulate(Vcat(0,A[2:∞] ./ α), Vcat(B[1], B[2:end] .* d))
+    p = ((a+1):∞) .* v2 .- ((a+2):∞) .* v1 .* d
     q = ((a+1):∞) .* Vcat(1,d)
-    return LazyBandedMatrices.Bidiagonal(q, p[2:end], :U)
+    return LazyBandedMatrices.Bidiagonal(q, p, :U)
 end
 
 function divdiff(HQ::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi}, HP::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi})
@@ -99,11 +99,11 @@ function divdiff(HQ::HalfWeighted{:b,<:Any,<:SemiclassicalJacobi}, HP::HalfWeigh
     α,β,_ = recurrencecoefficients(Q)
     d = AccumulateAbstractVector(*, A ./ α)
     d2 = AccumulateAbstractVector(*, A ./ Vcat(1,α))
-    v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
-    v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
-    p = -(b:∞) .* v2 .+ ((b+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(1:∞) .* d2)
+    v1 = MulAddAccumulate(Vcat(0,α[2:∞] ./ α), β)
+    v2 = MulAddAccumulate(Vcat(0,A[2:∞] ./ α), Vcat(B[1], B[2:end] .* d))
+    p = -((b+1):∞) .* v2 .+ ((b+2):∞) .* v1 .* d .+ (1:∞) .* d2
     q = -((b+1):∞) .* Vcat(1,d)
-    return LazyBandedMatrices.Bidiagonal(q, p[2:end], :U)
+    return LazyBandedMatrices.Bidiagonal(q, p, :U)
 end
 
 function divdiff(HQ::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi}, HP::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi})
@@ -115,11 +115,11 @@ function divdiff(HQ::HalfWeighted{:c,<:Any,<:SemiclassicalJacobi}, HP::HalfWeigh
     α,β,_ = recurrencecoefficients(Q)
     d = AccumulateAbstractVector(*, A ./ α)
     d2 = AccumulateAbstractVector(*, A ./ Vcat(1,α))
-    v1 = MulAddAccumulate(Vcat(0,0,α[2:∞] ./ α), Vcat(0,β))
-    v2 = MulAddAccumulate(Vcat(0,0,A[2:∞] ./ α), Vcat(0,B[1], B[2:end] .* d))
-    p = -(c:∞) .* v2 .+ ((c+1):∞) .* Vcat(1,v1[2:end] .* d) .+ Vcat(0,(t:t:∞) .* d2)
+    v1 = MulAddAccumulate(Vcat(0,α[2:∞] ./ α), β)
+    v2 = MulAddAccumulate(Vcat(0,A[2:∞] ./ α), Vcat(B[1], B[2:end] .* d))
+    p = -((c+1):∞) .* v2 .+ ((c+2):∞) .* v1 .* d .+ (t:t:∞) .* d2
     q = -((c+1):∞) .* Vcat(1,d)
-    return LazyBandedMatrices.Bidiagonal(q, p[2:end], :U)
+    return LazyBandedMatrices.Bidiagonal(q, p, :U)
 end
 
 function diff(HP::HalfWeighted{:a,<:Any,<:SemiclassicalJacobi}; dims=1)
