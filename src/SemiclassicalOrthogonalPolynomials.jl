@@ -6,7 +6,7 @@ using ClassicalOrthogonalPolynomials, FillArrays, LazyArrays, ArrayLayouts, Quas
 import Base: getindex, axes, size, \, /, *, +, -, summary, show, ==, copy, sum, unsafe_getindex, convert, OneTo, diff
 
 import ArrayLayouts: MemoryLayout, ldiv, diagonaldata, subdiagonaldata, supdiagonaldata
-import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout, _BandedMatrix
+import BandedMatrices: bandwidths, AbstractBandedMatrix, BandedLayout, _BandedMatrix, bandeddata
 import LazyArrays: resizedata!, paddeddata, CachedVector, CachedMatrix, CachedAbstractVector, LazyMatrix, LazyVector, arguments, ApplyLayout, colsupport, AbstractCachedVector, ApplyArray,
                     AccumulateAbstractVector, LazyVector, AbstractCachedMatrix, BroadcastLayout, simplifiable
 import ClassicalOrthogonalPolynomials: OrthogonalPolynomial, recurrencecoefficients, jacobimatrix, normalize, _p0, UnitInterval, orthogonalityweight, NormalizedOPLayout, MappedOPLayout,
