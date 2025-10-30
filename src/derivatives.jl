@@ -54,9 +54,9 @@ function diff(P::SemiclassicalJacobi{T}; dims=1) where {T}
         D = diff(WP1)
         Pᵗᵃ⁺¹⁰ᶜ⁺¹ = D.args[1].P
         Dmat = D.args[2]
-        b2 = Vcat(zero(T), zero(T), Dmat[band(1)])
-        b1 = Vcat(zero(T), Dmat[band(0)])
-        data = Hcat(b2, b1)'
+        b2 = Vcat(zero(T), Dmat.dv)
+        b1 = Vcat(zero(T), zero(T), Dmat.ev)
+        data = Vcat(b1', b2')
         D = _BandedMatrix(data, ∞, -1, 2)
         return Pᵗᵃ⁺¹⁰ᶜ⁺¹ * D
     end
