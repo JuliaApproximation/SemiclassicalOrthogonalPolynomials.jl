@@ -1,7 +1,7 @@
 """
-MulAddAccumulate(μ, A, B)
+    MulAddAccumulate(μ, A, B)
 
-represents the vector satisfying v[k+1] == A[k]*v[k]+B[k] with v[1] == μ
+represents the vector satisfying v[k+1] == A[k+1]*v[k]+B[k+1] with v[1] == μ
 """
 mutable struct MulAddAccumulate{T} <: AbstractCachedVector{T}
     data::Vector{T}
@@ -21,11 +21,17 @@ MulAddAccumulate(data::Vector{T}, A::AbstractVector, B::AbstractVector, datasize
 MulAddAccumulate(μ, A, B) = MulAddAccumulate([μ], A, B, (1,))
 MulAddAccumulate(A, B) = MulAddAccumulate(A[1]+B[1], A, B)
 
-function LazyArrays.cache_filldata!(K::MulAddAccumulate, inds)
-    A,B = K.A,K.B
+LazyArrays.cache_filldata!(K::MulAddAccumulate, inds) = _muladdaccumulate_filldata!(K.data, K.A, K.B, inds)
+function _muladdaccumulate_filldata!(K, A, B, inds)
+    n = maximum(inds)
+    resizedata!(A, n)
+    resizedata!(B, n)
+    __muladdaccumulate_filldata!(K, maybe_cacheddata(A), maybe_cacheddata(B), inds)
+end
+function __muladdaccumulate_filldata!(data, A, B, inds)
     @inbounds for k in inds
-        K.data[k] = muladd(A[k], K.data[k-1], B[k])
-    end
+        data[k] = muladd(A[k], data[k-1], B[k])
+    end 
 end
 
 """
