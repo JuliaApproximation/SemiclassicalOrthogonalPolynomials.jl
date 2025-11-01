@@ -448,8 +448,8 @@ function \(A::SemiclassicalJacobi, B::SemiclassicalJacobi{T}) where {T}
         Bᵗᵃ⁰ᶜ = SemiclassicalJacobi(B.t, B.a, zero(B.b), B.c, A)
         Bᵗᵃ¹ᶜ = SemiclassicalJacobi(B.t, B.a, one(B.a), B.c, A)
         Rᵦₐ₁ᵪᵗᵃ⁰ᶜ = Weighted(Bᵗᵃ⁰ᶜ) \ Weighted(Bᵗᵃ¹ᶜ)
-        b1 = Rᵦₐ₁ᵪᵗᵃ⁰ᶜ[band(0)]
-        b0 = Vcat(one(T), Rᵦₐ₁ᵪᵗᵃ⁰ᶜ[band(-1)])
+        b1 = Rᵦₐ₁ᵪᵗᵃ⁰ᶜ.dv
+        b0 = Vcat(one(T), Rᵦₐ₁ᵪᵗᵃ⁰ᶜ.ev)
         Rᵦₐ₋₁ᵪᵗᵃ⁰ᶜ = Bidiagonal(b0, b1, :U)
         # Then convert Bᵗᵃ⁰ᶜ into A and complete
         Rₐ₀ᵪᴬ = UpperTriangular(A \ Bᵗᵃ⁰ᶜ)
