@@ -175,6 +175,11 @@ function semiclassical_jacobimatrix(t, a, b, c)
     end
 end
 
+function semiclassical_jacobimatrix_raise_c_by_2(Q)
+    X = jacobimatrix(Q)
+    qr_jacobimatrix(Q.t*I-X,X)[1]
+end
+
 function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     Δa = a-Q.a
     Δb = b-Q.b
@@ -203,7 +208,7 @@ function semiclassical_jacobimatrix(Q::SemiclassicalJacobi, a, b, c)
     elseif iszero(Δa) && isone(Δb/2) && iszero(Δc)
         qr_jacobimatrix(I-X,X)[1]
     elseif iszero(Δa) && iszero(Δb) && isone(Δc/2)
-        qr_jacobimatrix(Q.t*I-X,X)[1]
+        semiclassical_jacobimatrix_raise_c_by_2(Q)
     elseif isone(Δa) && iszero(Δb) && iszero(Δc)  # raising by 1
         cholesky_jacobimatrix(X,X)[1]
     elseif iszero(Δa) && isone(Δb) && iszero(Δc)
