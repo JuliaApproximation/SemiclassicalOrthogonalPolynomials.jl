@@ -1,7 +1,15 @@
 using SemiclassicalOrthogonalPolynomials, ClassicalOrthogonalPolynomials, LazyArrays, Test
 import ClassicalOrthogonalPolynomials: recurrencecoefficients, _BandedMatrix, _p0, Weighted
 import LazyArrays: Accumulate, AccumulateAbstractVector
-import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted, toclassical
+import SemiclassicalOrthogonalPolynomials: MulAddAccumulate, HalfWeighted, toclassical, MulAddAccumulate
+
+@testset "MulAddAccumulate" begin 
+    A = Vcat(1, cache(2:3), cache(4:∞) ./ cache(3:∞))
+    B = Vcat(cache(1:5), [1, 2], cache(3:∞))
+    v = MulAddAccumulate(A, B)
+    @test v[1] ≈ 2
+    @test all(k -> v[k+1] ≈ A[k+1] * v[k] + B[k+1], 2:1000)
+end
 
 @testset "Derivative" begin
     @testset "basics" begin
