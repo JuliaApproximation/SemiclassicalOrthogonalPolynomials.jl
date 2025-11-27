@@ -440,6 +440,9 @@ function copy(L::Ldiv{SemiclassicalJacobiLayout,SemiclassicalJacobiLayout})
     (inv(M_Q) * L') * M_P
 end
 
+_get_bands(R) = (R[band(0)], R[band(-1)])
+_get_bands(R::Bidiagonal) = (R.dv, R.ev)
+
 function \(A::SemiclassicalJacobi, B::SemiclassicalJacobi{T}) where {T}
     if A.b == -1 && B.b ≠ -1
         return UpperTriangular(ApplyArray(inv, B \ A))
@@ -448,8 +451,8 @@ function \(A::SemiclassicalJacobi, B::SemiclassicalJacobi{T}) where {T}
         Bᵗᵃ⁰ᶜ = SemiclassicalJacobi(B.t, B.a, zero(B.b), B.c, A)
         Bᵗᵃ¹ᶜ = SemiclassicalJacobi(B.t, B.a, one(B.a), B.c, A)
         Rᵦₐ₁ᵪᵗᵃ⁰ᶜ = Weighted(Bᵗᵃ⁰ᶜ) \ Weighted(Bᵗᵃ¹ᶜ)
-        b1 = Rᵦₐ₁ᵪᵗᵃ⁰ᶜ[band(0)]
-        b0 = Vcat(one(T), Rᵦₐ₁ᵪᵗᵃ⁰ᶜ[band(-1)])
+        b1, _b0 = _get_bands(Rᵦₐ₁ᵪᵗᵃ⁰ᶜ) 
+        b0 = Vcat(one(T), _b0)
         Rᵦₐ₋₁ᵪᵗᵃ⁰ᶜ = Bidiagonal(b0, b1, :U)
         # Then convert Bᵗᵃ⁰ᶜ into A and complete
         Rₐ₀ᵪᴬ = UpperTriangular(A \ Bᵗᵃ⁰ᶜ)
