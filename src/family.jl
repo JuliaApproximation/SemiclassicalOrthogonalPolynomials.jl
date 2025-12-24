@@ -53,13 +53,21 @@ Base.broadcasted(::Type{SemiclassicalJacobi{T}}, t::Number, a::Union{AbstractUni
 _broadcast_getindex(a,k) = a[k]
 _broadcast_getindex(a::Number,k) = a
 
-function LazyArrays.cache_filldata!(P::SemiclassicalJacobiFamily, inds::AbstractUnitRange)
+function LazyArrays.cache_filldata!(P::SemiclassicalJacobiFamily{T,<:Number,<:Number,<:AbstractUnitRange}, inds::AbstractUnitRange) where T
     t,a,b,c = P.t,P.a,P.b,P.c
-    isrange = P.b isa AbstractUnitRange
+    for k in inds
+        Pprev = P.data[k-2]
+        P.data[k] = SemiclassicalJacobi{T}(Pprev.t, Pprev.a, Pprev.b, Pprev.c+2, semiclassical_jacobimatrix_raise_c_by_2(Pprev))
+    end
+    P
+end
+
+function LazyArrays.cache_filldata!(P::SemiclassicalJacobiFamily{<:Number,<:Number,<:AbstractUnitRange}, inds::AbstractUnitRange)
+    t,a,b,c = P.t,P.a,P.b,P.c
     for k in inds
         # If P.data[k-2] is not normalised (aka b = -1), cholesky fails. With the current design, this is only a problem if P.b
         # is a range since we can translate between polynomials that both have b = -1.
-        Pprev = (isrange && P.b[k-2] == -1) ? P.data[k-1] : P.data[k-2] # isrange && P.b[k-2] == -1 could also be !isnormalized(P.data[k-2])
+        Pprev = P.b[k-2] == -1 ? P.data[k-1] : P.data[k-2] # isrange && P.b[k-2] == -1 could also be !isnormalized(P.data[k-2])
         P.data[k] = SemiclassicalJacobi(t, _broadcast_getindex(a,k), _broadcast_getindex(b,k), _broadcast_getindex(c,k), Pprev)
     end
     P
