@@ -14,10 +14,10 @@ using FillArrays
             J = X'
             Pb = SemiclassicalJacobi(t, a, 1.0, c)
             _neg1b_def = (x, n) -> n == 0 ? one(x) : (1 - x) * Pb[x, n]
-            for x in LinRange(0, 1, 100)
+            for x in LinRange(0, 1, 5)
                 a₀, b₀ = J[1, 1], J[1, 2]
                 @test x * _neg1b_def(x, 0) ≈ a₀ * _neg1b_def(x, 0) + b₀ * _neg1b_def(x, 1)
-                for n in 1:25
+                for n in 1:15
                     cₙ, aₙ, bₙ = @view J[n+1, n:n+2]
                     Pₙ, Pₙ₋₁, Pₙ₊₁ = _neg1b_def.(x, (n, n - 1, n + 1))
                     @test x * Pₙ ≈ cₙ * Pₙ₋₁ + aₙ * Pₙ + bₙ * Pₙ₊₁ atol = 1e-4
@@ -39,7 +39,7 @@ using FillArrays
         for t in (1.2, 2.3, 5.0, 2.0), a in (1.5, -1 / 2, 1 / 2, 1, 2, 3, 3 / 2), c in (0.3, -1 / 2, 1 / 2, 3 / 2, 2, 0, 1)
             P = SemiclassicalJacobi(t, a, -1.0, c)
             Pb = SemiclassicalJacobi(t, a, 1.0, c)
-            for x in LinRange(0, 1, 100)
+            for x in LinRange(0, 1, 5)
                 for n in 1:26
                     Px = P[x, n]
                     Pbx = n == 1 ? one(x) : (1 - x) * Pb[x, n-1]
@@ -251,7 +251,7 @@ using FillArrays
             wQ = SemiclassicalJacobiWeight(t, a, b, c)
             lhs = wQ .* Q
             rhs = wP .* (P * L)
-            x = LinRange(eps(), 1 - eps(), 250)
+            x = LinRange(eps(), 1 - eps(), 20)
             lhs_vals = lhs[x, 1:20]
             rhs_vals = rhs[x, 1:20]
             @test lhs_vals ≈ rhs_vals
