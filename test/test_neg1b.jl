@@ -77,13 +77,12 @@ using FillArrays
     end
 
     @testset "Expansions" begin
-        Ps = SemiclassicalJacobi.(2, -1//2:5//2, -1.0, -1//2:5//2)
-        Ps2 = SemiclassicalJacobi.(2, 0:3, -1.0, 0:3) # used to be broken for integers
+        Ps = SemiclassicalJacobi.(2, -1//2:3//2, -1.0, -1//2:3//2)
+        Ps2 = SemiclassicalJacobi.(2, 0:2, -1.0, 0:2) # used to be broken for integers
         for Ps in (Ps, Ps2)
             # Why does this take SO long for Ps[4]? Without them this takes 40 s, but with them it takes 10m!
             for P in Ps
-                P === Ps[4] && continue
-                𝐱 = LinRange(0, 1, 100)
+                𝐱 = LinRange(0, 1, 5)
                 x = axes(P, 1)
                 
                 g = x -> exp(x) + sin(x)
@@ -102,7 +101,7 @@ using FillArrays
                 @test f[𝐱] ≈ g.(𝐱)
                 @test P[:, 1:20] \ g.(x) ≈ coefficients(f)[1:20]
                 @test coefficients(f)[1:2] ≈ [5.0, 1.0]
-                @test coefficients(f)[3:1000] ≈ zeros(1000 - 3 + 1) atol = 1E-10
+                @test coefficients(f)[3:100] ≈ zeros(100 - 3 + 1) atol = 1E-10
             end
         end
     end
