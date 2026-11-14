@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "julia"
+    directory: "/" # Location of Julia project
+    schedule:
+      interval: "weekly"
+    # groups: # uncomment to group all julia package updates into a single PR
+    #   all-julia-packages:
+    #     patterns:
+    #       - "*"
